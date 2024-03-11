@@ -1,0 +1,3 @@
+django-venv/
+__pycache__
+librelandlord/db.sqlite3

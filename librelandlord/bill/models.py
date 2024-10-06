@@ -108,7 +108,6 @@ class ConsumptionCalc(models.Model):
 
     def __str__(self):
         return f"{self.name}"
-# Define a model representing account entries.
 
 
 class Bill(models.Model):
@@ -123,6 +122,16 @@ class Bill(models.Model):
         return f"{self.date} {self.text} {self.value}"
 
 
+class AccountPeriod(models.Model):
+    text = models.CharField(
+        max_length=27, verbose_name=_("Account Period Name"))
+    start_date = models.DateField(verbose_name=_("Start Date"))
+    end_date = models.DateField(verbose_name=_("End Date"))
+
+
+# Define a model representing account entries.
+
+
 class AccountEntry(models.Model):
     # Define fields for the AccountEntry model.
     date = models.DateField(verbose_name=_("Date"))
@@ -131,6 +140,9 @@ class AccountEntry(models.Model):
         max_digits=10, decimal_places=2, verbose_name=_("Value"))
     bill = models.ForeignKey(
         Bill,   on_delete=models.CASCADE, verbose_name=_("Bill"))
+    account_period = models.ForeignKey(
+        AccountPeriod, on_delete=models.CASCADE, verbose_name=_(
+            "Account Period"))
 
     def __str__(self):
         return f"{self.date} {self.value}"

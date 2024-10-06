@@ -81,3 +81,10 @@ class CostCenterBillEntryAdmin(admin.ModelAdmin):
 
 
 admin.site.register(models.CostCenterBillEntry, CostCenterBillEntryAdmin)
+
+
+class AccountPeriod(admin.ModelAdmin):
+    list_display = ('text', 'start_date', 'end_date')
+
+
+admin.site.register(models.AccountPeriod, AccountPeriod)

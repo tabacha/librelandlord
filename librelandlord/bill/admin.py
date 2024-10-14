@@ -88,3 +88,8 @@ class AccountPeriod(admin.ModelAdmin):
 
 
 admin.site.register(models.AccountPeriod, AccountPeriod)
+
+class HeatingInfo(admin.ModelAdmin):
+    list_display = ( 'apartment', 'year', 'month')
+
+admin.site.register(models.HeatingInfo, HeatingInfo)

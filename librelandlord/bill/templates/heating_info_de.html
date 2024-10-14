@@ -1,0 +1,126 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+@page {
+		size: A4 landscape;
+	}
+
+
+.text {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  width: 130px;
+  background-color: white;
+  position: absolute;
+  left: 0;
+  justify-content: flex-end;
+}
+
+.percentage {
+  font-size: 6pt;
+  line-height: 1;
+  text-transform: uppercase;
+  height: 15px;
+  width: 80%;
+  margin-left: 0px;
+}
+.w {
+    content: "";
+    display: block;
+    background-color: lightgray;
+    height: 16px;
+    position: relative;
+    top: 0px;
+    transition: background-color .3s ease;
+    cursor: pointer;
+}
+.k {
+    content: "";
+    display: block;
+    background-color: red;
+    height: 7px;
+    position: relative;
+    bottom: 12px;
+    transition: background-color .3s ease;
+    cursor: pointer;
+
+}
+html, body {
+  font-family: "fira-sans-2",sans-serif;
+  color: #333;
+  font-size: 8pt;
+}
+
+tr:nth-child(even) {color: rgba(26, 74, 138, 0.726)}
+tr:nth-child(even) .percentage {
+    background: repeating-linear-gradient(
+  to right,
+  rgba(26, 74, 138, 0.726),
+  rgba(26, 74, 138, 0.726) 1px,
+  #fff 1px,
+  #fff 5%,
+  #ddd,
+  #f5f5f5 0.5px,
+  #fff 1px,
+  #fff 5%
+  );
+}
+tr:nth-child(odd) {color: rgba(10, 10, 10, 0.87)}
+tr:nth-child(odd) .percentage {
+    background: repeating-linear-gradient(
+  to right,
+  #ddd,
+  black 1px,
+  #fff 1px,
+  #fff 5%,
+  #ddd,
+  #f5f5f5 0.5px,
+  #fff 1px,
+  #fff 5%
+  );
+}
+
+@page {
+    @top-center {
+                content: "Montaliche Heizkosteninfo"
+    }
+    @bottom-center {
+        content: "Seite " counter(page) " von " counter(pages);
+    }
+}
+        </style>
+    </head>
+    <body>
+        <h1>Ihre monatliche Verbrauchsstatistik</h1>
+        <h2>Für die Wohnung:</h2>
+        <div class="appartment">
+        {{ apartment.number }}  {{apartment.name }}<br>
+        {{ apartment.street }},
+        {{ apartment.postal_code }}
+        {{ apartment.city }}
+        </div>
+        {% if heating %}
+        <h2>Heizung</h2>
+        {% include "heating_info_table.html" with data=heating %}
+        Der Vergleichswert (in Diagramm grau dargestellt) gibt an, was ihre Nachbarn (=das ganze Hause) im Bezug auf Ihre Wohnungsgröße in dem Monat verbraucht haben.
+        {% else %}
+        <p>Für die Heizung liegen keine Daten vor.</p>
+        {% endif %}
+        {% if page_break %}
+        <h2 style="break-before: page;">Warmwasser</h2>
+        {% else %}
+        <h2>Warmwasser</h2>
+        {% endif %}
+        {% if hot_water %}
+        {% include "heating_info_table.html" with data=hot_water %}
+        Der Vergleichswert (in Diagramm grau dargestellt) gibt an, was ihre Nachbarn durchschnittlich in dem Monat verbraucht haben.
+        {% else %}
+        <p>Für das Warmwasser liegen keine Daten vor.</p>
+        {% endif %}
+
+        <h2>Fragen?</h2>
+        <p>{{ landlord_info }}</p>
+</body>
+</html>

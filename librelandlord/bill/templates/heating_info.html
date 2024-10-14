@@ -1,0 +1,135 @@
+{% load i18n %}
+{% load l10n %}
+{% get_current_language as current_language %}
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+    <head>
+        <meta charset="utf-8">
+        <style>
+@page {
+		size: A4 landscape;
+	}
+
+.text {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  width: 130px;
+  background-color: white;
+  position: absolute;
+  left: 0;
+  justify-content: flex-end;
+}
+
+.percentage {
+  font-size: 6pt;
+  line-height: 1;
+  text-transform: uppercase;
+  height: 15px;
+  width: 80%;
+  margin-left: 0px;
+}
+.w {
+    content: "";
+    display: block;
+    background-color: lightgray;
+    height: 16px;
+    position: relative;
+    top: 0px;
+    transition: background-color .3s ease;
+    cursor: pointer;
+}
+.k {
+    content: "";
+    display: block;
+    background-color: red;
+    height: 7px;
+    position: relative;
+    bottom: 12px;
+    transition: background-color .3s ease;
+    cursor: pointer;
+}
+
+html, body {
+  font-family: "fira-sans-2", sans-serif;
+  color: #333;
+  font-size: 8pt;
+}
+
+tr:nth-child(even) {color: rgba(26, 74, 138, 0.726)}
+tr:nth-child(even) .percentage {
+    background: repeating-linear-gradient(
+  to right,
+  rgba(26, 74, 138, 0.726),
+  rgba(26, 74, 138, 0.726) 1px,
+  #fff 1px,
+  #fff 5%,
+  #ddd,
+  #f5f5f5 0.5px,
+  #fff 1px,
+  #fff 5%
+  );
+}
+tr:nth-child(odd) {color: rgba(10, 10, 10, 0.87)}
+tr:nth-child(odd) .percentage {
+    background: repeating-linear-gradient(
+  to right,
+  #ddd,
+  black 1px,
+  #fff 1px,
+  #fff 5%,
+  #ddd,
+  #f5f5f5 0.5px,
+  #fff 1px,
+  #fff 5%
+  );
+}
+
+@page {
+    @top-center {
+        content: "{% trans 'Monthly Heating Cost Info' %}";
+    }
+    @bottom-center {
+        content: "{% trans 'Page ' %}" counter(page) "{% trans ' of ' %}" counter(pages);
+    }
+}
+        </style>
+    </head>
+    <body>
+        <h1>{% trans 'Your Monthly Consumption Statistics' %}</h1>
+        <div class="renter">
+        {% trans 'To: ' %}{{ renter.first_name }} {{ renter.last_name }}
+        </div>
+        <h2>{% trans 'For the apartment:' %}</h2>
+        <div class="apartment">
+        {{ apartment.number }}  {{ apartment.name }}<br>
+        {{ apartment.street }},
+        {{ apartment.postal_code }}
+        {{ apartment.city }}
+        </div>
+        {% if heating %}
+        <h2>{% trans 'Heating' %}</h2>
+        {% include "heating_info_table.html" with data=heating %}
+        <p>{% trans 'The comparison value (shown in gray on the chart) indicates how much your neighbors (i.e., the entire building) have consumed relative to your apartment size for the month.' %}</p>
+        {% else %}
+        <p>{% trans 'No data available for heating.' %}</p>
+        {% endif %}
+
+        {% if page_break %}
+        <h2 style="break-before: page;">{% trans 'Hot Water' %}</h2>
+        {% else %}
+        <h2>{% trans 'Hot Water' %}</h2>
+        {% endif %}
+
+        {% if hot_water %}
+        {% include "heating_info_table.html" with data=hot_water %}
+        <p>{% trans 'The comparison value (shown in gray on the chart) indicates how much your neighbors have consumed on average for the month.' %}</p>
+        {% else %}
+        <p>{% trans 'No data available for hot water.' %}</p>
+        {% endif %}
+
+        <h2>{% trans 'Questions?' %}</h2>
+        <p>{{ landlord_info }}</p>
+
+    </body>
+</html>

@@ -1,0 +1,357 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-10-14 06:46+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: bill/models.py:10
+msgid "electricity"
+msgstr ""
+
+#: bill/models.py:11
+msgid "gas"
+msgstr ""
+
+#: bill/models.py:12
+msgid "cold water"
+msgstr ""
+
+#: bill/models.py:13
+msgid "warm water"
+msgstr ""
+
+#: bill/models.py:14
+msgid "heating"
+msgstr ""
+
+#: bill/models.py:15
+msgid "fuel oil"
+msgstr ""
+
+#: bill/models.py:19
+msgid "Meter Type"
+msgstr ""
+
+#: bill/models.py:22
+msgid "Name of the Meter Place"
+msgstr ""
+
+#: bill/models.py:24 bill/models.py:40
+msgid "Remark"
+msgstr ""
+
+#: bill/models.py:26
+msgid "Location"
+msgstr ""
+
+#: bill/models.py:38
+msgid "Meter Place"
+msgstr ""
+
+#: bill/models.py:42
+msgid "Meter Number"
+msgstr ""
+
+#: bill/models.py:44
+msgid "Build-in Date"
+msgstr ""
+
+#: bill/models.py:46
+msgid "Calibrated until"
+msgstr ""
+
+#: bill/models.py:48
+msgid "Out of Order Date"
+msgstr ""
+
+#: bill/models.py:60
+msgid "Meter"
+msgstr ""
+
+#: bill/models.py:61 bill/models.py:116 bill/models.py:138
+msgid "Date"
+msgstr ""
+
+#: bill/models.py:62
+msgid "Time"
+msgstr ""
+
+#: bill/models.py:64
+msgid "Meter Reading"
+msgstr ""
+
+#: bill/models.py:74
+msgid "+"
+msgstr ""
+
+#: bill/models.py:75
+msgid "-"
+msgstr ""
+
+#: bill/models.py:76
+msgid "*"
+msgstr ""
+
+#: bill/models.py:77
+msgid "/"
+msgstr ""
+
+#: bill/models.py:78
+msgid " "
+msgstr ""
+
+#: bill/models.py:81
+msgid "Name"
+msgstr ""
+
+#: bill/models.py:83
+msgid "Argument 1"
+msgstr ""
+
+#: bill/models.py:85
+msgid "Argument 1 Value"
+msgstr ""
+
+#: bill/models.py:91
+msgid "Operator 1"
+msgstr ""
+
+#: bill/models.py:94
+msgid "Argument 2"
+msgstr ""
+
+#: bill/models.py:96
+msgid "Argument 2 Value"
+msgstr ""
+
+#: bill/models.py:103
+msgid "Operator 2"
+msgstr ""
+
+#: bill/models.py:106
+msgid "Argument 3"
+msgstr ""
+
+#: bill/models.py:108
+msgid "Argument 3 Value"
+msgstr ""
+
+#: bill/models.py:115
+msgid "Booking Text"
+msgstr ""
+
+#: bill/models.py:118
+msgid "Bill number"
+msgstr ""
+
+#: bill/models.py:120 bill/models.py:141
+msgid "Value"
+msgstr ""
+
+#: bill/models.py:128
+msgid "Account Period Name"
+msgstr ""
+
+#: bill/models.py:129
+msgid "Start Date"
+msgstr ""
+
+#: bill/models.py:130
+msgid "End Date"
+msgstr ""
+
+#: bill/models.py:139
+msgid "Text"
+msgstr ""
+
+#: bill/models.py:143
+msgid "Bill"
+msgstr ""
+
+#: bill/models.py:146
+msgid "Account Period"
+msgstr ""
+
+#: bill/models.py:156
+msgid "Apartment Number"
+msgstr ""
+
+#: bill/models.py:157
+msgid "Apartment Name"
+msgstr ""
+
+#: bill/models.py:158
+msgid "Street"
+msgstr ""
+
+#: bill/models.py:160 bill/models.py:179
+msgid "Postal Code"
+msgstr ""
+
+#: bill/models.py:161 bill/models.py:181
+msgid "City"
+msgstr ""
+
+#: bill/models.py:163
+msgid "Size in Square Meters"
+msgstr ""
+
+#: bill/models.py:173 bill/models.py:214
+msgid "Apartment"
+msgstr ""
+
+#: bill/models.py:174
+msgid "First Name"
+msgstr ""
+
+#: bill/models.py:175
+msgid "Last Name"
+msgstr ""
+
+#: bill/models.py:177
+msgid "Alternative Street"
+msgstr ""
+
+#: bill/models.py:182
+msgid "Move in on date"
+msgstr ""
+
+#: bill/models.py:184
+msgid "Move out date"
+msgstr ""
+
+#: bill/models.py:196
+msgid "Cost Center Text"
+msgstr ""
+
+#: bill/models.py:198
+msgid "Is Oiltank"
+msgstr ""
+
+#: bill/models.py:212 bill/models.py:228
+msgid "Cost Center"
+msgstr ""
+
+#: bill/models.py:216
+msgid "Consumption"
+msgstr ""
+
+#: bill/models.py:230
+msgid "Account Entry"
+msgstr ""
+
+#: bill/models.py:232
+msgid "Oil in Liter"
+msgstr ""
+
+#: bill/models.py:240
+msgid "Appartment"
+msgstr ""
+
+#: bill/models.py:246
+msgid "Heating energy"
+msgstr ""
+
+#: bill/models.py:248
+msgid "Compare Heating energy"
+msgstr ""
+
+#: bill/models.py:250
+msgid "Hot water energy"
+msgstr ""
+
+#: bill/models.py:252
+msgid "Compare hot water energy"
+msgstr ""
+
+#: bill/models.py:254
+msgid "Hot water m3"
+msgstr ""
+
+#: bill/templates/heating_info.html:90
+msgid "Monthly Heating Cost Info"
+msgstr "Monatliche Heizkosteninformation"
+
+#: bill/templates/heating_info.html:93
+msgid "Page "
+msgstr "Seite "
+
+#: bill/templates/heating_info.html:93
+msgid " of "
+msgstr " von "
+
+#: bill/templates/heating_info.html:99
+msgid "Your Monthly Consumption Statistics"
+msgstr "Ihre monatliche Verbrauchsstatistik"
+
+#: bill/templates/heating_info.html:100
+msgid "For the apartment:"
+msgstr "Für die Wohnung:"
+
+#: bill/templates/heating_info.html:108
+msgid "Heating"
+msgstr "Heizung"
+
+#: bill/templates/heating_info.html:110
+msgid ""
+"The comparison value (shown in gray on the chart) indicates how much your "
+"neighbors (i.e., the entire building) have consumed relative to your "
+"apartment size for the month."
+msgstr ""
+"Der Vergleichswert (in Diagramm grau dargestellt) gibt an, wie viel Ihre "
+"Nachbarn (d.h. das gesamte Gebäude) im Verhältnis zu Ihrer Wohnungsgröße im "
+"Monat verbraucht haben."
+
+#: bill/templates/heating_info.html:112
+msgid "No data available for heating."
+msgstr "Für die Heizung liegen keine Daten vor."
+
+#: bill/templates/heating_info.html:116 bill/templates/heating_info.html:118
+msgid "Hot Water"
+msgstr "Warmwasser"
+
+#: bill/templates/heating_info.html:123
+msgid ""
+"The comparison value (shown in gray on the chart) indicates how much your "
+"neighbors have consumed on average for the month."
+msgstr ""
+"Der Vergleichswert (in Diagramm grau dargestellt) gibt an, wie viel Ihre "
+"Nachbarn im Durchschnitt in dem Monat verbraucht haben."
+
+#: bill/templates/heating_info.html:125
+msgid "No data available for hot water."
+msgstr "Für das Warmwasser liegen keine Daten vor."
+
+#: bill/templates/heating_info.html:128
+msgid "Questions?"
+msgstr "Fragen?"
+
+#: bill/templates/heating_info_table.html:5
+msgid "Month"
+msgstr "Monat"
+
+#: bill/templates/heating_info_table.html:8
+msgid "Current"
+msgstr "Aktuell"
+
+#: bill/templates/heating_info_table.html:11
+msgid "Last year"
+msgstr "Vorjahr"
+
+#: bill/templates/heating_info_table.html:14
+msgid "Compare value"
+msgstr "Vergleichswert"

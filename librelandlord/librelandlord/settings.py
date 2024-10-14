@@ -27,6 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+HEATING_INFO_FOOTER = "Für Fragen oder wenn Daten nicht plausibel sind, wenden Sie sich bitte an Ihren Vermieter: Sven Anders, Neehusenstaße 11a, 21147 Hamburg, 040-2004297"
 
 # Application definition
 
@@ -41,6 +42,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -104,7 +106,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'de'
 
 TIME_ZONE = 'UTC'
 
@@ -122,3 +124,14 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Verfügbare Sprachen (Beispiele)
+LANGUAGES = [
+    ('en', 'English'),
+    ('de', 'Deutsch'),
+    # Weitere Sprachen hinzufügen
+]
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]

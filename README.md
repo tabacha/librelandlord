@@ -1,8 +1,15 @@
+# Install Python Venv
+
+```shell
+./install-venv.sh
+```
+
 # Start Django
 
+```shell
 cd librelandlord
 ./manage.sh runserver
-
+```
 
 http://127.0.0.1:8000/admin/
 

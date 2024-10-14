@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-10-14 06:46+0000\n"
+"POT-Creation-Date: 2024-10-14 16:39+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -298,15 +298,19 @@ msgstr " von "
 msgid "Your Monthly Consumption Statistics"
 msgstr "Ihre monatliche Verbrauchsstatistik"
 
-#: bill/templates/heating_info.html:100
+#: bill/templates/heating_info.html:101
+msgid "To: "
+msgstr ""
+
+#: bill/templates/heating_info.html:103
 msgid "For the apartment:"
 msgstr "Für die Wohnung:"
 
-#: bill/templates/heating_info.html:108
+#: bill/templates/heating_info.html:111
 msgid "Heating"
 msgstr "Heizung"
 
-#: bill/templates/heating_info.html:110
+#: bill/templates/heating_info.html:113
 msgid ""
 "The comparison value (shown in gray on the chart) indicates how much your "
 "neighbors (i.e., the entire building) have consumed relative to your "
@@ -316,15 +320,15 @@ msgstr ""
 "Nachbarn (d.h. das gesamte Gebäude) im Verhältnis zu Ihrer Wohnungsgröße im "
 "Monat verbraucht haben."
 
-#: bill/templates/heating_info.html:112
+#: bill/templates/heating_info.html:115
 msgid "No data available for heating."
 msgstr "Für die Heizung liegen keine Daten vor."
 
-#: bill/templates/heating_info.html:116 bill/templates/heating_info.html:118
+#: bill/templates/heating_info.html:119 bill/templates/heating_info.html:121
 msgid "Hot Water"
 msgstr "Warmwasser"
 
-#: bill/templates/heating_info.html:123
+#: bill/templates/heating_info.html:126
 msgid ""
 "The comparison value (shown in gray on the chart) indicates how much your "
 "neighbors have consumed on average for the month."
@@ -332,26 +336,26 @@ msgstr ""
 "Der Vergleichswert (in Diagramm grau dargestellt) gibt an, wie viel Ihre "
 "Nachbarn im Durchschnitt in dem Monat verbraucht haben."
 
-#: bill/templates/heating_info.html:125
+#: bill/templates/heating_info.html:128
 msgid "No data available for hot water."
 msgstr "Für das Warmwasser liegen keine Daten vor."
 
-#: bill/templates/heating_info.html:128
+#: bill/templates/heating_info.html:131
 msgid "Questions?"
 msgstr "Fragen?"
 
-#: bill/templates/heating_info_table.html:5
+#: bill/templates/heating_info_table.html:6
 msgid "Month"
 msgstr "Monat"
 
-#: bill/templates/heating_info_table.html:8
+#: bill/templates/heating_info_table.html:9
 msgid "Current"
 msgstr "Aktuell"
 
-#: bill/templates/heating_info_table.html:11
+#: bill/templates/heating_info_table.html:12
 msgid "Last year"
 msgstr "Vorjahr"
 
-#: bill/templates/heating_info_table.html:14
+#: bill/templates/heating_info_table.html:15
 msgid "Compare value"
 msgstr "Vergleichswert"

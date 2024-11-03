@@ -1,5 +1,5 @@
 #!/bin/bash
 
-python -m venv django-venv
-./django-venv/bin/pip install -r requirements.txt
+python -m venv librelandlord/.venv
+./librelandlord/.venv/bin/pip install -r requirements.txt
 

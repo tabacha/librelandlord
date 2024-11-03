@@ -1,1 +1,1 @@
-../django-venv/bin/python3 manage.py $*
+.venv/bin/python3 manage.py $*

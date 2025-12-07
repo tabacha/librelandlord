@@ -27,7 +27,7 @@ class Meter(models.Model):
         constraints = [
             # Sicherstellen, dass build_in_date immer vor out_of_order_date liegt
             models.CheckConstraint(
-                check=Q(out_of_order_date__gt=models.F("build_in_date")) | Q(
+                condition=Q(out_of_order_date__gt=models.F("build_in_date")) | Q(
                     out_of_order_date__isnull=True),
                 name="check_build_in_before_out_of_order",
             ),

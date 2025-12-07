@@ -1,35 +1,40 @@
 {% if renter_list %}
-    {% for renter in renter_list %}
-        <hr>
-        <h1>Heizkostenabrechung {{renter.apartment.name }}</h1>
-        An
-        {{ renter.first_name }} {{ renter.last_name }} <br>
+{% for renter in renter_list %}
+<hr>
+<h1>Abrechung {{renter.apartment.name }}</h1>
+An
+{{ renter.first_name }} {{ renter.last_name }} <br>
 
-        {% if renter.alt_street %}
-        {{ renter.alt_street }}
-        {% else %}
-        {{ renter.apartment.street }}
-        {% endif %}
-        <br>
-        {% if renter.postal_code %}
-        {{ renter.postal_code }}
-        {% else %}
-        {{ renter.apartment.postal_code }}
-        {% endif %}
-        {% if renter.city %}
-        {{ renter.city }}
-        {% else %}
-        {{ renter.apartment.city }}
-        {% endif %}
-        <br>
-        <b>Wohnung:</b>{{renter.apartment.number }}  {{renter.apartment.name }}<br>
-        {{ renter.apartment.street }},
-        {{ renter.apartment.postal_code }}
-        {{ renter.apartment.city }}
-
-
-
-    {% endfor %}
+{% if renter.alt_street %}
+{{ renter.alt_street }}
 {% else %}
-    <p>No renter available.</p>
+{{ renter.apartment.street }}
+{% endif %}
+<br>
+{% if renter.postal_code %}
+{{ renter.postal_code }}
+{% else %}
+{{ renter.apartment.postal_code }}
+{% endif %}
+{% if renter.city %}
+{{ renter.city }}
+{% else %}
+{{ renter.apartment.city }}
+{% endif %}
+<br>
+<b>Wohnung:</b>{{renter.apartment.number }} {{renter.apartment.name }}<br>
+{{ renter.apartment.street }},
+{{ renter.apartment.postal_code }}
+{{ renter.apartment.city }} <br>
+{% for ccc in costcentercontributions %}
+{% if ccc.apartment.id == renter.apartment.id %}
+<h3>Kostenstelle: {{ ccc.cost_center.text }} </h3>
+{{ ccc.consumption_calc }}
+{% endif %}
+{% endfor %}
+
+
+{% endfor %}
+{% else %}
+<p>No renter available.</p>
 {% endif %}

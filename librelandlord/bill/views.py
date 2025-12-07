@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.template import loader
-from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate
+
+from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution
 from weasyprint import HTML
 from django.conf import settings
 from django.db.models import Q
@@ -11,12 +12,16 @@ import json
 from django.forms.models import model_to_dict
 from django.db.models.query import QuerySet
 
+import operator
+
 
 def index(request):
     renter_list = Renter.objects.order_by('last_name')
+    costcentercontributions = CostCenterContribution.objects.all()
     template = loader.get_template('index.html')
     context = {
-        'renter_list': renter_list
+        'renter_list': renter_list,
+        'costcentercontributions': costcentercontributions
     }
     return HttpResponse(template.render(context, request))
 
@@ -57,10 +62,13 @@ def get_heating_info_context(request, renter_id: int):
         return None
 
     # Abfrage durchführen
+
     heating_info_entries = HeatingInfo.objects.filter(
-        Q(year=start_date_year, month__gte=start_date_month) | Q(
-            year__gt=start_date_year)  # Bedingung kombinieren
-    ).order_by('year', 'month').reverse()  # Ergebnisse nach Jahr und Monat sortieren
+        (Q(year=start_date_year, month__gte=start_date_month) |
+         Q(year__gt=start_date_year)),
+        apartment_id=renter.apartment.id
+        # Ergebnisse nach Jahr und Monat sortieren
+    ).order_by('year', 'month').reverse()
 
     heating = []
     hot_water = []
@@ -83,7 +91,7 @@ def get_heating_info_context(request, renter_id: int):
                 water_year_before = heating_info_entries[i +
                                                          12].hot_water_energy_kwh
             if entry.heating_energy_kwh is not None:
-                comp_percent = None
+                comp_percent = 0
                 if entry.compare_heating_energy_kwh:
                     comp_percent = 100 * \
                         (entry.compare_heating_energy_kwh/max_heating)
@@ -117,16 +125,16 @@ def get_heating_info_context(request, renter_id: int):
     return context
 
 
-def heating_info(request):
+def heating_info(request, id: int):
     template = loader.get_template('heating_info.html')
-    context = get_heating_info_context(request=request, renter_id=2)
+    context = get_heating_info_context(request=request, renter_id=id)
     html = template.render(context, request)
     return HttpResponse(html)
 
 
-def heating_info_pdf(request):
+def heating_info_pdf(request, id: int):
     template = loader.get_template('heating_info.html')
-    context = get_heating_info_context(request=request, renter_id=2)
+    context = get_heating_info_context(request=request, renter_id=id)
     html = template.render(context, request)
 
     # Generiere das PDF mit WeasyPrint
@@ -221,7 +229,7 @@ def calculate_meter_consumption(meter_id: int, start_date: date, end_date: date)
             })
         else:
             raise ValueError(
-                "Nicht genug Messwerte vorhanden, um Startwert zu interpolieren")
+                f"Nicht genug Messwerte in Meter {meter_id} vorhanden, um Startwert {start_date} zu interpolieren")
 
     # Bestimme den Endwert
     if readings and readings.last().date >= end_date:
@@ -302,7 +310,7 @@ def calculate_meter_place_consumption(meter_place_id: int, start_date: date, end
             'end_date': m_end_date,
             'consumption': mconsumption,
         })
-        # sum = sum + mconsumption.consumption
+        sum = sum + mconsumption['consumption']
         m_start_date = m_end_date
     return {
         'consumption': sum,
@@ -327,9 +335,9 @@ def serialize_helper(obj):
     raise TypeError("Type not serializable")
 
 
-def meter_place_consumption(request, meter_place: int):
+def meter_place_consumption(request, meter_place: int, start_date: date, end_date: date):
     consumption = calculate_meter_place_consumption(
-        meter_place, date(2024, 7, 1), date(2024, 9, 20))
+        meter_place, start_date, end_date)
     # consumption = calculate_meter_consumption(
     #    4, date(2024, 7, 1), date(2024, 9, 6))
 
@@ -342,12 +350,167 @@ def meter_place_consumption(request, meter_place: int):
     return response
 
 
+def process_calc_argument(argument_value, argument, label, calculation, start_date, end_date):
+    if argument_value:
+        calculation[label] = {'type': 'fixed', 'val': argument_value}
+        return argument_value
+    elif argument:
+        calc_result = calculate_meter_place_consumption(
+            argument, start_date, end_date)
+        calculation[label] = {'type': 'consumption', 'calc': calc_result}
+        return calc_result['consumption']
+#                           consumption
+    return None
+
+
+def calc_consumption_calc(calc: ConsumptionCalc,
+                          start_date: date, end_date: date):
+    operations = {
+        '+': operator.add,
+        '-': operator.sub,
+        '*': operator.mul,
+        '/': operator.truediv
+    }
+    calculation = {}
+    arg1 = process_calc_argument(
+        argument_value=calc.argument1_value,
+        argument=calc.argument1,
+        label='arg1',
+        calculation=calculation,
+        start_date=start_date,
+        end_date=end_date)
+    arg2 = process_calc_argument(
+        argument_value=calc.argument2_value,
+        argument=calc.argument2,
+        label='arg2',
+        calculation=calculation,
+        start_date=start_date,
+        end_date=end_date)
+    arg3 = process_calc_argument(
+        argument_value=calc.argument3_value,
+        argument=calc.argument3,
+        label='arg3',
+        calculation=calculation,
+        start_date=start_date,
+        end_date=end_date)
+    # Berechne den finalen Wert basierend auf den Operatoren
+    try:
+        if arg1 is not None and arg2 is not None:
+            result = operations[calc.operator1](arg1, arg2)
+            result_calc = f' {arg1} {calc.operator1} {arg2}'
+            if arg3 is not None:
+                result = operations[calc.operator2](result, arg3)
+                result_calc = f'{result_calc} {calc.operator2} {arg3}'
+        else:
+            result = arg1
+            result_calc = ''
+    except ZeroDivisionError:
+        result = None  # Division durch Null vermeiden
+    return {'result': result,
+            'result_calc': result_calc,
+            'arg_calc': calculation
+            }
+
+
 def heating_info_task(request):
-    templates = HeatingInfoTemplate.objects.filter(Q(date__year__lt=2024) |
-                                                    (Q(date__year=2024) & Q(
-                                                        date__month__lt=10))
-                                                   )
+    today = date.today()
+    year = today.year
+    month = today.month
+    if month == 1:
+        year = year-1
+        month = 12
+    else:
+        month = month-1
+    templates = HeatingInfoTemplate.objects.filter(Q(next_year__lt=year) |
+                                                    (Q(next_year=year) & Q(
+                                                        next_month__lte=month))
+                                                   ).order_by('next_year', 'next_month')
     data = {}
+    if templates:
+        calc_year = templates[0].next_year
+        calc_month = templates[0].next_month
+        next_year = templates[0].next_year
+        next_month = templates[0].next_month+1
+        if next_month > 12:
+            next_month = 1
+            next_year = next_year+1
+        start_date = date(calc_year, calc_month, 1)
+        end_date = date(next_year, next_month, 1)
+        month_okay = True
+        compare_group = {}
+        val = {}
+        for template in templates:
+            for groupname in [f"h{template.compare_heating_group}", f"w{template.compare_heating_group}"]:
+                if groupname not in compare_group:
+                    compare_group[groupname] = {
+                        'm2': 0,
+                        'sum': 0,
+                        'num': 0
+                    }
+            if month_okay and template.next_year == calc_year and template.next_month == calc_month:
+                if template.calc_heating is not None:
+                    try:
+                        heat_val = calc_consumption_calc(
+                            template.calc_heating, start_date, end_date)['result']
+                    except:
+                        heat_val = None
+                    if heat_val is None:
+                        month_okay = False
+                    else:
+                        groupname = f"h{template.compare_heating_group}"
+                        compare_group[groupname]['sum'] = compare_group[groupname]['sum'] + heat_val
+                        compare_group[groupname]['m2'] = compare_group[groupname]['m2'] + \
+                            template.apartment.size_in_m2
+                        val[f"h{template.id}"] = heat_val
+                if template.calc_hot_water is not None:
+                    try:
+                        water_val = calc_consumption_calc(
+                            template.calc_hot_water, start_date, end_date)['result']
+                    except:
+                        water_val = None
+                    if water_val is None:
+                        month_okay = False
+                    else:
+                        groupname = f"w{template.compare_heating_group}"
+                        compare_group[groupname]['sum'] = compare_group[groupname]['sum'] + water_val
+                        compare_group[groupname]['num'] = compare_group[groupname]['num'] + 1
+                        val[f"w{template.id}"] = water_val
+
+        if month_okay:
+            for template in templates:
+                if template.next_year == calc_year and template.next_month == calc_month:
+                    groupname = f"h{template.compare_heating_group}"
+                    heating_energy = None
+                    compare_heating_energy = None
+                    if f"h{template.id}" in val:
+                        heating_energy = val[f"h{template.id}"]
+                        compare_heating_energy = template.apartment.size_in_m2 * (compare_group[groupname]['sum'] /
+                                                                                  compare_group[groupname]['m2'])
+                    hot_water_energy = None
+                    compare_water_energy = None
+                    m3_hot_water = None
+                    if f"w{template.id}" in val:
+                        m3_hot_water = val[f"w{template.id}"]
+                        hot_water_energy = m3_hot_water*template.kwh_per_m3_hot_water
+                        groupname = f"w{template.compare_heating_group}"
+                        compare_water_m3 = compare_group[groupname]['sum'] / \
+                            compare_group[groupname]['num']
+                        compare_water_energy = compare_water_m3*template.kwh_per_m3_hot_water
+
+                    hi = HeatingInfo(
+                        apartment=template.apartment,
+                        year=calc_year,
+                        month=calc_month,
+                        heating_energy_kwh=heating_energy,
+                        compare_heating_energy_kwh=compare_heating_energy,
+                        hot_water_energy_kwh=hot_water_energy,
+                        compare_hot_water_energy_kwh=compare_water_energy,
+                        hot_water_m3=m3_hot_water
+                    )
+                    hi.save()
+                    template.next_year = next_year
+                    template.next_month = next_month
+                    template.save()
     response = HttpResponse(json.dumps(
         data), content_type='text/json')
     # response['Content-Disposition'] = 'attachment; filename="heating_info.pdf"'

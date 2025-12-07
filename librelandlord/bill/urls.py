@@ -1,12 +1,19 @@
-from django.urls import path
+from django.urls import path, register_converter
 
 from . import views
+from librelandlord.convertes import DateConverter
+
+register_converter(DateConverter, "date")
 
 urlpatterns = [
     path("", views.index, name="index"),
-    path("heating_info", views.heating_info, name="heating_info"),
-    path("heating_info.pdf", views.heating_info_pdf, name="heating_info.pdf"),
-    path("meter_place_consumption/<int:meter_place>", views.meter_place_consumption,
+    path("heating_info/<int:id>.html", views.heating_info, name="heating_info"),
+    path("heating_info/<int:id>.pdf",
+         views.heating_info_pdf, name="heating_info.pdf"),
+    path("meter_place_consumption/<int:meter_place>/<date:start_date>/<date:end_date>", views.meter_place_consumption,
          name="meta_place_consumption"),
+    # path("calc_consumption_calc/<int:meter_place>/<date:start_date>/<date:end_date>", views.calc_consumption_calc,
+    #     name="calc_consumption_calc"),
+
     path("heating_info_task", views.heating_info_task, name="heating_info_task")
 ]

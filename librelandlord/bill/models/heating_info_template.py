@@ -31,7 +31,7 @@ class HeatingInfoTemplate(models.Model):
         blank=True,
         null=True
     )
-    kwh_per_liter_hot_water = models.FloatField()
+    kwh_per_m3_hot_water = models.FloatField()
     compare_heating_group = models.IntegerField()
     compare_hot_water_group = models.IntegerField()
 

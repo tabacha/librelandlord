@@ -26,28 +26,30 @@ RUN apt-get update && apt-get install -y \
     libxslt-dev \
     libcairo2-dev \
     libpango1.0-dev \
-    libgdk-pixbuf2.0-dev \
+    libgdk-pixbuf-xlib-2.0-dev \
     libgirepository1.0-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Requirements kopieren und installieren
+# Requirements kopieren und installieren (vor App-Code für besseres Caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# App-Code kopieren
-COPY librelandlord/ ./
 
 # Production-Settings
 ENV DEBUG=False
 ENV USE_OIDC_ONLY=True
 ENV DJANGO_SETTINGS_MODULE=librelandlord.settings
 
-# OIDC-Konfiguration (über Umgebungsvariablen)
-ENV KEYCLOAK_SERVER=""
-ENV KEYCLOAK_REALM="librelandlord"
-ENV OIDC_CLIENT_ID="librelandlord-django"
-ENV OIDC_CLIENT_SECRET=""
-ENV ALLOWED_HOSTS=""
+# App-Code kopieren (nach pip install für besseres Caching)
+COPY librelandlord/ ./
+
+# OIDC-Konfiguration (über Runtime-Umgebungsvariablen)
+# Diese Werte werden zur Laufzeit über docker-compose gesetzt:
+# - KEYCLOAK_SERVER
+# - KEYCLOAK_REALM (Standard: librelandlord)
+# - OIDC_CLIENT_ID (Standard: librelandlord-django)
+# - OIDC_CLIENT_SECRET (NUR zur Laufzeit!)
+# - ALLOWED_HOSTS
 
 # Ownership der App-Dateien setzen
 RUN chown -R app:app /app
@@ -62,8 +64,8 @@ RUN python manage.py collectstatic --noinput
 EXPOSE 8000
 
 # Gesundheitscheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/bill/login/', timeout=5)" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/bill/login/ || exit 1
 
 # Startscript für Production (mit gunicorn für bessere Performance)
 CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "30", "librelandlord.wsgi:application"]

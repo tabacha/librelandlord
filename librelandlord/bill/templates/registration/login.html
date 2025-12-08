@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LibreLandlord - Anmeldung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 2em;
+        }
+
+        .login-method {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .login-method h3 {
+            margin-top: 0;
+            color: #34495e;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-oidc {
+            background-color: #e74c3c;
+        }
+
+        .btn-oidc:hover {
+            background-color: #c0392b;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .environment-info {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+
+        .error {
+            color: #e74c3c;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #fdf2f2;
+            border: 1px solid #f5c6cb;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>LibreLandlord</h1>
+            <p>Verwaltungssystem für Vermieter</p>
+        </div>
+
+        {% if form.errors %}
+        <div class="error">
+            {% for field, errors in form.errors.items %}
+            {% for error in errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if 'mozilla_django_oidc' in INSTALLED_APPS %}
+        <div class="login-method">
+            <h3>🔐 Single Sign-On (Keycloak)</h3>
+            <p>Melden Sie sich mit Ihrem Unternehmenskonto an.</p>
+            <a href="{% url 'oidc_authentication_init' %}" class="btn btn-oidc">
+                Mit Keycloak anmelden
+            </a>
+        </div>
+        {% endif %}
+
+        {% if not USE_OIDC_ONLY %}
+        <div class="login-method">
+            <h3>👤 Lokale Anmeldung</h3>
+            <p>Für Demo- und Testzwecke.</p>
+
+            <form method="post" action="{% url 'admin:login' %}">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="username">Benutzername:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Passwort:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <input type="hidden" name="next" value="{% url 'bill:index' %}">
+
+                <button type="submit" class="btn">
+                    Anmelden
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        <div class="environment-info">
+            {% if USE_OIDC_ONLY %}
+            <strong>Live-System:</strong> Nur OIDC-Anmeldung verfügbar
+            {% else %}
+            <strong>Demo-System:</strong> Lokale Benutzer + OIDC verfügbar
+            {% endif %}
+        </div>
+    </div>
+</body>
+
+</html>

@@ -25,5 +25,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 ]
 
+# Add OIDC URLs if mozilla_django_oidc is installed
+if 'mozilla_django_oidc' in settings.INSTALLED_APPS:
+    urlpatterns.append(path('oidc/', include('mozilla_django_oidc.urls')))
+
 # Add static files serving during development
 urlpatterns += staticfiles_urlpatterns()

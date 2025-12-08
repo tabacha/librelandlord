@@ -3,6 +3,8 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.template import loader
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.conf import settings
 
 from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace
 from weasyprint import HTML
@@ -21,6 +23,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def custom_login(request):
+    """Custom login view that supports both OIDC and local authentication"""
+    context = {
+        'USE_OIDC_ONLY': getattr(settings, 'USE_OIDC_ONLY', False),
+        'INSTALLED_APPS': settings.INSTALLED_APPS,
+    }
+    return render(request, 'registration/login.html', context)
+
+
+@login_required
 def index(request):
     renter_list = Renter.objects.order_by('last_name')
     costcentercontributions = CostCenterContribution.objects.all()

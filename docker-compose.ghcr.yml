@@ -1,0 +1,55 @@
+# Docker Compose für LibreLandlord Production
+# Verwendet fertiges Image aus GitHub Container Registry
+
+version: '3.8'
+
+services:
+  librelandlord:
+    image: ghcr.io/tabacha/librelandlord:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Production Settings
+      - DEBUG=False
+      - USE_OIDC_ONLY=True
+
+      # Keycloak/UCS Konfiguration
+      - KEYCLOAK_SERVER=${KEYCLOAK_SERVER}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-librelandlord}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+
+      # Host-Konfiguration
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+
+    volumes:
+      # Persistente Datenbank
+      - librelandlord_data:/app/db.sqlite3
+      - librelandlord_static:/app/staticfiles
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/bill/login/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Nginx Reverse Proxy für SSL/HTTPS
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/ssl/certs:ro
+      - librelandlord_static:/var/www/static:ro
+    depends_on:
+      - librelandlord
+    restart: unless-stopped
+
+volumes:
+  librelandlord_data:
+  librelandlord_static:

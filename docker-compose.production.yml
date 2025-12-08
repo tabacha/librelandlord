@@ -1,0 +1,52 @@
+# Docker Compose für LibreLandlord Production
+# OIDC-only Modus mit Keycloak auf UCS
+
+version: '3.8'
+
+services:
+  librelandlord:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    ports:
+      - "8000:8000"
+    environment:
+      # Production Settings
+      - DEBUG=False
+      - USE_OIDC_ONLY=True
+
+      # Keycloak/UCS Konfiguration
+      - KEYCLOAK_SERVER=https://your-ucs-server.domain.com
+      - KEYCLOAK_REALM=librelandlord
+      - OIDC_CLIENT_ID=librelandlord-django
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+
+      # Host-Konfiguration
+      - ALLOWED_HOSTS=your-domain.com,your-server-ip
+
+    volumes:
+      # Persistente Datenbank
+      - ./data/db.sqlite3:/app/db.sqlite3
+      - ./data/staticfiles:/app/staticfiles
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/bill/login/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/ssl/certs:ro
+    depends_on:
+      - librelandlord
+    restart: unless-stopped

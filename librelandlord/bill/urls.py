@@ -9,6 +9,7 @@ app_name = 'bill'
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("login/", views.custom_login, name="login"),
     path("heating_info/<int:id>.html", views.heating_info, name="heating_info"),
     path("heating_info/<int:id>.pdf",
          views.heating_info_pdf, name="heating_info.pdf"),

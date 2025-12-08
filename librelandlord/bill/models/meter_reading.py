@@ -4,6 +4,9 @@ from django.core.exceptions import ValidationError
 from datetime import date, time
 from typing import Optional, NamedTuple
 from .meter import Meter
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class MeterReadingError(Exception):
@@ -72,7 +75,8 @@ class MeterReadingManager(models.Manager):
             return MeterReadingAtDate(
                 meter=meter,
                 date=target_date,
-                time=exact_reading.time,
+                # Default to noon if time is None
+                time=exact_reading.time or time(12, 0),
                 calculated_reading=float(exact_reading.meter_reading),
                 is_exact=True,
                 reading_before=exact_reading,
@@ -126,14 +130,17 @@ class MeterReadingManager(models.Manager):
                 f"No meter readings found for meter {meter} to interpolate value for {target_date}"
             )
 
-        return MeterReadingAtDate(
+        rtn = MeterReadingAtDate(
             meter=meter,
             date=target_date,
+            time=time(12, 0),  # Default to noon for interpolated readings
             calculated_reading=calculated_reading,
             is_exact=False,
             reading_before=reading_before,
             reading_after=reading_after
         )
+        logger.error("Interpolated reading: %s", rtn)
+        return rtn
 
 
 class MeterReading(models.Model):
@@ -177,4 +184,4 @@ class MeterReading(models.Model):
                 _("Meter reading cannot be after the meter's out-of-order date."))
 
     def __str__(self):
-        return f"{str(self.meter)} {self.meter_reading}"
+        return f"{str(self.date)} {str(self.meter)} {self.meter_reading}"

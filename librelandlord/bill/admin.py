@@ -56,7 +56,7 @@ admin.site.register(models.Renter, RenterAdmin)
 
 
 class BillAdmin(admin.ModelAdmin):
-    list_display = ('text', 'date', 'value')
+    list_display = ('text', 'bill_date', 'value', 'from_date', 'to_date')
 
 
 admin.site.register(models.Bill, BillAdmin)

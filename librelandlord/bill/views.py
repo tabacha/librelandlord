@@ -1,8 +1,9 @@
-from django.shortcuts import render
-from django.http import HttpResponse
+from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponse, JsonResponse
 from django.template import loader
+from django.views.decorators.http import require_http_methods
 
-from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution
+from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod
 from weasyprint import HTML
 from django.conf import settings
 from django.db.models import Q
@@ -516,3 +517,49 @@ def heating_info_task(request):
     # response['Content-Disposition'] = 'attachment; filename="heating_info.pdf"'
 
     return response
+
+
+@require_http_methods(["GET"])
+def account_period_calculation(request, account_period_id):
+    """
+    View der die vollständige Berechnung einer AccountPeriod über ein Template ausgibt.
+
+    Liefert sowohl Rechnungsdaten als auch Verbrauchsberechnungen pro CostCenter
+    über ein Jinja Template.
+
+    URL: /account-period/<id>/calculation/
+    Method: GET
+
+    Returns:
+        Gerenderte HTML-Seite mit der AccountPeriodCalculation
+    """
+    try:
+        # AccountPeriod holen
+        account_period = get_object_or_404(AccountPeriod, id=account_period_id)
+
+        # Berechnung durchführen
+        calculation = account_period.calculate_bills_by_cost_center()
+
+        # Template-Kontext erstellen
+        context = {
+            'calculation': calculation,
+            'account_period': calculation.account_period,
+            'summary': {
+                'grand_total': calculation.grand_total,
+                'total_bill_count': calculation.total_bill_count,
+                'cost_center_count': calculation.cost_center_count
+            },
+            'cost_center_summaries': calculation.cost_center_summaries,
+        }
+
+        # Template rendern
+        return render(request, 'account_period_calculation.html', context)
+
+    except Exception as e:
+        # Fehler-Template rendern
+        error_context = {
+            'error_message': str(e),
+            'error_type': type(e).__name__,
+            'account_period_id': account_period_id
+        }
+        return render(request, 'account_period_calculation_error.html', error_context, status=500)

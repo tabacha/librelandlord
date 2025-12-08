@@ -1,0 +1,131 @@
+{% load l10n %}
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zählerstände eingeben - {{ target_date }}</title>
+    <!-- CSS Dateien -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'bill/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'bill/css/meter-readings.css' %}">
+
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Zählerstände eingeben</h1>
+            <p>Datum: {{ target_date }}</p>
+        </div>
+
+        <!-- Datum auswählen -->
+        <div class="date-selector">
+            <form method="get">
+                <label for="date">Datum auswählen:</label>
+                <input type="date" id="date" name="date" value="{{ target_date|date:'Y-m-d' }}" required>
+                <button type="submit">Zähler laden</button>
+            </form>
+        </div>
+
+        <!-- Nachrichten anzeigen -->
+        <div class="messages">
+            {% if success_message %}
+            <div class="success">{{ success_message }}</div>
+            {% endif %}
+            {% for error in error_messages %}
+            <div class="error">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        {% if meters_data %}
+        <!-- Zählerstände Formular -->
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="target_date" value="{{ target_date|date:'Y-m-d' }}">
+
+            <table class="meters-table">
+                <thead>
+                    <tr>
+                        <th>Zählerplatz</th>
+                        <th>Typ</th>
+                        <th>Standort</th>
+                        <th>Zählernummer</th>
+                        <th>Letzter Zählerstand</th>
+                        <th>Neuer Zählerstand</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for meter_data in meters_data %}
+                    <tr>
+                        <td>
+                            {{ meter_data.meter_place.name }}
+                        </td>
+                        <td>
+                            <span class="meter-icon meter-type-{{ meter_data.meter_place.type }}"
+                                title="{{ meter_data.meter_place.get_type_display }} ({{ meter_data.meter_place.unit }})"></span>
+                        </td>
+                        <td>{{ meter_data.meter_place.location }}</td>
+                        <td><strong>{{ meter_data.meter.meter_number }}</strong></td>
+                        <td>
+                            {% if meter_data.last_reading %}
+                            <strong>
+                                {{ meter_data.last_reading.meter_reading }}
+                                {{ meter_data.meter_place.unit}}
+                            </strong>
+                            <div class="last-reading">
+                                am {{ meter_data.last_reading.date|date:"d.m.y" }}
+                                {% if meter_data.last_reading.time %}
+                                um {{ meter_data.last_reading.time }}
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <em style="color: #999;">Kein Stand</em>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <input type="number" step="1" name="reading_{{ meter_data.meter.id }}"
+                                data-meter-id="{{ meter_data.meter.id }}"
+                                data-meter-type="{{ meter_data.meter_place.type }}"
+                                data-last-reading="{% if meter_data.last_reading %}{{ meter_data.last_reading.meter_reading|unlocalize }}{% endif %}"
+                                value="{% if meter_data.current_reading %}{{ meter_data.current_reading.meter_reading|unlocalize }}{% endif %}"
+                                class="meter-input auto-save" placeholder=""><span
+                                class="unit">{{meter_data.meter_place.unit }}</span>
+                            <span class="save-indicator" id="indicator-{{ meter_data.meter.id }}"></span>
+                            <i class="fas fa-triangle-exclamation warning-icon" id="warning-{{ meter_data.meter.id }}"
+                                title="Warnung: Neuer Zählerstand ist kleiner als der vorherige"></i>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </form>
+
+        <!-- Bereich für handschriftliche Notizen (nur beim Drucken sichtbar) -->
+        <div class="print-notes" style="display: none;">
+            <h3>Notizen:</h3>
+            <div class="note-lines"></div>
+            <div class="note-lines"></div>
+            <div class="note-lines"></div>
+            <div class="note-lines"></div>
+        </div>
+
+        {% else %}
+        <div class="no-meters">
+            <h3>Keine aktiven Zähler gefunden</h3>
+            <p>Für das Datum {{ target_date }} sind keine aktiven Zähler vorhanden.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Print Footer (nur beim Drucken sichtbar) -->
+    <div class="print-footer" style="display: none;">
+        Zählerstände vom {{ target_date|date:"d.m.Y" }} - Gedruckt am {% now "d.m.Y H:i" %}
+    </div>
+
+    <script src="{% static 'bill/js/meter-readings.js' %}"></script>
+</body>
+
+</html>

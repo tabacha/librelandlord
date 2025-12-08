@@ -1,0 +1,580 @@
+/* Meter Readings Input Styles */
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  line-height: 1.6;
+  background-color: #f5f5f5;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #2196f3;
+}
+
+.header h1 {
+  color: #2196f3;
+  margin: 0;
+}
+
+.header p {
+  color: #666;
+  margin: 10px 0 0 0;
+  font-size: 1.1em;
+}
+
+.date-selector {
+  background: #e3f2fd;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+}
+
+.date-selector label {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.date-selector input[type="date"] {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+.date-selector button {
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.date-selector button:hover {
+  background: #1976d2;
+}
+
+.meter-input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 140px;
+  text-align: right;
+}
+
+.meter-input.warning {
+  border-color: #f44336;
+  background-color: #fff5f5;
+}
+
+.meter-input:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+}
+
+.last-reading {
+  font-size: 0.9em;
+  color: #666;
+  font-style: italic;
+}
+
+.success {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 4px;
+  border: 1px solid #c3e6cb;
+  margin-bottom: 10px;
+}
+
+.error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 4px;
+  border: 1px solid #f5c6cb;
+  margin-bottom: 10px;
+}
+
+.meters-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.meters-table th {
+  background: #2196f3;
+  color: white;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid #1976d2;
+}
+
+.meters-table td {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  vertical-align: middle;
+}
+
+.meters-table tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.meters-table tbody tr:hover {
+  background: #f0f8ff;
+}
+
+.submit-button {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+.submit-button:hover {
+  background: #45a049;
+}
+
+.meter-place-type {
+  background: #e3f2fd;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  color: #1976d2;
+  margin-left: 8px;
+}
+
+.meter-icon {
+  font-size: 1.3em;
+  width: 20px;
+  text-align: center;
+}
+
+/* Icon mapping based on meter type */
+.meter-type-EL::before {
+  content: "\f0e7";
+  font-family: "Font Awesome 7 Free";
+  font-weight: 900;
+  color: #ffc107;
+}
+
+/* bolt */
+.meter-type-GA::before {
+  content: "\f06d";
+  font-family: "Font Awesome 7 Free";
+  font-weight: 900;
+  color: #ff9800;
+}
+
+/* tint/droplet */
+.meter-type-WA::before {
+  content: "\f043";
+  font-family: "Font Awesome 7 Free";
+  font-weight: 900;
+  color: #2196f3;
+}
+
+/* droplet for cold water */
+.meter-type-KW::before {
+  content: "\f043";
+  font-family: "Font Awesome 7 Free";
+  font-weight: 900;
+  color: #03a9f4;
+}
+
+/* shower for warm water */
+.meter-type-WW::before {
+  content: "\f2cc";
+  font-family: "Font Awesome 7 Free";
+  font-weight: 900;
+  color: #f44336;
+}
+
+/* thermometer for heating */
+.meter-type-HE::before {
+  content: "\f2c7";
+  font-family: "Font Awesome 7 Free";
+  font-weight: 900;
+  color: #ff5722;
+}
+
+/* oil-can */
+.meter-type-OI::before {
+  content: "\f613";
+  font-family: "Font Awesome 7 Free";
+  font-weight: 900;
+  color: #795548;
+}
+
+.save-indicator {
+  font-size: 0.8em;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: none;
+}
+
+.save-indicator.saving {
+  color: #ffc107;
+  display: inline;
+  animation: spin 1s linear infinite;
+}
+
+.save-indicator.saved {
+  color: #28a745;
+  display: inline;
+}
+
+.save-indicator.error {
+  color: #dc3545;
+  display: inline;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.warning-icon {
+  color: #f44336;
+  margin-left: 8px;
+  font-size: 1.2em;
+  display: none;
+  animation: pulse 2s infinite;
+}
+
+.warning-icon.show {
+  display: inline;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.unit {
+  color: #666;
+  font-size: 0.9em;
+  font-style: italic;
+  white-space: nowrap;
+  margin-left: 4px;
+}
+
+.no-meters {
+  text-align: center;
+  color: #666;
+  padding: 40px;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+/* Print Styles for DIN A4 */
+@media print {
+  body {
+    margin: 0;
+    padding: 3mm;
+    background: white;
+    font-size: 11pt;
+    line-height: 1.2;
+  }
+
+  .container {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: white;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .header {
+    margin-bottom: 2px;
+    padding-bottom: 2px;
+    border-bottom: 1pt solid #333;
+    text-align: center;
+  }
+
+  .header h1 {
+    color: #000;
+    font-size: 12pt;
+    margin: 0;
+  }
+
+  .header p {
+    color: #333;
+    font-size: 9pt;
+    margin: 1px 0 0 0;
+  }
+
+  /* Date selector für Druck ausblenden */
+  .date-selector {
+    display: none;
+  }
+
+  /* Nachrichten für Druck ausblenden */
+  .messages {
+    display: none;
+  }
+
+  .meters-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 10pt;
+  }
+
+  .meters-table th {
+    background: #f0f0f0 !important;
+    color: #000 !important;
+    padding: 3pt;
+    text-align: left;
+    border: 1pt solid #333;
+    font-weight: bold;
+    font-size: 9pt;
+    height: 15mm;
+  }
+
+  .meters-table td {
+    padding: 3pt;
+    border: 1pt solid #333;
+    vertical-align: middle;
+    height: 15mm;
+  }
+
+  .meters-table tbody tr:nth-child(even) {
+    background: #f8f8f8 !important;
+  }
+
+  .meters-table tbody tr:hover {
+    background: inherit !important;
+  }
+
+  /* Eingabefelder unsichtbar für handschriftliche Eingabe */
+  .meter-input {
+    border: none !important;
+    background: transparent !important;
+    padding: 3pt;
+    width: 50pt;
+    height: 10pt;
+    text-align: right;
+    font-size: 10pt;
+    display: inline-block;
+  }
+
+  /* Nur wirklich leere Eingabefelder ausblenden */
+  .meter-input:not([value]),
+  .meter-input[value=""] {
+    display: none !important;
+  }
+
+  /* Einheiten im Druck ebenfalls nicht umbrechen */
+  .unit {
+    white-space: nowrap !important;
+    font-size: 8pt !important;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 3pt;
+  }
+
+  /* Warnungen und Indikatoren für Druck ausblenden */
+  .save-indicator,
+  .warning-icon {
+    display: none !important;
+  }
+
+  .meter-input.warning {
+    border-color: #333 !important;
+    background: white !important;
+  }
+
+  .last-reading {
+    font-size: 8pt;
+    color: #333;
+    line-height: 1.1;
+  }
+
+  /* Meter Icons für Druck optimieren */
+  .meter-icon {
+    font-size: 10pt;
+    color: #000 !important;
+  }
+
+  /* Meter Icons behalten ihre Farben auch beim Drucken */
+  .meter-type-EL::before {
+    color: #ffc107 !important;
+  }
+
+  .meter-type-GA::before {
+    color: #ff9800 !important;
+  }
+
+  .meter-type-WA::before {
+    color: #2196f3 !important;
+  }
+
+  .meter-type-KW::before {
+    color: #03a9f4 !important;
+  }
+
+  .meter-type-WW::before {
+    color: #f44336 !important;
+  }
+
+  .meter-type-HE::before {
+    color: #ff5722 !important;
+  }
+
+  .meter-type-OI::before {
+    color: #795548 !important;
+  }
+
+  .meter-place-type {
+    background: #f0f0f0 !important;
+    color: #000 !important;
+    padding: 1pt 4pt;
+    font-size: 8pt;
+  }
+
+  /* Letzte Spalte breiter für handschriftliche Eingaben */
+  .meters-table th:nth-child(6),
+  .meters-table td:nth-child(6) {
+    width: 80pt;
+    min-width: 80pt;
+    text-align: right; /* Einheit rechts ausrichten */
+  }
+
+  /* Eingabefelder-Container für korrekte Ausrichtung */
+  .meters-table td:nth-child(6) {
+    position: relative;
+  }
+
+  /* Einheit immer rechts positionieren */
+  .unit {
+    position: absolute !important;
+    right: 3pt !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+
+  /* Submit Button ausblenden */
+  .submit-button {
+    display: none;
+  }
+
+  /* Formular-Aktionen ausblenden */
+  form button,
+  form input[type="submit"] {
+    display: none;
+  }
+
+  /* Seitenkontrolle: Maximale Zeilen pro Seite */
+  .meters-table tbody tr:nth-child(13n) {
+    page-break-after: always; /* Nach jeder 13. Zeile neue Seite */
+  }
+
+  /* Tabellenkopf auf jeder Seite wiederholen */
+  .meters-table thead {
+    display: table-header-group;
+  }
+
+  /* Einzelne Zeilen nie teilen */
+  .meters-table tbody tr {
+    page-break-inside: avoid;
+  }
+
+  /* Spaltenbreiten für optimale Platzausnutzung */
+  .meters-table th:nth-child(1) {
+    width: 15%;
+  } /* Zählerplatz */
+  .meters-table th:nth-child(2) {
+    width: 5%;
+  } /* Typ */
+  .meters-table th:nth-child(3) {
+    width: 20%;
+  } /* Standort */
+  .meters-table th:nth-child(4) {
+    width: 15%;
+  } /* Zählernummer */
+  .meters-table th:nth-child(5) {
+    width: 20%;
+  } /* Letzter Stand */
+  .meters-table th:nth-child(6) {
+    width: 25%;
+  } /* Neuer Stand */
+
+  /* Zellen-Inhalte nicht umbrechen */
+  .meters-table td {
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  /* Nur die letzte Spalte darf umbrechen für Input+Unit */
+  .meters-table td:last-child {
+    white-space: nowrap;
+  }
+
+  /* Zusätzlicher Platz für handschriftliche Notizen */
+  .print-notes {
+    margin-top: 20pt;
+    border-top: 1pt solid #333;
+    padding-top: 10pt;
+  }
+
+  .print-notes h3 {
+    font-size: 12pt;
+    margin: 0 0 10pt 0;
+  }
+
+  .print-notes .note-lines {
+    border-bottom: 1pt solid #ccc;
+    height: 15pt;
+    margin-bottom: 8pt;
+  }
+
+  /* Fußzeile mit Datum */
+  .print-footer {
+    display: block !important;
+    position: fixed;
+    bottom: 10mm;
+    left: 10mm;
+    right: 10mm;
+    text-align: center;
+    font-size: 8pt;
+    color: #666;
+    border-top: 1pt solid #ccc;
+    padding-top: 5pt;
+  }
+
+  /* Notizen nur beim Drucken anzeigen */
+  .print-notes {
+    display: block !important;
+  }
+}

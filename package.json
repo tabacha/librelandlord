@@ -1,0 +1,25 @@
+{
+  "name": "librelandlord",
+  "version": "1.0.0",
+  "description": "```shell ./install-venv.sh ```",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-fontawesome": "./build-fontawesome.sh",
+    "build": "npm run build-fontawesome"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tabacha/librelandlord.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tabacha/librelandlord/issues"
+  },
+  "homepage": "https://github.com/tabacha/librelandlord#readme",
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0"
+  }
+}

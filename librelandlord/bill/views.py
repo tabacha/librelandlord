@@ -1,9 +1,10 @@
+from time import sleep
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.template import loader
 from django.views.decorators.http import require_http_methods
 
-from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod
+from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace
 from weasyprint import HTML
 from django.conf import settings
 from django.db.models import Q
@@ -14,6 +15,10 @@ from django.forms.models import model_to_dict
 from django.db.models.query import QuerySet
 
 import operator
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def index(request):
@@ -563,3 +568,131 @@ def account_period_calculation(request, account_period_id):
             'account_period_id': account_period_id
         }
         return render(request, 'account_period_calculation_error.html', error_context, status=500)
+
+
+@require_http_methods(["GET", "POST"])
+def meter_readings_input(request):
+    """
+    View für die einfache Eingabe von Zählerständen.
+
+    GET: Zeigt Formular mit aktiven Zählern für ein Datum an
+    POST: Speichert die eingegebenen Zählerstände
+    """
+    target_date = None
+    meters_data = []
+    success_message = None
+    error_messages = []
+
+    target_date_str = request.GET.get('date')
+    if target_date_str:
+        try:
+            target_date = datetime.strptime(
+                target_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    # Standard: heute
+    if not target_date:
+        target_date = date.today()
+
+    # Aktive Zähler für das Datum finden
+    active_meters = Meter.objects.filter(
+        build_in_date__lte=target_date
+    ).filter(
+        Q(out_of_order_date__isnull=True) | Q(
+            out_of_order_date__gt=target_date)
+    ).select_related('place')
+
+    # Sortierung nach Standort (location), dann Typ, dann Zählernummer
+    active_meters = active_meters.order_by(
+        'place__location', 'place__type', 'meter_number')
+
+    # Daten für jeden aktiven Zähler sammeln
+    for meter in active_meters:
+        # Letzten Zählerstand finden
+        last_reading = MeterReading.objects.filter(
+            meter=meter,
+            date__lt=target_date
+        ).order_by('-date').first()
+
+        # Aktuellen Zählerstand für das Zieldatum finden (falls bereits eingegeben)
+        current_reading = MeterReading.objects.filter(
+            meter=meter,
+            date=target_date
+        ).first()
+        logger.error(
+            f"Current reading for meter {meter.id} on {target_date}: {current_reading}")
+        meters_data.append({
+            'meter': meter,
+            'meter_place': meter.place,
+            'last_reading': last_reading,
+            'current_reading': current_reading,
+        })
+
+    context = {
+        'target_date': target_date,
+        'meters_data': meters_data,
+        'success_message': success_message,
+        'error_messages': error_messages,
+    }
+
+    return render(request, 'meter_readings_input.html', context)
+
+
+@require_http_methods(["POST"])
+def meter_readings_save_single(request):
+    """
+    AJAX View für das Speichern einzelner Zählerstände.
+
+    Erwartet POST-Parameter:
+    - meter_id: ID des Meters
+    - reading_value: Zählerstand-Wert
+    - target_date: Datum des Zählerstands
+    """
+    try:
+        meter_id = request.POST.get('meter_id')
+        reading_value = request.POST.get('reading_value')
+        target_date_str = request.POST.get('target_date')
+
+        if not all([meter_id, reading_value, target_date_str]):
+            return JsonResponse({'success': False, 'error': 'Fehlende Parameter'})
+
+        # Validierung
+        try:
+            meter = Meter.objects.get(pk=int(meter_id))
+            target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            reading_decimal = decimal.Decimal(reading_value.replace(',', '.'))
+        except (Meter.DoesNotExist, ValueError, decimal.InvalidOperation) as e:
+            return JsonResponse({'success': False, 'error': f'Ungültige Daten: {str(e)}'})
+
+        # Prüfen ob Meter zum Datum aktiv war
+        if target_date < meter.build_in_date:
+            return JsonResponse({
+                'success': False,
+                'error': f'Zähler war am {target_date} noch nicht aktiv (Einbaudatum: {meter.build_in_date})'
+            })
+
+        if meter.out_of_order_date and target_date > meter.out_of_order_date:
+            return JsonResponse({
+                'success': False,
+                'error': f'Zähler war am {target_date} bereits außer Betrieb (Ausbaudatum: {meter.out_of_order_date})'
+            })
+        # Speichern oder aktualisieren
+        reading, created = MeterReading.objects.update_or_create(
+            meter=meter,
+            date=target_date,
+            defaults={
+                'meter_reading': reading_decimal,
+                'time': None  # Zeit wird nicht von der Eingabeseite gesetzt
+            }
+        )
+
+        return JsonResponse({
+            'success': True,
+            'created': created,
+            'reading_id': reading.id,
+            'formatted_value': str(reading.meter_reading)
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Serverfehler: {str(e)}'})

@@ -20,4 +20,8 @@ urlpatterns = [
     path("heating_info_task", views.heating_info_task, name="heating_info_task"),
     path("account-period/<int:account_period_id>/calculation/",
          views.account_period_calculation, name="account_period_calculation"),
+    path("meter-readings-input/", views.meter_readings_input,
+         name="meter_readings_input"),
+    path("meter-readings-save-single/", views.meter_readings_save_single,
+         name="meter_readings_save_single"),
 ]

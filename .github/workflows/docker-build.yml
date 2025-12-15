@@ -9,6 +9,8 @@ on:
   pull_request:
     branches:
       - main
+  repository_dispatch:
+    types: [release_created]
 
 env:
   REGISTRY: ghcr.io
@@ -27,6 +29,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.tag || github.ref }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -73,7 +77,7 @@ jobs:
           context: .
           file: ./Dockerfile.production
           platforms: linux/amd64,linux/arm64
-          push: ${{ startsWith(github.ref, 'refs/tags/') }}
+          push: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'repository_dispatch' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Multi-layered caching strategy

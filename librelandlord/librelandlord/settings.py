@@ -30,6 +30,18 @@ DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS = os.environ.get(
     'ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# HTTPS/Proxy Configuration for Production
+USE_TLS = os.environ.get('USE_TLS', 'False').lower() == 'true'
+if USE_TLS or not DEBUG:
+    # Tell Django it's behind HTTPS proxy (Nginx sets X-Forwarded-Proto: https)
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # Additional security headers for HTTPS
+    SECURE_SSL_REDIRECT = False  # Nginx handles this
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    USE_TLS = True
+
 # OIDC Configuration - Environment based
 USE_OIDC_ONLY = os.environ.get('USE_OIDC_ONLY', 'False').lower() == 'true'
 
@@ -214,7 +226,7 @@ if 'mozilla_django_oidc' in INSTALLED_APPS:
     OIDC_OP_JWKS_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs'
 
     # OIDC Redirect URI - must use HTTPS in production
-    OIDC_RP_USE_HTTPS = not DEBUG
+    OIDC_RP_USE_HTTPS = USE_TLS or not DEBUG
     OIDC_RP_SIGN_ALGO = 'RS256'
     OIDC_RP_SCOPES = 'openid profile email'
 

@@ -75,10 +75,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Trigger Docker Build
+      - name: Trigger Docker Build via Repository Dispatch
         run: |
-          echo "Triggering Docker build workflow for tag ${{ inputs.version }}"
-          gh workflow run docker-build.yml --ref ${{ inputs.version }}
+          echo "Triggering Docker build via repository dispatch for tag ${{ inputs.version }}"
+          gh api repos/${{ github.repository }}/dispatches \
+            --method POST \
+            --field event_type=release_created \
+            --field client_payload='{"tag":"${{ inputs.version }}"}'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

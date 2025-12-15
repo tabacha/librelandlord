@@ -1,0 +1,89 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v0.1.6)'
+        required: true
+        type: string
+      release_notes:
+        description: 'Release notes'
+        required: false
+        type: string
+        default: 'New release with latest changes'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Version must be in format v1.2.3"
+            exit 1
+          fi
+
+      - name: Check if tag already exists
+        run: |
+          if git tag --list | grep -q "^${{ inputs.version }}$"; then
+            echo "Error: Tag ${{ inputs.version }} already exists"
+            exit 1
+          fi
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ inputs.version }}
+          git push origin ${{ inputs.version }}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            COMMITS=$(git log --oneline $LAST_TAG..HEAD --pretty=format:"- %s" | head -20)
+          else
+            COMMITS=$(git log --oneline -10 --pretty=format:"- %s")
+          fi
+
+          # Create changelog
+          CHANGELOG="${{ inputs.release_notes }}"
+          if [ -n "$COMMITS" ]; then
+            CHANGELOG="${CHANGELOG}
+
+## Changes:
+$COMMITS"
+          fi
+
+          # Save changelog to file for GitHub release
+          echo "$CHANGELOG" > changelog.txt
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.version }}
+          release_name: Release ${{ inputs.version }}
+          body_path: changelog.txt
+          draft: false
+          prerelease: false
+
+      - name: Wait for Docker build
+        run: |
+          echo "Waiting for Docker build to complete..."
+          echo "Docker image will be available at: ghcr.io/${{ github.repository }}:${{ inputs.version }}"
+          echo "Check the Actions tab for build progress."

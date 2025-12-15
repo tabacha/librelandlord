@@ -16,8 +16,10 @@ RUN groupadd --gid 1000 app && \
 # Arbeitsverzeichnis erstellen
 WORKDIR /app
 
-# System-Dependencies installieren
-RUN apt-get update && apt-get install -y \
+# System-Dependencies installieren (mit Cache-Mount für bessere Performance)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y \
     gcc \
     g++ \
     libc-dev \
@@ -32,12 +34,13 @@ RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     default-mysql-client \
     mariadb-client-compat \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+    pkg-config
 
 # Requirements kopieren und installieren (vor App-Code für besseres Caching)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
 
 # Production-Settings
 ENV DEBUG=False

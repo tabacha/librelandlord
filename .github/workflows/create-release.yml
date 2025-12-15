@@ -78,10 +78,13 @@ jobs:
       - name: Trigger Docker Build via Repository Dispatch
         run: |
           echo "Triggering Docker build via repository dispatch for tag ${{ inputs.version }}"
-          gh api repos/${{ github.repository }}/dispatches \
-            --method POST \
-            --field event_type=release_created \
-            --field client_payload='{"tag":"${{ inputs.version }}"}'
+          curl -L \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d '{"event_type":"release_created","client_payload":{"tag":"${{ inputs.version }}"}}'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

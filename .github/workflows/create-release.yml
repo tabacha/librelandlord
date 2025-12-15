@@ -75,8 +75,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wait for Docker build
+      - name: Trigger Docker Build
         run: |
-          echo "Waiting for Docker build to complete..."
+          echo "Triggering Docker build workflow for tag ${{ inputs.version }}"
+          gh workflow run docker-build.yml --ref ${{ inputs.version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait and check Docker build
+        run: |
+          echo "Docker build triggered for tag ${{ inputs.version }}"
+          echo "Check the Actions tab: https://github.com/${{ github.repository }}/actions"
           echo "Docker image will be available at: ghcr.io/${{ github.repository }}:${{ inputs.version }}"
-          echo "Check the Actions tab for build progress."
+
+          # Wait a moment and check if workflow started
+          sleep 10
+          echo "Recent workflow runs:"
+          gh run list --workflow=docker-build.yml --limit=3
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

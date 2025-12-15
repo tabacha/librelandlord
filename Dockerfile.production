@@ -1,7 +1,7 @@
 # LibreLandlord Production Dockerfile
 # Für OIDC-only Deployment
 
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # Metadata für Container Registry
 LABEL org.opencontainers.image.title="LibreLandlord"
@@ -29,6 +29,8 @@ RUN apt-get update && apt-get install -y \
     libgdk-pixbuf-xlib-2.0-dev \
     libgirepository1.0-dev \
     curl \
+    default-libmysqlclient-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Requirements kopieren und installieren (vor App-Code für besseres Caching)
@@ -42,6 +44,10 @@ ENV DJANGO_SETTINGS_MODULE=librelandlord.settings
 
 # App-Code kopieren (nach pip install für besseres Caching)
 COPY librelandlord/ ./
+
+# Entrypoint-Script kopieren
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # OIDC-Konfiguration (über Runtime-Umgebungsvariablen)
 # Diese Werte werden zur Laufzeit über docker-compose gesetzt:
@@ -67,5 +73,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/bill/login/ || exit 1
 
-# Startscript für Production (mit gunicorn für bessere Performance)
+# Entrypoint und Standard-Kommando
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "30", "librelandlord.wsgi:application"]

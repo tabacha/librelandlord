@@ -19,8 +19,10 @@ from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.shortcuts import redirect
 
 urlpatterns = [
+    path('', lambda request: redirect('/bill/')),  # Root redirect
     path('bill/', include('bill.urls')),
     path('admin/', admin.site.urls),
 ]
@@ -28,6 +30,12 @@ urlpatterns = [
 # Add OIDC URLs if mozilla_django_oidc is installed
 if 'mozilla_django_oidc' in settings.INSTALLED_APPS:
     urlpatterns.append(path('oidc/', include('mozilla_django_oidc.urls')))
+
+# Redirect /accounts/login/ to OIDC in production
+if getattr(settings, 'USE_OIDC_ONLY', False):
+    urlpatterns.append(
+        path('accounts/login/', lambda request: redirect('/oidc/authenticate/'))
+    )
 
 # Add static files serving during development
 urlpatterns += staticfiles_urlpatterns()

@@ -9,3 +9,13 @@ librelandlord/bill/static/bill/webfonts/
 
 # Node modules
 node_modules/
+
+# Docker Secrets (Passwörter)
+secrets/*.txt
+!secrets/*.example
+!secrets/README.md
+
+# Environment-Dateien mit Secrets
+.env
+.env.local
+.env.production.local

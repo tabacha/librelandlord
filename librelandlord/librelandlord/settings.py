@@ -85,12 +85,43 @@ WSGI_APPLICATION = 'librelandlord.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Environment-dependent database configuration
+DATABASE_ENGINE = os.environ.get(
+    'DATABASE_ENGINE', 'django.db.backends.sqlite3')
+
+
+def get_database_password():
+    """Get database password from environment or Docker secret file"""
+    password_file = os.environ.get('DATABASE_PASSWORD_FILE')
+    if password_file and os.path.exists(password_file):
+        with open(password_file, 'r') as f:
+            return f.read().strip()
+    return os.environ.get('DATABASE_PASSWORD', '')
+
+
+if DATABASE_ENGINE == 'django.db.backends.mysql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DATABASE_NAME', 'librelandlord'),
+            'USER': os.environ.get('DATABASE_USER', 'librelandlord'),
+            'PASSWORD': get_database_password(),
+            'HOST': os.environ.get('DATABASE_HOST', 'localhost'),
+            'PORT': os.environ.get('DATABASE_PORT', '3306'),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                'charset': 'utf8mb4',
+            },
+        }
     }
-}
+else:
+    # Default SQLite configuration
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -183,6 +214,9 @@ if 'mozilla_django_oidc' in INSTALLED_APPS:
     # Redirect URLs
     LOGIN_REDIRECT_URL = '/bill/'
     LOGOUT_REDIRECT_URL = '/'
+
+    # Django Login URLs - redirect to OIDC
+    LOGIN_URL = '/oidc/authenticate/'
 
     # OIDC Claims mapping
     OIDC_RP_SIGN_ALGO = 'RS256'

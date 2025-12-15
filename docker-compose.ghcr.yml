@@ -1,17 +1,51 @@
-# Docker Compose für LibreLandlord Production
+# Docker Compose für LibreLandlord Production mit MySQL
 # Verwendet fertiges Image aus GitHub Container Registry
 
-version: '3.8'
 
 services:
+  mariadb:
+    image: mariadb:11.5
+    restart: unless-stopped
+    secrets:
+      - mariadb_root_password
+      - mariadb_password
+    environment:
+      - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb_root_password
+      - MARIADB_PASSWORD_FILE=/run/secrets/mariadb_password
+      - MARIADB_DATABASE=${MYSQL_DATABASE:-librelandlord}
+      - MARIADB_USER=${MYSQL_USER:-librelandlord}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   librelandlord:
     image: ghcr.io/tabacha/librelandlord:latest
     ports:
       - "8000:8000"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    secrets:
+      - mariadb_password
     environment:
       # Production Settings
       - DEBUG=False
       - USE_OIDC_ONLY=True
+
+      # Database Settings
+      - DATABASE_ENGINE=django.db.backends.mysql
+      - DATABASE_NAME=${MYSQL_DATABASE:-librelandlord}
+      - DATABASE_USER=${MYSQL_USER:-librelandlord}
+      - DATABASE_PASSWORD_FILE=/run/secrets/mariadb_password
+      - DATABASE_HOST=mariadb
+      - DATABASE_PORT=3306
 
       # Keycloak/UCS Konfiguration
       - KEYCLOAK_SERVER=${KEYCLOAK_SERVER}
@@ -23,18 +57,16 @@ services:
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
 
     volumes:
-      # Persistente Datenbank
-      - librelandlord_data:/app/db.sqlite3
       - librelandlord_static:/app/staticfiles
 
     restart: unless-stopped
 
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/bill/login/', timeout=5)"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/bill/login/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
   # Optional: Nginx Reverse Proxy für SSL/HTTPS
   nginx:
@@ -50,6 +82,12 @@ services:
       - librelandlord
     restart: unless-stopped
 
+secrets:
+  mariadb_root_password:
+    file: ./secrets/mariadb_root_password.txt
+  mariadb_password:
+    file: ./secrets/mariadb_password.txt
+
 volumes:
-  librelandlord_data:
+  mariadb_data:
   librelandlord_static:

@@ -21,7 +21,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-91hd@)ha9oci=67*n3v^p%lai%8(t4t27iz@a)ey81pfi+4b$#'
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY', 'django-insecure-91hd@)ha9oci=67*n3v^p%lai%8(t4t27iz@a)ey81pfi+4b$#')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
@@ -57,6 +58,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Add OIDC SessionRefresh middleware only in production (OIDC-only mode)
+if USE_OIDC_ONLY:
+    MIDDLEWARE.append('mozilla_django_oidc.middleware.SessionRefresh')
 
 ROOT_URLCONF = 'librelandlord.urls'
 
@@ -203,10 +208,10 @@ if 'mozilla_django_oidc' in INSTALLED_APPS:
         'KEYCLOAK_SERVER', 'https://your-keycloak-server.com')
     KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM', 'librelandlord')
 
-    OIDC_OP_AUTHORIZATION_ENDPOINT = f'{KEYCLOAK_SERVER}/keycloak/realms/{KEYCLOAK_REALM}/protocol/openid-connect/auth'
-    OIDC_OP_TOKEN_ENDPOINT = f'{KEYCLOAK_SERVER}/keycloak/realms/{KEYCLOAK_REALM}/protocol/openid-connect/token'
-    OIDC_OP_USER_ENDPOINT = f'{KEYCLOAK_SERVER}/keycloak/realms/{KEYCLOAK_REALM}/protocol/openid-connect/userinfo'
-    OIDC_OP_JWKS_ENDPOINT = f'{KEYCLOAK_SERVER}/keycloak/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs'
+    OIDC_OP_AUTHORIZATION_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/auth'
+    OIDC_OP_TOKEN_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/token'
+    OIDC_OP_USER_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/userinfo'
+    OIDC_OP_JWKS_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs'
 
     # OIDC Redirect URI - must use HTTPS in production
     OIDC_RP_USE_HTTPS = not DEBUG
@@ -231,3 +236,15 @@ if 'mozilla_django_oidc' in INSTALLED_APPS:
 
     # Verify SSL certificates (disable only for development)
     OIDC_VERIFY_SSL = not DEBUG
+
+    # Session refresh settings (only when SessionRefresh middleware is active)
+    if USE_OIDC_ONLY:
+        OIDC_RENEW_ID_TOKEN_EXPIRY_SECONDS = 15 * 60  # Refresh 15 min before expiry
+LOGGING = {
+    'loggers': {
+        'mozilla_django_oidc': {
+            'handlers': ['console'],
+            'level': 'DEBUG'
+        }
+    }
+}

@@ -9,10 +9,38 @@ echo "=== LibreLandlord MySQL Setup ==="
 
 # Warte auf MariaDB-Verbindung
 echo "Warte auf MariaDB-Verbindung..."
-while ! python manage.py dbshell --command="SELECT 1;" 2>/dev/null; do
-    echo "MariaDB noch nicht bereit, warte 5 Sekunden..."
+echo "Database Host: $DATABASE_HOST"
+echo "Database Port: $DATABASE_PORT"
+echo "Database User: $DATABASE_USER"
+
+# Teste MariaDB-Verbindung mit mysql-client
+DB_PASSWORD=""
+if [ -f "$DATABASE_PASSWORD_FILE" ]; then
+    DB_PASSWORD=$(cat "$DATABASE_PASSWORD_FILE")
+    echo "Passwort aus Secret-Datei gelesen"
+else
+    DB_PASSWORD="$DATABASE_PASSWORD"
+    echo "Passwort aus Umgebungsvariable"
+fi
+
+counter=0
+max_attempts=12  # 60 Sekunden total
+
+while [ $counter -lt $max_attempts ]; do
+    if mysql -h"$DATABASE_HOST" -P"$DATABASE_PORT" -u"$DATABASE_USER" -p"$DB_PASSWORD" -e "SELECT 1;" 2>/dev/null; then
+        echo "✅ MariaDB-Verbindung erfolgreich!"
+        break
+    fi
+
+    counter=$((counter + 1))
+    echo "MariaDB noch nicht bereit, Versuch $counter/$max_attempts, warte 5 Sekunden..."
     sleep 5
 done
+
+if [ $counter -eq $max_attempts ]; then
+    echo "❌ MariaDB-Verbindung fehlgeschlagen nach $max_attempts Versuchen"
+    exit 1
+fi
 
 echo "✅ MariaDB-Verbindung erfolgreich!"
 

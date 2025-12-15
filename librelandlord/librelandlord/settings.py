@@ -44,11 +44,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'mozilla_django_oidc',
 ]
-
-# Add OIDC app if enabled
-if USE_OIDC_ONLY or not USE_OIDC_ONLY:  # Always add for now, handle in authentication backends
-    INSTALLED_APPS.append('mozilla_django_oidc')
 
 MIDDLEWARE = [
     'django.middleware.locale.LocaleMiddleware',
@@ -203,7 +200,7 @@ if 'mozilla_django_oidc' in INSTALLED_APPS:
 
     # Keycloak endpoints - adjust to your setup
     KEYCLOAK_SERVER = os.environ.get(
-        'KEYCLOAK_SERVER', 'https://your-ucs-server')
+        'KEYCLOAK_SERVER', 'https://your-keycloak-server.com')
     KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM', 'librelandlord')
 
     OIDC_OP_AUTHORIZATION_ENDPOINT = f'{KEYCLOAK_SERVER}/keycloak/realms/{KEYCLOAK_REALM}/protocol/openid-connect/auth'
@@ -211,16 +208,17 @@ if 'mozilla_django_oidc' in INSTALLED_APPS:
     OIDC_OP_USER_ENDPOINT = f'{KEYCLOAK_SERVER}/keycloak/realms/{KEYCLOAK_REALM}/protocol/openid-connect/userinfo'
     OIDC_OP_JWKS_ENDPOINT = f'{KEYCLOAK_SERVER}/keycloak/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs'
 
+    # OIDC Redirect URI - must use HTTPS in production
+    OIDC_RP_USE_HTTPS = not DEBUG
+    OIDC_RP_SIGN_ALGO = 'RS256'
+    OIDC_RP_SCOPES = 'openid profile email'
+
     # Redirect URLs
     LOGIN_REDIRECT_URL = '/bill/'
     LOGOUT_REDIRECT_URL = '/'
 
     # Django Login URLs - redirect to OIDC
     LOGIN_URL = '/oidc/authenticate/'
-
-    # OIDC Claims mapping
-    OIDC_RP_SIGN_ALGO = 'RS256'
-    OIDC_RP_SCOPES = 'openid profile email'
 
     # Create users automatically from OIDC
     OIDC_CREATE_USER = True
@@ -230,3 +228,6 @@ if 'mozilla_django_oidc' in INSTALLED_APPS:
         return email.split('@')[0]
 
     OIDC_USERNAME_ALGO = oidc_username_algo
+
+    # Verify SSL certificates (disable only for development)
+    OIDC_VERIFY_SSL = not DEBUG

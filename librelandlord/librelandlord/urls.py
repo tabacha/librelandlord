@@ -21,21 +21,28 @@ from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.shortcuts import redirect
 
+from django.http import HttpResponse
+
+
+def oidc_test_view(request):
+    return HttpResponse("OIDC URLs loaded correctly")
+
+
 urlpatterns = [
     path('', lambda request: redirect('/bill/')),  # Root redirect
     path('bill/', include('bill.urls')),
     path('admin/', admin.site.urls),
+    path('oidc/test/', oidc_test_view),  # Test-View
+    path('oidc/', include('mozilla_django_oidc.urls')),  # OIDC URLs
 ]
-
-# Add OIDC URLs if mozilla_django_oidc is installed
-if 'mozilla_django_oidc' in settings.INSTALLED_APPS:
-    urlpatterns.append(path('oidc/', include('mozilla_django_oidc.urls')))
 
 # Redirect /accounts/login/ to OIDC in production
 if getattr(settings, 'USE_OIDC_ONLY', False):
-    urlpatterns.append(
-        path('accounts/login/', lambda request: redirect('/oidc/authenticate/'))
-    )
+    urlpatterns.extend([
+        path('accounts/login/', lambda request: redirect('/oidc/authenticate/')),
+        # Admin login auch über OIDC
+        path('admin/login/', lambda request: redirect('/oidc/authenticate/?next=/admin/'))
+    ])
 
 # Add static files serving during development
 urlpatterns += staticfiles_urlpatterns()

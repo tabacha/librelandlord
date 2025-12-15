@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., v0.1.6)'
+        description: "Release version (e.g., v0.1.6)"
         required: true
         type: string
       release_notes:
-        description: 'Release notes'
+        description: "Release notes"
         required: false
         type: string
-        default: 'New release with latest changes'
+        default: "New release with latest changes"
 
 jobs:
   create-release:
@@ -60,18 +60,12 @@ jobs:
           fi
 
           # Create changelog
-          CHANGELOG="${{ inputs.release_notes }}"
-          if [ -n "$COMMITS" ]; then
-            CHANGELOG="${CHANGELOG}
+          cat > changelog.txt << EOF
+          ${{ inputs.release_notes }}
 
-## Changes:
-$COMMITS"
-          fi
-
-          # Save changelog to file for GitHub release
-          echo "$CHANGELOG" > changelog.txt
-
-      - name: Create GitHub Release
+          ## Changes:
+          $COMMITS
+          EOF      - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

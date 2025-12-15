@@ -240,11 +240,37 @@ if 'mozilla_django_oidc' in INSTALLED_APPS:
     # Session refresh settings (only when SessionRefresh middleware is active)
     if USE_OIDC_ONLY:
         OIDC_RENEW_ID_TOKEN_EXPIRY_SECONDS = 15 * 60  # Refresh 15 min before expiry
+
+# Logging configuration
 LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
     'loggers': {
         'mozilla_django_oidc': {
             'handlers': ['console'],
-            'level': 'DEBUG'
-        }
-    }
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
 }

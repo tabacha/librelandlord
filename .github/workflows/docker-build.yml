@@ -33,7 +33,7 @@ jobs:
         with:
           # Enable advanced buildkit features
           buildkitd-flags: --debug
-          config-inline: |
+          buildkitd-config-inline: |
             [worker.oci]
               max-parallelism = 4
 
@@ -79,11 +79,11 @@ jobs:
           # Multi-layered caching strategy
           cache-from: |
             type=gha
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}:buildcache', env.REGISTRY, env.IMAGE_NAME) || '' }}
+            ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}:latest', env.REGISTRY, env.IMAGE_NAME) || '' }}
           cache-to: |
             type=gha,mode=max
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+            ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, env.IMAGE_NAME) || '' }}
           # Build arguments für Production und Caching
           build-args: |
             BUILDKIT_INLINE_CACHE=1

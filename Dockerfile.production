@@ -42,6 +42,19 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
     pip install -r requirements.txt
 
+# Node.js für Font Awesome Build installieren
+RUN apt-get update && apt-get install -y nodejs npm && \
+    rm -rf /var/lib/apt/lists/*
+
+# Package.json kopieren und npm install
+COPY package.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm install
+
+# Build-Scripts kopieren
+COPY build-fontawesome.sh ./
+RUN chmod +x build-fontawesome.sh
+
 # Production-Settings
 ENV DEBUG=False
 ENV USE_OIDC_ONLY=True
@@ -49,6 +62,9 @@ ENV DJANGO_SETTINGS_MODULE=librelandlord.settings
 
 # App-Code kopieren (nach pip install für besseres Caching)
 COPY librelandlord/ ./
+
+# Font Awesome Assets bauen (im Container, nicht ins Git!)
+RUN ./build-fontawesome.sh
 
 # Entrypoint-Script kopieren
 COPY docker-entrypoint.sh /usr/local/bin/

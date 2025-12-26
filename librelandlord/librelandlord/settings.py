@@ -189,13 +189,11 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # This is not recommended for high-traffic sites, but acceptable for small systems
 FORCE_SERVE_STATIC = os.environ.get(
     'FORCE_SERVE_STATIC', 'True').lower() == 'true'
-   'FORCE_SERVE_STATIC', 'True').lower() == 'true'
 
-        # Default primary key field type
-        # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
         DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
         # Verfügbare Sprachen (Beispiele)
         LANGUAGES = [

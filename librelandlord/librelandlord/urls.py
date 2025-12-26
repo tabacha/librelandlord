@@ -65,6 +65,8 @@ else:
 # Add static files serving
 urlpatterns += staticfiles_urlpatterns()
 
-# Serve static files in production (normally done by web server)
-urlpatterns += static(settings.STATIC_URL,
-                      document_root=settings.STATIC_ROOT)
+# Serve static files even in production for small systems
+# This overrides Django's default behavior of not serving static files when DEBUG=False
+if settings.DEBUG or getattr(settings, 'FORCE_SERVE_STATIC', False):
+    urlpatterns += static(settings.STATIC_URL,
+                          document_root=settings.STATIC_ROOT)

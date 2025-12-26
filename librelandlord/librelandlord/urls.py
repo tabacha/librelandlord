@@ -15,26 +15,51 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import include, path
+from django.http import HttpResponseRedirect
+from django.urls import include, path, reverse
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.shortcuts import redirect
+from django.views.generic import View
+
+
+class CustomLogin(View):
+    def get(self, request, **kwargs):
+        return HttpResponseRedirect(
+            reverse('oidc_authentication_init') + (
+                '?next={}'.format(
+                    request.GET['next']) if 'next' in request.GET else ''
+            )
+        )
 
 
 urlpatterns = [
     path('', lambda request: redirect('/bill/')),  # Root redirect
     path('bill/', include('bill.urls')),
-    path('admin/', admin.site.urls),
     path('oidc/', include('mozilla_django_oidc.urls')),  # OIDC URLs
 ]
 
-# Redirect /accounts/login/ to OIDC in production
+# Configure authentication based on USE_OIDC_ONLY setting
 if getattr(settings, 'USE_OIDC_ONLY', False):
+    # OIDC-only mode: redirect all logins to OIDC
     urlpatterns.extend([
         path('accounts/login/', lambda request: redirect('/oidc/authenticate/')),
-        # Admin login auch über OIDC
-        path('admin/login/', lambda request: redirect('/oidc/authenticate/?next=/admin/'))
+        path('admin/login/', CustomLogin.as_view()),
+        path('admin/', admin.site.urls),
+    ])
+else:
+    # Mixed mode: support both local and OIDC authentication
+    from django.contrib.auth import views as auth_views
+    urlpatterns.extend([
+        path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
+        path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
+        # Custom admin login that uses our template BEFORE admin.site.urls
+        path('admin/login/', auth_views.LoginView.as_view(
+            template_name='registration/login.html',
+            extra_context={'title': 'Administration - Anmeldung'}
+        )),
+        path('admin/', admin.site.urls),
     ])
 
 # Add static files serving

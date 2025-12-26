@@ -134,49 +134,51 @@
         </div>
         {% endif %}
 
-        {% if 'mozilla_django_oidc' in INSTALLED_APPS %}
+        {% load static %}
+
+        {% comment %}
+        Check if OIDC is available by trying to reverse the URL
+        {% endcomment %}
+        {% url 'oidc_authentication_init' as oidc_url %}
+        {% if oidc_url %}
         <div class="login-method">
             <h3>🔐 Single Sign-On (Keycloak)</h3>
             <p>Melden Sie sich mit Ihrem Unternehmenskonto an.</p>
-            <a href="{% url 'oidc_authentication_init' %}" class="btn btn-oidc">
+            <a href="{% url 'oidc_authentication_init' %}{% if next %}?next={{ next }}{% endif %}" class="btn btn-oidc">
                 Mit Keycloak anmelden
             </a>
         </div>
         {% endif %}
 
-        {% if not USE_OIDC_ONLY %}
         <div class="login-method">
             <h3>👤 Lokale Anmeldung</h3>
             <p>Für Demo- und Testzwecke.</p>
 
-            <form method="post" action="{% url 'admin:login' %}">
+            <form method="post">
                 {% csrf_token %}
 
                 <div class="form-group">
-                    <label for="username">Benutzername:</label>
-                    <input type="text" id="username" name="username" required>
+                    <label for="{{ form.username.id_for_label }}">Benutzername:</label>
+                    {{ form.username }}
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Passwort:</label>
-                    <input type="password" id="password" name="password" required>
+                    <label for="{{ form.password.id_for_label }}">Passwort:</label>
+                    {{ form.password }}
                 </div>
 
-                <input type="hidden" name="next" value="{% url 'bill:index' %}">
+                {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+                {% endif %}
 
                 <button type="submit" class="btn">
                     Anmelden
                 </button>
             </form>
         </div>
-        {% endif %}
 
         <div class="environment-info">
-            {% if USE_OIDC_ONLY %}
-            <strong>Live-System:</strong> Nur OIDC-Anmeldung verfügbar
-            {% else %}
             <strong>Demo-System:</strong> Lokale Benutzer + OIDC verfügbar
-            {% endif %}
         </div>
     </div>
 </body>

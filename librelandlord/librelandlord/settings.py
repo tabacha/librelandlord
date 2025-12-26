@@ -172,13 +172,18 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Directories where Django will search for static files
 STATICFILES_DIRS = []
 
 # Directory where collected static files will be stored
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Force Django to serve static files even in production for small systems
+# This is not recommended for high-traffic sites, but acceptable for small systems
+FORCE_SERVE_STATIC = os.environ.get(
+    'FORCE_SERVE_STATIC', 'True').lower() == 'true'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

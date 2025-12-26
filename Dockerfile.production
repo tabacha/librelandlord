@@ -1,6 +1,20 @@
 # LibreLandlord Production Dockerfile
-# Für OIDC-only Deployment
+# Für OIDC-only Deployment mit Multi-Stage Build
 
+# Build-Stage für Font Awesome
+FROM node:18-slim as fontawesome-builder
+
+WORKDIR /build
+
+# Package.json kopieren und npm install
+COPY package.json ./
+RUN npm install
+
+# Build-Script kopieren und Font Awesome Assets generieren
+COPY build-fontawesome.sh ./
+RUN chmod +x build-fontawesome.sh && ./build-fontawesome.sh
+
+# Production-Stage
 FROM python:3.14-slim
 
 # Metadata für Container Registry
@@ -42,19 +56,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
     pip install -r requirements.txt
 
-# Node.js für Font Awesome Build installieren
-RUN apt-get update && apt-get install -y nodejs npm && \
-    rm -rf /var/lib/apt/lists/*
-
-# Package.json kopieren und npm install
-COPY package.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm install
-
-# Build-Scripts kopieren
-COPY build-fontawesome.sh ./
-RUN chmod +x build-fontawesome.sh
-
 # Production-Settings
 ENV DEBUG=False
 ENV USE_OIDC_ONLY=True
@@ -63,8 +64,9 @@ ENV DJANGO_SETTINGS_MODULE=librelandlord.settings
 # App-Code kopieren (nach pip install für besseres Caching)
 COPY librelandlord/ ./
 
-# Font Awesome Assets bauen (im Container, nicht ins Git!)
-RUN ./build-fontawesome.sh
+# Font Awesome Assets aus Build-Stage kopieren
+COPY --from=fontawesome-builder /build/librelandlord/bill/static/bill/css/all.min.css ./bill/static/bill/css/
+COPY --from=fontawesome-builder /build/librelandlord/bill/static/bill/webfonts/ ./bill/static/bill/webfonts/
 
 # Entrypoint-Script kopieren
 COPY docker-entrypoint.sh /usr/local/bin/

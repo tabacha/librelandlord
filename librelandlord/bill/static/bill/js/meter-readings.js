@@ -44,14 +44,51 @@ document.addEventListener("DOMContentLoaded", function () {
     formData.append("target_date", targetDate);
     formData.append("csrfmiddlewaretoken", getCookie("csrftoken"));
 
-    fetch("/bill/meter_readings_save_single/", {
+    fetch("/bill/meter-readings-save-single/", {
       method: "POST",
       body: formData,
       headers: {
         "X-CSRFToken": getCookie("csrftoken"),
       },
     })
-      .then((response) => response.json())
+      .then((response) => {
+        // Prüfe HTTP-Status und erstelle detaillierte Fehlermeldung
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}`;
+          switch (response.status) {
+            case 400:
+              errorMessage += " - Ungültige Anfrage";
+              break;
+            case 401:
+              errorMessage += " - Nicht autorisiert";
+              break;
+            case 403:
+              errorMessage += " - Zugriff verweigert";
+              break;
+            case 404:
+              errorMessage += " - Seite nicht gefunden";
+              break;
+            case 405:
+              errorMessage += " - Methode nicht erlaubt";
+              break;
+            case 500:
+              errorMessage += " - Interner Serverfehler";
+              break;
+            case 502:
+              errorMessage += " - Bad Gateway";
+              break;
+            case 503:
+              errorMessage += " - Service nicht verfügbar";
+              break;
+            default:
+              errorMessage += ` - ${
+                response.statusText || "Unbekannter Fehler"
+              }`;
+          }
+          throw new Error(errorMessage);
+        }
+        return response.json();
+      })
       .then((data) => {
         if (data.success) {
           // Grüner Haken bei Erfolg - bleibt sichtbar
@@ -67,9 +104,23 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       })
       .catch((error) => {
-        // Rotes X bei Netzwerkfehler
+        // Rotes X bei Netzwerk- oder HTTP-Fehler
         indicator.className = "save-indicator error fas fa-xmark";
-        indicator.title = "Netzwerkfehler";
+
+        // Detaillierte Fehlermeldung für Mouse-over
+        let errorTitle = "Fehler beim Speichern: ";
+        if (error.message.startsWith("HTTP")) {
+          errorTitle += error.message;
+        } else if (
+          error.name === "TypeError" &&
+          error.message.includes("fetch")
+        ) {
+          errorTitle += "Verbindungsfehler - Server nicht erreichbar";
+        } else {
+          errorTitle += error.message || "Unbekannter Netzwerkfehler";
+        }
+
+        indicator.title = errorTitle;
         console.error("Auto-save error:", error);
       });
   }

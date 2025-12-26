@@ -234,8 +234,12 @@ if 'mozilla_django_oidc' in INSTALLED_APPS:
     LOGIN_REDIRECT_URL = '/bill/'
     LOGOUT_REDIRECT_URL = '/'
 
-    # Django Login URLs - redirect to OIDC
-    LOGIN_URL = '/oidc/authenticate/'
+    # Django Login URLs - redirect to OIDC only in production
+    if USE_OIDC_ONLY:
+        LOGIN_URL = '/oidc/authenticate/'
+    else:
+        # Use Django's default login in demo mode
+        LOGIN_URL = '/accounts/login/'
 
     # Create users automatically from OIDC
     OIDC_CREATE_USER = True

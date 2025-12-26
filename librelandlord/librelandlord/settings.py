@@ -212,8 +212,8 @@ if USE_OIDC_ONLY:
     AUTHENTICATION_BACKENDS = [
         'mozilla_django_oidc.auth.OIDCAuthenticationBackend',
     ]
-    else:
-        # Demo/Development: Local users + OIDC (optional)
+else:
+    # Demo/Development: Local users + OIDC (optional)
     AUTHENTICATION_BACKENDS = [
         'mozilla_django_oidc.auth.OIDCAuthenticationBackend',
         'django.contrib.auth.backends.ModelBackend',

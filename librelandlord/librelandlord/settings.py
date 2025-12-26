@@ -63,6 +63,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    # Add this for static files in production
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -180,6 +182,9 @@ STATICFILES_DIRS = []
 # Directory where collected static files will be stored
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# WhiteNoise configuration for serving static files in production
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 # Force Django to serve static files even in production for small systems
 # This is not recommended for high-traffic sites, but acceptable for small systems
 FORCE_SERVE_STATIC = os.environ.get(
@@ -214,53 +219,52 @@ else:
         'django.contrib.auth.backends.ModelBackend',
     ]
 
-# OIDC Settings for Keycloak
-if 'mozilla_django_oidc' in INSTALLED_APPS:
-    OIDC_RP_CLIENT_ID = os.environ.get(
-        'OIDC_CLIENT_ID', 'librelandlord-django')
-    OIDC_RP_CLIENT_SECRET = os.environ.get('OIDC_CLIENT_SECRET', '')
+OIDC_RP_CLIENT_ID = os.environ.get(
+    'OIDC_CLIENT_ID', 'librelandlord-django')
+OIDC_RP_CLIENT_SECRET = os.environ.get('OIDC_CLIENT_SECRET', '')
 
-    # Keycloak endpoints - adjust to your setup
-    KEYCLOAK_SERVER = os.environ.get(
-        'KEYCLOAK_SERVER', 'https://your-keycloak-server.com')
-    KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM', 'librelandlord')
+# Keycloak endpoints - adjust to your setup
+KEYCLOAK_SERVER = os.environ.get(
+    'KEYCLOAK_SERVER', 'https://your-keycloak-server.com')
+KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM', 'librelandlord')
 
-    OIDC_OP_AUTHORIZATION_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/auth'
-    OIDC_OP_TOKEN_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/token'
-    OIDC_OP_USER_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/userinfo'
-    OIDC_OP_JWKS_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs'
+OIDC_OP_AUTHORIZATION_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/auth'
+OIDC_OP_TOKEN_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/token'
+OIDC_OP_USER_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/userinfo'
+OIDC_OP_JWKS_ENDPOINT = f'{KEYCLOAK_SERVER}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs'
 
-    # OIDC Redirect URI - must use HTTPS in production
-    OIDC_RP_USE_HTTPS = USE_TLS or not DEBUG
-    OIDC_RP_SIGN_ALGO = 'RS256'
-    OIDC_RP_SCOPES = 'openid profile email'
+# OIDC Redirect URI - must use HTTPS in production
+OIDC_RP_USE_HTTPS = USE_TLS or not DEBUG
+OIDC_RP_SIGN_ALGO = 'RS256'
+OIDC_RP_SCOPES = 'openid profile email'
 
-    # Redirect URLs
-    LOGIN_REDIRECT_URL = '/bill/'
-    LOGOUT_REDIRECT_URL = '/'
+# Redirect URLs
+LOGIN_REDIRECT_URL = '/bill/'
+LOGOUT_REDIRECT_URL = '/'
 
-    # Django Login URLs - redirect to OIDC only in production
-    if USE_OIDC_ONLY:
-        LOGIN_URL = '/oidc/authenticate/'
-    else:
-        # Use Django's default login in demo mode
-        LOGIN_URL = '/accounts/login/'
+# Django Login URLs - redirect to OIDC only in production
+if USE_OIDC_ONLY:
+    LOGIN_URL = '/oidc/authenticate/'
+    OIDC_RENEW_ID_TOKEN_EXPIRY_SECONDS = 15 * 60  # Refresh 15 min before expiry
+else:
+    # Use Django's default login in demo mode
+    LOGIN_URL = '/accounts/login/'
 
-    # Create users automatically from OIDC
-    OIDC_CREATE_USER = True
+# Create users automatically from OIDC
+OIDC_CREATE_USER = True
 
-    # Custom user info claims mapping
-    def oidc_username_algo(email):
-        return email.split('@')[0]
+# Custom user info claims mapping
 
-    OIDC_USERNAME_ALGO = oidc_username_algo
 
-    # Verify SSL certificates (disable only for development)
-    OIDC_VERIFY_SSL = not DEBUG
+def oidc_username_algo(email):
+    return email.split('@')[0]
 
-    # Session refresh settings (only when SessionRefresh middleware is active)
-    if USE_OIDC_ONLY:
-        OIDC_RENEW_ID_TOKEN_EXPIRY_SECONDS = 15 * 60  # Refresh 15 min before expiry
+
+OIDC_USERNAME_ALGO = oidc_username_algo
+
+# Verify SSL certificates (disable only for development)
+OIDC_VERIFY_SSL = not DEBUG
+
 
 # Logging configuration
 LOGGING = {

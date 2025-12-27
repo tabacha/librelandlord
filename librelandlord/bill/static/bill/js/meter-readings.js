@@ -1,7 +1,7 @@
 // Auto-save functionality for meter readings input
 document.addEventListener("DOMContentLoaded", function () {
   const autoSaveInputs = document.querySelectorAll(".auto-save");
-  let saveTimeout = null;
+  let saveTimeouts = {}; // Ein Timer pro Zähler statt einem globalen Timer
   let lastSavedValues = {}; // Speichert letzte gespeicherte Werte
 
   function getCookie(name) {
@@ -166,11 +166,12 @@ document.addEventListener("DOMContentLoaded", function () {
   // Event Listener für alle Auto-Save Inputs
   autoSaveInputs.forEach((input) => {
     input.addEventListener("input", function () {
+      const meterId = this.dataset.meterId;
+
       // Warnung prüfen bei jeder Eingabe
       checkWarning(this);
 
       // Bei Eingabe Indicator wieder anzeigen falls ausgeblendet
-      const meterId = this.dataset.meterId;
       const indicator = document.getElementById("indicator-" + meterId);
       if (indicator && this.value.trim()) {
         indicator.style.display = "inline";
@@ -180,8 +181,11 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       // Debounce: Warte 3 Sekunden nach der letzten Eingabe
-      clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => {
+      // Wichtig: Verwende einen spezifischen Timer für diesen Zähler
+      if (saveTimeouts[meterId]) {
+        clearTimeout(saveTimeouts[meterId]);
+      }
+      saveTimeouts[meterId] = setTimeout(() => {
         saveReading(this);
       }, 3000);
     });

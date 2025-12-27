@@ -612,7 +612,7 @@ def meter_readings_input(request):
         build_in_date__lte=target_date
     ).filter(
         Q(out_of_order_date__isnull=True) | Q(
-            out_of_order_date__gt=target_date)
+            out_of_order_date__gte=target_date)
     ).select_related('place')
 
     # Sortierung nach Standort (location), dann Typ, dann Zählernummer

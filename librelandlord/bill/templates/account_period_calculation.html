@@ -305,7 +305,8 @@
                         {% for step in contrib.consumption_result.calculation_steps %}
                         {% if step.step_type == 'argument' and step.source_details and step.source_details.meters %}
                         <div class="meter-readings-section">
-                            <h5>{{ step.argument_name }} - Zählerstände {{ step.source_details.meter_place.name }}</h5>
+                            <h5>{{ step.argument_name }} - Zählerstände {{ step.source_details.meter_place.name }}
+                                (Ort: {{ step.source_details.meter_place.location }})</h5>
                             <table class="meter-readings-table">
                                 <thead>
                                     <tr>

@@ -143,6 +143,7 @@ def get_heating_info_context(request, renter_id: int):
     return context
 
 
+@login_required
 def heating_info(request, id: int):
     template = loader.get_template('heating_info.html')
     context = get_heating_info_context(request=request, renter_id=id)
@@ -150,6 +151,7 @@ def heating_info(request, id: int):
     return HttpResponse(html)
 
 
+@login_required
 def heating_info_pdf(request, id: int):
     template = loader.get_template('heating_info.html')
     context = get_heating_info_context(request=request, renter_id=id)
@@ -353,6 +355,7 @@ def serialize_helper(obj):
     raise TypeError("Type not serializable")
 
 
+@login_required
 def meter_place_consumption(request, meter_place: int, start_date: date, end_date: date):
     consumption = calculate_meter_place_consumption(
         meter_place, start_date, end_date)
@@ -430,6 +433,7 @@ def calc_consumption_calc(calc: ConsumptionCalc,
             }
 
 
+@login_required
 def heating_info_task(request):
     today = date.today()
     year = today.year
@@ -536,6 +540,7 @@ def heating_info_task(request):
     return response
 
 
+@login_required
 @require_http_methods(["GET"])
 def account_period_calculation(request, account_period_id):
     """
@@ -582,6 +587,7 @@ def account_period_calculation(request, account_period_id):
         return render(request, 'account_period_calculation_error.html', error_context, status=500)
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def meter_readings_input(request):
     """
@@ -651,6 +657,7 @@ def meter_readings_input(request):
     return render(request, 'meter_readings_input.html', context)
 
 
+@login_required
 @require_http_methods(["POST"])
 def meter_readings_save_single(request):
     """

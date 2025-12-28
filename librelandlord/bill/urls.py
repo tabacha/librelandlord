@@ -21,6 +21,8 @@ urlpatterns = [
     path("heating_info_task", views.heating_info_task, name="heating_info_task"),
     path("account-period/<int:account_period_id>/calculation/",
          views.account_period_calculation, name="account_period_calculation"),
+    path("account-period/<int:account_period_id>/calculation/<int:apartment_id>/",
+         views.account_period_calculation, name="account_period_calculation_apartment"),
     path("meter-readings-input/", views.meter_readings_input,
          name="meter_readings_input"),
     path("meter-readings-save-single/", views.meter_readings_save_single,

@@ -542,7 +542,7 @@ def heating_info_task(request):
 
 @login_required
 @require_http_methods(["GET"])
-def account_period_calculation(request, account_period_id):
+def account_period_calculation(request, account_period_id, apartment_id=None):
     """
     View der die vollständige Berechnung einer AccountPeriod über ein Template ausgibt.
 
@@ -569,17 +569,33 @@ def account_period_calculation(request, account_period_id):
             if not total_amount:
                 total_amount = 0
             if hasattr(summary, 'cost_center_calculation') and summary.cost_center_calculation:
+                # Optional: Beiträge nach Apartment-ID filtern (Anzeige),
+                # aber Prozentwerte und Gesamtverbrauch der CostCenter-Berechnung beibehalten.
+                if apartment_id is not None:
+                    filtered_results = [
+                        cr for cr in summary.cost_center_calculation.contribution_results
+                        if getattr(getattr(cr, 'contribution', None), 'apartment_id', None) == apartment_id
+                    ]
+                else:
+                    filtered_results = list(
+                        summary.cost_center_calculation.contribution_results)
+
                 new_contribs = []
                 sum_euro_anteil = 0
-                for contrib in summary.cost_center_calculation.contribution_results:
-                    euro_anteil = (contrib.percentage / 100) * \
-                        float(total_amount)
+                for contrib in filtered_results:
+                    # Prozentwert aus der ursprünglichen Gesamtrechnung übernehmen
+                    perc = getattr(contrib, 'percentage', 0.0)
+                    euro_anteil = (perc / 100) * float(total_amount)
                     contrib_dict = contrib._asdict()
                     contrib_dict['euro_anteil'] = euro_anteil
                     new_contribs.append(contrib_dict)
                     sum_euro_anteil += euro_anteil
+
+                # CostCenterCalculation in Dict-Form nur mit gefilterten Beiträgen aktualisieren
                 calc_dict = summary.cost_center_calculation._asdict()
                 calc_dict['contribution_results'] = new_contribs
+                # WICHTIG: Gesamtverbrauch nicht überschreiben, damit "Gesamtverbrauch" sichtbar bleibt
+
                 summary_dict = summary._asdict() if hasattr(
                     summary, '_asdict') else dict(summary)
                 summary_dict['cost_center_calculation'] = calc_dict
@@ -604,6 +620,7 @@ def account_period_calculation(request, account_period_id):
                 'cost_center_count': calculation.cost_center_count
             },
             'cost_center_summaries': cost_center_summaries,
+            'apartment_filter_id': apartment_id,
         }
 
         # Template rendern

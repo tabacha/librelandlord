@@ -444,8 +444,141 @@
                 </table>
             </div>
 
+            {% if summary.cost_center_calculation and apartment_filter_id %}
+            <div class="consumption-section">
+                <h3 class="section-title">Apartment-Verbrauch</h3>
+                <table class="meter-readings-table">
+                    <thead>
+                        <tr>
+                            <th>Verbrauchsberechnung</th>
+                            <th>Verbrauch</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contrib in summary.cost_center_calculation.contribution_results %}
+                        {% if contrib.contribution.apartment_id == apartment_filter_id %}
+                        <tr>
+                            <td>{{ contrib.consumption_calc_name }}</td>
+                            <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }}
+                                {{ summary.cost_center_calculation.total_consumption_unit }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                        <tr style="border-top:2px solid #333; background:#f8f9fa;">
+                            <td style="text-align:right; font-weight:bold;">Gesamtverbrauch</td>
+                            <td class="consumption-cell">
+                                <strong>{{ summary.cost_center_calculation.total_consumption|floatformat:0 }}</strong>
+                                {{ summary.cost_center_calculation.total_consumption_unit }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="meter-readings-section">
+                <h3 class="section-title">Zählerstände</h3>
+                {% for contrib in summary.cost_center_calculation.contribution_results %}
+                {% if contrib.contribution.apartment_id == apartment_filter_id %}
+                {% for step in contrib.consumption_result.calculation_steps %}
+                {% if step.step_type == 'argument' and step.source_details and step.source_details.meters %}
+                <div class="section-group">
+                    <h5>{{ step.argument_name }} - Zählerstände {{ step.source_details.meter_place.name }}
+                        (Ort: {{ step.source_details.meter_place.location }})</h5>
+                    <table class="meter-readings-table">
+                        <thead>
+                            <tr>
+                                <th>Zähler Nr</th>
+                                <th>Datum Anfang</th>
+                                <th>Datum Endstand</th>
+                                <th>Endstand</th>
+                                <th></th>
+                                <th>Anfangsstand</th>
+                                <th></th>
+                                <th>Verbrauch</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for meter_info in step.source_details.meters %}
+                            <tr>
+                                <td class="number-cell">{{ meter_info.meter_number }}</td>
+                                <td>{{ meter_info.start_reading.date|date:"d.m.Y" }}</td>
+                                <td>{{ meter_info.end_reading.date|date:"d.m.Y" }}</td>
+                                <td class="number-cell">
+                                    {{ meter_info.end_reading.calculated_reading|floatformat:0 }}
+                                    {{ step.source_details.meter_place.unit }}
+                                </td>
+                                <td> - </td>
+                                <td class="number-cell">
+                                    {{ meter_info.start_reading.calculated_reading|floatformat:0 }}
+                                    {{ step.source_details.meter_place.unit }}
+                                </td>
+                                <td>=</td>
+                                <td class="consumption-cell">
+                                    {% if meter_info.consumption %}
+                                    {{ meter_info.consumption|floatformat:0 }}
+                                    {{ step.source_details.meter_place.unit }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            <tr style="border-top:2px solid #333; background:#f8f9fa;">
+                                <td colspan="7" style="text-align: right; font-weight:bold;">
+                                    Summe
+                                </td>
+                                <td class="consumption-cell">
+                                    <strong>
+                                        {{ step.source_details.total_consumption|floatformat:0 }}
+                                        {{ step.source_details.meter_place.unit }}
+                                    </strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="consumption-section">
+                <h3 class="section-title">Berechnungsschritte</h3>
+                {% for contrib in summary.cost_center_calculation.contribution_results %}
+                {% if contrib.contribution.apartment_id == apartment_filter_id %}
+                {% for step in contrib.consumption_result.calculation_steps %}
+                {% if step.step_type == 'operation' %}
+                <div class="calculation-step step-{{ step.step_type }}">
+                    <span class="calc-cell">
+                        {{ step.operand1 }} {{ step.unit }} {{ step.operator }} {{ step.operand2 }}
+                        {{ step.unit}} =
+                    </span>
+                    <span class="consumption-cell">
+                        <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
+                    </span>
+                </div>
+                {% elif step.step_type == 'result' %}
+                <div class="calculation-step step-{{ step.step_type }}">
+                    <strong>Endergebnis:</strong>
+                    <span class="consumption-cell">
+                        <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
+                    </span>
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% if contrib.consumption_result.calculation_str %}
+                <div class="calculation-step">
+                    <span class="calc-cell">{{ contrib.consumption_result.calculation_str_left }} =</span>
+                    <span class="consumption-cell"><strong>{{ contrib.consumption_result.calculation_result
+                            }}</strong></span>
+                </div>
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
             <!-- Verbrauchsberechnung -->
-            {% if summary.cost_center_calculation %}
+            {% if summary.cost_center_calculation and not apartment_filter_id %}
             <div class="consumption-section">
                 <h3 class="section-title">Verbrauchsberechnung</h3>
 
@@ -552,12 +685,14 @@
                 {% endfor %}
             </div>
             {% else %}
+            {% if not apartment_filter_id %}
             <div class="consumption-section">
                 <h3 class="section-title">Verbrauchsberechnung</h3>
                 <div class="no-data">
                     Keine Verbrauchsberechnung verfügbar für dieses Cost Center.
                 </div>
             </div>
+            {% endif %}
             {% endif %}
         </div>
     </div>
@@ -582,11 +717,13 @@
                         {% for summary in cost_center_summaries %}
                         {% if summary.cost_center_calculation %}
                         {% for contrib in summary.cost_center_calculation.contribution_results %}
+                        {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
                         <tr>
                             <td>{{ contrib.consumption_calc_name }}</td>
                             <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }}
                                 {{ summary.cost_center_calculation.total_consumption_unit }}</td>
                         </tr>
+                        {% endif %}
                         {% endfor %}
                         <tr style="border-top:2px solid #333; background:#f8f9fa;">
                             <td style="text-align:right; font-weight:bold;">Gesamtverbrauch</td>
@@ -619,6 +756,7 @@
                             {% for summary in cost_center_summaries %}
                             {% if summary.cost_center_calculation %}
                             {% for contrib in summary.cost_center_calculation.contribution_results %}
+                            {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
                             <tr>
                                 <td>{{ contrib.consumption_calc_name }}</td>
                                 <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }}
@@ -632,6 +770,7 @@
                                     <strong>{{ contrib.percentage|floatformat:1 }} %</strong>
                                 </td>
                             </tr>
+                            {% endif %}
                             {% endfor %}
                             {% endif %}
                             {% endfor %}
@@ -661,6 +800,7 @@
                             {% for summary in cost_center_summaries %}
                             {% if summary.cost_center_calculation %}
                             {% for contrib in summary.cost_center_calculation.contribution_results %}
+                            {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
                             <tr>
                                 <td>{{ contrib.consumption_calc_name }}</td>
                                 <td class="consumption-cell">{{ summary.total_amount|floatformat:2 }} €</td>
@@ -671,15 +811,9 @@
                                     <strong>{{ contrib.euro_anteil|floatformat:2 }} €</strong>
                                 </td>
                             </tr>
-                            {% endfor %}
-                            {% if summary.rounding_diff %}
-                            <tr style="background:#fffbe6; color:#b26a00;">
-                                <td colspan="5" style="text-align:right; font-weight:bold;">Rundungsdifferenz:</td>
-                                <td class="consumption-cell"><strong>{{ summary.rounding_diff|floatformat:2 }}
-                                        €</strong>
-                                </td>
-                            </tr>
                             {% endif %}
+                            {% endfor %}
+                            {# Rundungsdifferenz ausgeblendet #}
                             <tr style="border-top:2px solid #333; background:#f8f9fa;">
                                 <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
                                 <td class="consumption-cell"><strong>{{ summary.sum_euro_anteil|floatformat:2 }}

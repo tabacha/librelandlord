@@ -6,6 +6,164 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Abrechnungsberechnung - {{ account_period.text }}</title>
     <style>
+        /* Druck-Einstellungen für DIN A4 Querformat */
+        @page {
+            size: A4 landscape;
+            margin: 12mm;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                font-size: 10pt;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Startseite dichter und ohne visuelle Übersicht */
+            .summary {
+                display: none !important;
+            }
+
+            .consumption-summary {
+                display: none !important;
+            }
+
+            /* Eigene Seitenzählung */
+            .page-footer {
+                position: fixed;
+                bottom: 0;
+                right: 0;
+                font-size: 8pt;
+                color: #666;
+            }
+
+            .cost-center {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+
+            .apartment-item {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .meter-readings-table {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .header {
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+
+            .header h1 {
+                margin: 0 0 5px 0;
+                font-size: 1.4em;
+            }
+
+            .header h2 {
+                margin: 0 0 5px 0;
+                font-size: 1.1em;
+            }
+
+            .cost-center {
+                margin-bottom: 12px;
+                overflow: visible;
+            }
+
+            .cost-center-header {
+                padding: 6px 12px;
+                font-size: 1em;
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
+            .cost-center-content {
+                padding: 8px;
+            }
+
+            .section-title {
+                margin-bottom: 8px;
+                margin-top: 10px;
+                font-size: 0.95em;
+            }
+
+            .meter-readings-table th,
+            .meter-readings-table td {
+                padding: 3px 6px;
+                font-size: 8pt;
+            }
+
+            .consumption-summary {
+                padding: 8px;
+                margin-bottom: 8px;
+            }
+
+            .apartment-item {
+                margin-bottom: 10px;
+            }
+
+            .apartment-header {
+                padding: 6px 10px;
+                font-size: 0.95em;
+            }
+
+            .apartment-content {
+                padding: 8px;
+            }
+
+            .apartment-content h4 {
+                margin: 0 0 8px 0;
+                font-size: 0.9em;
+            }
+
+            .apartment-content h5 {
+                margin: 8px 0 5px 0;
+                font-size: 0.85em;
+            }
+
+            .calculation-step {
+                padding: 4px 8px;
+                margin: 2px 0;
+                font-size: 8pt;
+            }
+
+            .meter-readings-section {
+                margin-bottom: 8px;
+            }
+
+            .bills-section {
+                margin-bottom: 15px;
+            }
+
+            .consumption-section {
+                margin-bottom: 10px;
+            }
+
+            /* Verhindere Seitenumbruch zwischen Überschrift und zugehöriger Tabelle */
+            .section-group {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .section-group .meter-readings-table {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .section-title {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+        }
+
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -297,10 +455,6 @@
                         {{ contrib.apartment_name }} - {{ contrib.consumption_calc_name }}
                     </div>
                     <div class="apartment-content">
-
-
-                        <h4>Berechnungsschritte:</h4>
-
                         <!-- Zählerstände Tabelle -->
                         {% for step in contrib.consumption_result.calculation_steps %}
                         {% if step.step_type == 'argument' and step.source_details and step.source_details.meters %}
@@ -386,11 +540,10 @@
                         {% endif %}
                         {% endfor %}
                         {% if contrib.consumption_result.calculation_str %}
-                        <div class="calculation-grid">
-                            <div class="calculation-label">Berechnung:</div>
-                            <div class="calculation-equation">{{ contrib.consumption_result.calculation_str_left }}
-                            </div>
-                            <div class="calculation-result">{{ contrib.consumption_result.calculation_result }}</div>
+                        <div class="calculation-step">
+                            <span class="calc-cell">{{ contrib.consumption_result.calculation_str_left }} =</span>
+                            <span class="consumption-cell"><strong>{{ contrib.consumption_result.calculation_result
+                                    }}</strong></span>
                         </div>
                         {% endif %}
 
@@ -448,90 +601,96 @@
                     </tbody>
                 </table>
 
-                <h3 class="section-title" style="margin-top: 30px;">Verbrauchsverteilung in Prozent</h3>
+                <div class="section-group">
+                    <h3 class="section-title" style="margin-top: 30px;">Verbrauchsverteilung in Prozent</h3>
 
-                <table class="meter-readings-table">
-                    <thead>
-                        <tr>
-                            <th>Verbrauchsberechnung</th>
-                            <th>Verbrauch</th>
-                            <th></th>
-                            <th>Gesamtverbrauch</th>
-                            <th></th>
-                            <th>Ergebnis</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for summary in cost_center_summaries %}
-                        {% if summary.cost_center_calculation %}
-                        {% for contrib in summary.cost_center_calculation.contribution_results %}
-                        <tr>
-                            <td>{{ contrib.consumption_calc_name }}</td>
-                            <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }}
-                                {{ summary.cost_center_calculation.total_consumption_unit }}</td>
-                            <td style="text-align: center;">÷</td>
-                            <td class="consumption-cell">
-                                {{ summary.cost_center_calculation.total_consumption|floatformat:0 }}
-                                {{ summary.cost_center_calculation.total_consumption_unit }}</td>
-                            <td style="text-align: center;">=</td>
-                            <td class="consumption-cell">
-                                <strong>{{ contrib.percentage|floatformat:1 }} %</strong>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        {% endif %}
-                        {% endfor %}
-                        <tr style="border-top:2px solid #333; background:#f8f9fa;">
-                            <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
-                            <td class="consumption-cell"><strong>100 %</strong>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                    <table class="meter-readings-table">
+                        <thead>
+                            <tr>
+                                <th>Verbrauchsberechnung</th>
+                                <th>Verbrauch</th>
+                                <th></th>
+                                <th>Gesamtverbrauch</th>
+                                <th></th>
+                                <th>Ergebnis</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for summary in cost_center_summaries %}
+                            {% if summary.cost_center_calculation %}
+                            {% for contrib in summary.cost_center_calculation.contribution_results %}
+                            <tr>
+                                <td>{{ contrib.consumption_calc_name }}</td>
+                                <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }}
+                                    {{ summary.cost_center_calculation.total_consumption_unit }}</td>
+                                <td style="text-align: center;">÷</td>
+                                <td class="consumption-cell">
+                                    {{ summary.cost_center_calculation.total_consumption|floatformat:0 }}
+                                    {{ summary.cost_center_calculation.total_consumption_unit }}</td>
+                                <td style="text-align: center;">=</td>
+                                <td class="consumption-cell">
+                                    <strong>{{ contrib.percentage|floatformat:1 }} %</strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% endif %}
+                            {% endfor %}
+                            <tr style="border-top:2px solid #333; background:#f8f9fa;">
+                                <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
+                                <td class="consumption-cell"><strong>100 %</strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                <h3 class="section-title" style="margin-top: 30px;">Anteil am Gesamtrechnungsbetrag</h3>
-                <table class="meter-readings-table">
-                    <thead>
-                        <tr>
-                            <th>Verbrauchsberechnung</th>
-                            <th>Gesamtrechnungsbetrag</th>
-                            <th></th>
-                            <th>Prozentsatz</th>
-                            <th></th>
-                            <th>Anteil</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for summary in cost_center_summaries %}
-                        {% if summary.cost_center_calculation %}
-                        {% for contrib in summary.cost_center_calculation.contribution_results %}
-                        <tr>
-                            <td>{{ contrib.consumption_calc_name }}</td>
-                            <td class="consumption-cell">{{ summary.total_amount|floatformat:2 }} €</td>
-                            <td style="text-align: center;">*</td>
-                            <td class="consumption-cell">{{ contrib.percentage|floatformat:1 }} %</td>
-                            <td style="text-align: center;">=</td>
-                            <td class="consumption-cell">
-                                <strong>{{ contrib.euro_anteil|floatformat:2 }} €</strong>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        {% if summary.rounding_diff %}
-                        <tr style="background:#fffbe6; color:#b26a00;">
-                            <td colspan="5" style="text-align:right; font-weight:bold;">Rundungsdifferenz:</td>
-                            <td class="consumption-cell"><strong>{{ summary.rounding_diff|floatformat:2 }} €</strong>
-                            </td>
-                        </tr>
-                        {% endif %}
-                        <tr style="border-top:2px solid #333; background:#f8f9fa;">
-                            <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
-                            <td class="consumption-cell"><strong>{{ summary.sum_euro_anteil|floatformat:2 }} €</strong>
-                            </td>
-                        </tr>
-                        {% endif %}
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="section-group">
+                    <h3 class="section-title" style="margin-top: 30px;">Anteil am Gesamtrechnungsbetrag</h3>
+                    <table class="meter-readings-table">
+                        <thead>
+                            <tr>
+                                <th>Verbrauchsberechnung</th>
+                                <th>Gesamtrechnungsbetrag</th>
+                                <th></th>
+                                <th>Prozentsatz</th>
+                                <th></th>
+                                <th>Anteil</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for summary in cost_center_summaries %}
+                            {% if summary.cost_center_calculation %}
+                            {% for contrib in summary.cost_center_calculation.contribution_results %}
+                            <tr>
+                                <td>{{ contrib.consumption_calc_name }}</td>
+                                <td class="consumption-cell">{{ summary.total_amount|floatformat:2 }} €</td>
+                                <td style="text-align: center;">*</td>
+                                <td class="consumption-cell">{{ contrib.percentage|floatformat:1 }} %</td>
+                                <td style="text-align: center;">=</td>
+                                <td class="consumption-cell">
+                                    <strong>{{ contrib.euro_anteil|floatformat:2 }} €</strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if summary.rounding_diff %}
+                            <tr style="background:#fffbe6; color:#b26a00;">
+                                <td colspan="5" style="text-align:right; font-weight:bold;">Rundungsdifferenz:</td>
+                                <td class="consumption-cell"><strong>{{ summary.rounding_diff|floatformat:2 }}
+                                        €</strong>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            <tr style="border-top:2px solid #333; background:#f8f9fa;">
+                                <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
+                                <td class="consumption-cell"><strong>{{ summary.sum_euro_anteil|floatformat:2 }}
+                                        €</strong>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

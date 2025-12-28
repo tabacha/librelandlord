@@ -153,6 +153,46 @@
             color: #666;
             font-size: 0.9em;
         }
+
+        /* Zählerstände Tabelle */
+        .meter-readings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: white;
+        }
+
+        .meter-readings-table th,
+        .meter-readings-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .meter-readings-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .meter-readings-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .meter-readings-table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .meter-readings-table .number-cell {
+            text-align: right;
+            font-family: monospace;
+        }
+
+        .meter-readings-table .consumption-cell {
+            text-align: right;
+            font-weight: bold;
+            color: #2e7d32;
+        }
     </style>
 </head>
 
@@ -227,42 +267,100 @@
                         {{ contrib.apartment_name }} - {{ contrib.consumption_calc_name }}
                     </div>
                     <div class="apartment-content">
-                        <p><strong>Verbrauch:</strong> <span class="amount">{{ contrib.final_consumption }}</span>
-                            kWh/m³</p>
+
 
                         <h4>Berechnungsschritte:</h4>
+
+                        <!-- Zählerstände Tabelle -->
                         {% for step in contrib.consumption_result.calculation_steps %}
-                        <div class="calculation-step step-{{ step.step_type }}">
-                            {% if step.step_type == 'argument' %}
-                            <strong>{{ step.argument_name }}:</strong> {{ step.result }}
-                            {% if step.source_details %}
-                            <pre>
-                                {{ step.source_details | pprint }}
-                            </pre>
-                            {% endif %}
-                            {% if step.source_details and step.source_details.meter_place_name %}
-                            ({{ step.source_details.meter_place_name }})
-                            {% endif %}
-                            {% elif step.step_type == 'operation' %}
-                            {{ step.operand1 }} {{ step.operator }} {{ step.operand2 }} = {{ step.result }}
-                            {% elif step.step_type == 'result' %}
-                            <strong>Endergebnis:</strong> {{ step.result }}
-                            {% endif %}
+                        {% if step.step_type == 'argument' and step.source_details and step.source_details.meters %}
+                        <div class="meter-readings-section">
+                            <h5>{{ step.argument_name }} - Zählerstände {{ step.source_details.meter_place.name }}</h5>
+                            <table class="meter-readings-table">
+                                <thead>
+                                    <tr>
+                                        <th>Zähler Nr</th>
+                                        <th>Datum Anfang</th>
+                                        <th>Datum Endstand</th>
+                                        <th>Endstand</th>
+                                        <th></th>
+                                        <th>Anfangsstand</th>
+                                        <th></th>
+                                        <th>Verbrauch</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for meter_info in step.source_details.meters %}
+                                    <tr>
+                                        <td class="number-cell">{{ meter_info.meter_number }}</td>
+                                        <td>{{ meter_info.start_reading.date|date:"d.m.Y" }}</td>
+                                        <td>{{ meter_info.end_reading.date|date:"d.m.Y" }}</td>
+                                        <td class="number-cell">
+                                            {{ meter_info.end_reading.calculated_reading|floatformat:0 }}
+                                            {{ step.source_details.meter_place.unit }}
+                                        </td>
+                                        <td> - </td>
+                                        <td class="number-cell">
+                                            {{ meter_info.start_reading.calculated_reading|floatformat:0 }}
+                                            {{ step.source_details.meter_place.unit }}
+                                        </td>
+                                        <td>=</td>
+                                        <td class="consumption-cell">
+                                            {% if meter_info.consumption %}
+                                            {{ meter_info.consumption|floatformat:0 }}
+                                            {{ step.source_details.meter_place.unit }}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    <tr>
+                                        <td colspan="7" style="text-align: left;">Verbrauch:
+                                            {{ step.source_details.meter_place.name }}
+                                        </td>
+                                        <td class="consumption-cell">
+                                            <strong>
+                                                {{ step.source_details.total_consumption|floatformat:0 }}
+                                                {{ step.source_details.meter_place.unit }}
+                                            </strong>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
+                        {% endif %}
                         {% endfor %}
+
+                        {% for step in contrib.consumption_result.calculation_steps %}
+                        {% if step.step_type == 'operation' %}
+                        <div class="calculation-step step-{{ step.step_type }}">
+                            Berechnung:
+                            {{ step.operand1 }} {{ step.unit }} {{ step.operator }} {{ step.operand2 }} {{ step.unit}} =
+                            {{ step.result }} {{ step.unit }}
+
+                        </div>
+                        {% elif step.step_type == 'result' %}
+                        <!-- Zeige Endergebnis nur wenn es Operationen gab -->
+                        {% if contrib.consumption_result.calculation_steps|length > 4 %}
+                        <div class="calculation-step step-{{ step.step_type }}">
+                            <strong>Endergebnis:</strong> {{ step.result }} {{ step.unit }}
+                        </div>
+                        {% endif %}
+                        {% endif %}
                     </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="consumption-section">
-                <h3 class="section-title">Verbrauchsberechnung</h3>
-                <div class="no-data">
-                    Keine Verbrauchsberechnung verfügbar für dieses Cost Center.
+                    {% endfor %}
                 </div>
             </div>
-            {% endif %}
+            {% endfor %}
         </div>
+        {% else %}
+        <div class="consumption-section">
+            <h3 class="section-title">Verbrauchsberechnung</h3>
+            <div class="no-data">
+                Keine Verbrauchsberechnung verfügbar für dieses Cost Center.
+            </div>
+        </div>
+        {% endif %}
+    </div>
     </div>
     {% endfor %}
 </body>

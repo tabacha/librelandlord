@@ -66,6 +66,7 @@ class ConsumptionCalc(models.Model):
         result: Optional[Decimal]
         argument_name: Optional[str]
         source_details: Optional[dict]  # Zusätzliche Informationen
+        unit: Optional[str]  # Einheit des Ergebnisses
 
     class ConsumptionResult(NamedTuple):
         """Vollständiges Berechnungsergebnis"""
@@ -115,7 +116,8 @@ class ConsumptionCalc(models.Model):
             operand2=None,
             result=arg1_result.value,
             argument_name="Argument 1",
-            source_details=self._get_source_details(arg1_result)
+            source_details=self._get_source_details(arg1_result),
+            unit=self._get_unit_from_argument(arg1_result)
         ))
 
         result = arg1_result.value
@@ -139,7 +141,8 @@ class ConsumptionCalc(models.Model):
                 operand2=None,
                 result=arg2_result.value,
                 argument_name="Argument 2",
-                source_details=self._get_source_details(arg2_result)
+                source_details=self._get_source_details(arg2_result),
+                unit=self._get_unit_from_argument(arg2_result)
             ))
 
             old_result = result
@@ -154,7 +157,9 @@ class ConsumptionCalc(models.Model):
                 operand2=arg2_result.value,
                 result=result,
                 argument_name=None,
-                source_details=None
+                source_details=None,
+                unit=self._calculate_operation_unit(
+                    arg1_result, self.operator1, arg2_result)
             ))
 
         # Argument 3 berechnen (optional)
@@ -176,7 +181,8 @@ class ConsumptionCalc(models.Model):
                 operand2=None,
                 result=arg3_result.value,
                 argument_name="Argument 3",
-                source_details=self._get_source_details(arg3_result)
+                source_details=self._get_source_details(arg3_result),
+                unit=self._get_unit_from_argument(arg3_result)
             ))
 
             old_result = result
@@ -191,10 +197,13 @@ class ConsumptionCalc(models.Model):
                 operand2=arg3_result.value,
                 result=result,
                 argument_name=None,
-                source_details=None
+                source_details=None,
+                unit=self._calculate_operation_unit(
+                    calculation_steps[-2], self.operator2, arg3_result) if calculation_steps else None
             ))
 
         # Endergebnis
+        final_unit = calculation_steps[-1].unit if calculation_steps else None
         calculation_steps.append(self.CalculationStep(
             step_type="result",
             description=f"Endergebnis der Berechnung '{self.name}'",
@@ -207,7 +216,8 @@ class ConsumptionCalc(models.Model):
                 'calculation_name': self.name,
                 'period_start': start_date.isoformat(),
                 'period_end': end_date.isoformat()
-            }
+            },
+            unit=final_unit
         ))
 
         return self.ConsumptionResult(
@@ -297,3 +307,55 @@ class ConsumptionCalc(models.Model):
             }
         else:
             return {}
+
+    def _get_unit_from_argument(self, arg_result: ArgumentResult) -> str:
+        """Ermittelt die Einheit eines Arguments"""
+        if arg_result.source_type == "meter_place" and arg_result.source:
+            return arg_result.source.unit
+        else:
+            # Für feste Werte keine Einheit oder eine Standard-Einheit
+            return ""
+
+    def _calculate_operation_unit(self, operand1_source, operator: str, operand2_source) -> str:
+        """Berechnet die Einheit nach einer Operation zwischen zwei Operanden"""
+        # Hole Einheiten der beiden Operanden
+        if hasattr(operand1_source, 'unit'):
+            unit1 = operand1_source.unit
+        elif isinstance(operand1_source, self.CalculationStep):
+            unit1 = operand1_source.unit or ""
+        else:
+            unit1 = self._get_unit_from_argument(operand1_source)
+
+        unit2 = self._get_unit_from_argument(operand2_source)
+
+        # Einfache Einheitenberechnung
+        if operator == '+' or operator == '-':
+            # Bei Addition/Subtraktion sollten die Einheiten gleich sein
+            if unit1 == unit2:
+                return unit1
+            elif unit1 and not unit2:
+                return unit1
+            elif unit2 and not unit1:
+                return unit2
+            else:
+                return f"{unit1}+{unit2}" if unit1 and unit2 else ""
+        elif operator == '*':
+            # Bei Multiplikation werden Einheiten multipliziert
+            if unit1 and unit2:
+                return f"{unit1}×{unit2}"
+            elif unit1:
+                return unit1
+            elif unit2:
+                return unit2
+            else:
+                return ""
+        elif operator == '/':
+            # Bei Division wird durch die zweite Einheit geteilt
+            if unit1 and unit2:
+                return f"{unit1}/{unit2}"
+            elif unit1:
+                return unit1
+            else:
+                return ""
+        else:
+            return unit1 or ""

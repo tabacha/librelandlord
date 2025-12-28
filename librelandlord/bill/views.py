@@ -562,7 +562,39 @@ def account_period_calculation(request, account_period_id):
         # Berechnung durchführen
         calculation = account_period.calculate_bills_by_cost_center()
 
-        # Template-Kontext erstellen
+        # Euro-Anteil für jede Contribution berechnen und in die Summaries einfügen
+        cost_center_summaries = []
+        for summary in calculation.cost_center_summaries:
+            total_amount = getattr(summary, 'total_amount', None)
+            if not total_amount:
+                total_amount = 0
+            if hasattr(summary, 'cost_center_calculation') and summary.cost_center_calculation:
+                new_contribs = []
+                sum_euro_anteil = 0
+                for contrib in summary.cost_center_calculation.contribution_results:
+                    euro_anteil = (contrib.percentage / 100) * \
+                        float(total_amount)
+                    contrib_dict = contrib._asdict()
+                    contrib_dict['euro_anteil'] = euro_anteil
+                    new_contribs.append(contrib_dict)
+                    sum_euro_anteil += euro_anteil
+                calc_dict = summary.cost_center_calculation._asdict()
+                calc_dict['contribution_results'] = new_contribs
+                summary_dict = summary._asdict() if hasattr(
+                    summary, '_asdict') else dict(summary)
+                summary_dict['cost_center_calculation'] = calc_dict
+                summary_dict['total_amount'] = total_amount
+                summary_dict['sum_euro_anteil'] = sum_euro_anteil
+                # Rundungsdifferenz berechnen
+                rounding_diff = round(float(total_amount) - sum_euro_anteil, 2)
+                if abs(rounding_diff) >= 0.01:
+                    summary_dict['rounding_diff'] = rounding_diff
+                else:
+                    summary_dict['rounding_diff'] = None
+                cost_center_summaries.append(summary_dict)
+            else:
+                cost_center_summaries.append(summary)
+
         context = {
             'calculation': calculation,
             'account_period': calculation.account_period,
@@ -571,7 +603,7 @@ def account_period_calculation(request, account_period_id):
                 'total_bill_count': calculation.total_bill_count,
                 'cost_center_count': calculation.cost_center_count
             },
-            'cost_center_summaries': calculation.cost_center_summaries,
+            'cost_center_summaries': cost_center_summaries,
         }
 
         # Template rendern

@@ -86,6 +86,10 @@ class ConsumptionCalc(models.Model):
         argument_name: Optional[str]
         source_details: Optional[dict]  # Zusätzliche Informationen
         unit: Optional[str]  # Einheit des Ergebnisses
+        operand1_label: Optional[str] = None  # Erklärung für Operand 1
+        operand2_label: Optional[str] = None  # Erklärung für Operand 2
+        operand1_unit: Optional[str] = None  # Einheit für Operand 1
+        operand2_unit: Optional[str] = None  # Einheit für Operand 2
 
     class ConsumptionResult(NamedTuple):
         """Vollständiges Berechnungsergebnis"""
@@ -168,6 +172,11 @@ class ConsumptionCalc(models.Model):
             result = self._apply_operator(
                 result, self.operator1, arg2_result.value)
 
+            # Einheiten direkt bestimmen
+            unit1 = self._get_unit_from_argument(arg1_result, "Argument 1")
+            unit2 = self._get_unit_from_argument(arg2_result, "Argument 2")
+            result_unit = self._combine_units(unit1, unit2, self.operator1)
+
             calculation_steps.append(self.CalculationStep(
                 step_type="operation",
                 description=f"Operation: {old_result} {self.operator1} {arg2_result.value}",
@@ -177,8 +186,11 @@ class ConsumptionCalc(models.Model):
                 result=result,
                 argument_name=None,
                 source_details=None,
-                unit=self._calculate_operation_unit(
-                    arg1_result, self.operator1, arg2_result)
+                unit=result_unit,
+                operand1_label=self.argument1_explanation,
+                operand2_label=self.argument2_explanation,
+                operand1_unit=unit1,
+                operand2_unit=unit2
             ))
 
         # Argument 3 berechnen (optional)
@@ -208,17 +220,32 @@ class ConsumptionCalc(models.Model):
             result = self._apply_operator(
                 result, self.operator2, arg3_result.value)
 
+            # Einheiten direkt bestimmen - vorheriges Ergebnis und Argument 3
+            # Hole die Einheit vom letzten operation-Schritt
+            prev_unit = ""
+            for step in reversed(calculation_steps):
+                if step.step_type == "operation":
+                    prev_unit = step.unit or ""
+                    break
+            unit3 = self._get_unit_from_argument(arg3_result, "Argument 3")
+            result_unit = self._combine_units(prev_unit, unit3, self.operator2)
+            multiply = 1
+            if unit3 == '%':
+                multiply = 100
             calculation_steps.append(self.CalculationStep(
                 step_type="operation",
                 description=f"Operation: {old_result} {self.operator2} {arg3_result.value}",
                 operand1=old_result,
                 operator=self.operator2,
-                operand2=arg3_result.value,
+                operand2=arg3_result.value*multiply,
                 result=result,
                 argument_name=None,
                 source_details=None,
-                unit=self._calculate_operation_unit(
-                    calculation_steps[-2], self.operator2, arg3_result) if calculation_steps else None
+                unit=result_unit,
+                operand1_label=None,
+                operand2_label=self.argument3_explanation,
+                operand1_unit=prev_unit,
+                operand2_unit=unit3
             ))
 
         # Endergebnis
@@ -271,11 +298,21 @@ class ConsumptionCalc(models.Model):
                 billing_calculation=billing_calculation
             )
         elif value is not None:
-            # Fester Wert
+            # Fester Wert - bei Prozent durch 100 teilen
+            calculated_value = value
+
+            # Prüfen ob die Einheit PERCENT ist und entsprechend anpassen
+            if arg_name == "Argument 1" and self.argument1_unit == self.Unit.PERCENT:
+                calculated_value = value / Decimal('100')
+            elif arg_name == "Argument 2" and self.argument2_unit == self.Unit.PERCENT:
+                calculated_value = value / Decimal('100')
+            elif arg_name == "Argument 3" and self.argument3_unit == self.Unit.PERCENT:
+                calculated_value = value / Decimal('100')
+
             return self.ArgumentResult(
                 source_type="value",
                 source=None,
-                value=value,
+                value=calculated_value,
                 billing_calculation=None
             )
         else:
@@ -343,33 +380,8 @@ class ConsumptionCalc(models.Model):
             # Für feste Werte keine Einheit oder eine Standard-Einheit
             return ""
 
-    def _calculate_operation_unit(self, operand1_source, operator: str, operand2_source) -> str:
-        """Berechnet die Einheit nach einer Operation zwischen zwei Operanden"""
-        # Hole Einheiten der beiden Operanden
-        if hasattr(operand1_source, 'unit'):
-            unit1 = operand1_source.unit
-        elif isinstance(operand1_source, self.CalculationStep):
-            unit1 = operand1_source.unit or ""
-        elif hasattr(operand1_source, 'source_type'):
-            # ArgumentResult
-            if operand1_source.source_type == "meter_place":
-                unit1 = self._get_unit_from_argument(
-                    operand1_source, "Argument 1")
-            else:
-                unit1 = ""
-        else:
-            unit1 = ""
-
-        if hasattr(operand2_source, 'source_type'):
-            # ArgumentResult
-            if operand2_source.source_type == "meter_place":
-                unit2 = self._get_unit_from_argument(
-                    operand2_source, "Argument 2")
-            else:
-                unit2 = ""
-        else:
-            unit2 = ""
-
+    def _combine_units(self, unit1: str, unit2: str, operator: str) -> str:
+        """Kombiniert zwei Einheiten basierend auf dem Operator"""
         # Einfache Einheitenberechnung
         if operator == '+' or operator == '-':
             # Bei Addition/Subtraktion sollten die Einheiten gleich sein
@@ -382,8 +394,12 @@ class ConsumptionCalc(models.Model):
             else:
                 return f"{unit1}+{unit2}" if unit1 and unit2 else ""
         elif operator == '*':
-            # Bei Multiplikation werden Einheiten multipliziert
-            if unit1 and unit2:
+            # Bei Multiplikation: Wenn einer der Operanden Prozent ist, behalte die andere Einheit
+            if unit2 == '%':
+                return unit1  # Prozent ist dimensionslos
+            elif unit1 == '%':
+                return unit2  # Prozent ist dimensionslos
+            elif unit1 and unit2:
                 return f"{unit1}×{unit2}"
             elif unit1:
                 return unit1
@@ -392,8 +408,10 @@ class ConsumptionCalc(models.Model):
             else:
                 return ""
         elif operator == '/':
-            # Bei Division wird durch die zweite Einheit geteilt
-            if unit1 and unit2:
+            # Bei Division: Wenn der Divisor Prozent ist, behalte die Einheit des Dividenden
+            if unit2 == '%':
+                return unit1  # Division durch Prozent ändert die Einheit nicht
+            elif unit1 and unit2:
                 if unit1 == unit2:
                     return ""  # Einheit kürzt sich weg
                 return f"{unit1}/{unit2}"

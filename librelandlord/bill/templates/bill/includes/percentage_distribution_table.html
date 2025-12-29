@@ -19,12 +19,12 @@
         <tr>
             <td>{{ contrib.consumption_calc_name }}</td>
             <td class="consumption-cell">
-                {{ contrib.final_consumption|floatformat:0 }}
+                {{ contrib.final_consumption|floatformat:1 }}
                 {{ summary.cost_center_calculation.total_consumption_unit }}
             </td>
             <td style="text-align: center;">÷</td>
             <td class="consumption-cell">
-                {{ summary.cost_center_calculation.total_consumption|floatformat:0 }}
+                {{ summary.cost_center_calculation.total_consumption|floatformat:1 }}
                 {{ summary.cost_center_calculation.total_consumption_unit }}
             </td>
             <td style="text-align: center;">=</td>

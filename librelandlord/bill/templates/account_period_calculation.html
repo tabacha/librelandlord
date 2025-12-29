@@ -434,19 +434,17 @@
                 {% for step in contrib.consumption_result.calculation_steps %}
                 {% if step.step_type == 'operation' %}
                 <div class="calculation-step step-{{ step.step_type }}">
+                    {% if step.operand1_label or step.operand2_label %}
+                    <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
+                        {% if step.operand1_label %}({{ step.operand1|floatformat:1 }} {{ step.operand1_unit }} = {{ step.operand1_label }}){% endif %}
+                        {% if step.operand2_label %}({{ step.operand2|floatformat:1 }} {{ step.operand2_unit }} = {{ step.operand2_label }}){% endif %}
+                    </div>
+                    {% endif %}
                     <span class="calc-cell">
-                        {{ step.operand1 }} {{ step.unit }} {{ step.operator }} {{ step.operand2 }}
-                        {{ step.unit}} =
+                        {{ step.operand1|floatformat:1 }} {{ step.operand1_unit }} {{ step.operator }} {{ step.operand2|floatformat:1 }} {{ step.operand2_unit }} =
                     </span>
                     <span class="consumption-cell">
-                        <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
-                    </span>
-                </div>
-                {% elif step.step_type == 'result' %}
-                <div class="calculation-step step-{{ step.step_type }}">
-                    <strong>Endergebnis:</strong>
-                    <span class="consumption-cell">
-                        <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
+                        <strong>{{ step.result|floatformat:1 }} {{ step.unit }}</strong>
                     </span>
                 </div>
                 {% endif %}
@@ -482,25 +480,21 @@
                         {% for step in contrib.consumption_result.calculation_steps %}
                         {% if step.step_type == 'operation' %}
                         <div class="calculation-step step-{{ step.step_type }}">
+                            {% if step.operand1_label or step.operand2_label %}
+                            <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
+                                {% if step.operand1_label %}({{ step.operand1|floatformat:1 }} {{ step.operand1_unit }} = {{ step.operand1_label }}){% endif %}
+                                {% if step.operand2_label %}({{ step.operand2|floatformat:1 }} {{ step.operand2_unit }} = {{ step.operand2_label }}){% endif %}
+                            </div>
+                            {% endif %}
                             <span class="calc-cell">
-                                {{ step.operand1 }} {{ step.unit }} {{ step.operator }} {{ step.operand2 }}
-                                {{ step.unit}} =
+                                {{ step.operand1|floatformat:1 }} {{ step.operand1_unit }} {{ step.operator }} {{ step.operand2|floatformat:1 }} {{ step.operand2_unit }} =
                             </span>
                             <span class="consumption-cell">
-                                <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
+                                <strong>{{ step.result|floatformat:1 }} {{ step.unit }}</strong>
                             </span>
 
                         </div>
                         {% elif step.step_type == 'result' %}
-                        <!-- Zeige Endergebnis nur wenn es Operationen gab -->
-                        {% if contrib.consumption_result.calculation_steps|length > 4 %}
-                        <div class="calculation-step step-{{ step.step_type }}">
-                            <strong>Endergebnis:</strong>
-                            <span class="consumption-cell">
-                                <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
-                            </span>
-                        </div>
-                        {% endif %}
                         {% endif %}
                         {% endfor %}
                         {% if contrib.consumption_result.calculation_str %}

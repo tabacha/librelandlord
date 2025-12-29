@@ -417,20 +417,17 @@
 
             {% if summary.cost_center_calculation and apartment_filter_id %}
 
-            <div class="meter-readings-section">
-                <h3 class="section-title">Zählerstände</h3>
+            <div class="consumption-section">
+                <h3 class="section-title">Verbrauchsberechnung</h3>
                 {% for contrib in summary.cost_center_calculation.contribution_results %}
                 {% if contrib.contribution.apartment_id == apartment_filter_id %}
+
+                <!-- Zählerstände Tabelle -->
                 {% for step in contrib.consumption_result.calculation_steps %}
                 {% include 'bill/includes/meter_readings_table.html' with step=step %}
                 {% endfor %}
-                {% endif %}
-                {% endfor %}
-            </div>
 
-            <div class="consumption-section">
-                {% for contrib in summary.cost_center_calculation.contribution_results %}
-                {% if contrib.contribution.apartment_id == apartment_filter_id %}
+                <!-- Berechnungsschritte -->
                 {% for step in contrib.consumption_result.calculation_steps %}
                 {% if step.step_type == 'operation' %}
                 <div class="calculation-step step-{{ step.step_type }}">
@@ -449,6 +446,7 @@
                 </div>
                 {% endif %}
                 {% endfor %}
+
                 {% if contrib.consumption_result.calculation_str %}
                 <div class="calculation-step">
                     <span class="calc-cell">{{ contrib.consumption_result.calculation_str_left }} =</span>
@@ -456,6 +454,7 @@
                             }}</strong></span>
                 </div>
                 {% endif %}
+
                 {% endif %}
                 {% endfor %}
             </div>

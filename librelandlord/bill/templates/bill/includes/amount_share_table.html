@@ -1,0 +1,38 @@
+{% comment %}Anteil am Gesamtrechnungsbetrag Tabelle (mit optionalem Apartment-Filter){% endcomment %}
+{% if cost_center_summaries %}
+<table class="meter-readings-table">
+    <thead>
+        <tr>
+            <th>Verbrauchsberechnung</th>
+            <th>Gesamtrechnungsbetrag</th>
+            <th></th>
+            <th>Prozentsatz</th>
+            <th></th>
+            <th>Anteil</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for summary in cost_center_summaries %}
+        {% if summary.cost_center_calculation %}
+        {% for contrib in summary.cost_center_calculation.contribution_results %}
+        {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
+        <tr>
+            <td>{{ contrib.consumption_calc_name }}</td>
+            <td class="consumption-cell">{{ summary.total_amount|floatformat:2 }} €</td>
+            <td style="text-align: center;">*</td>
+            <td class="consumption-cell">{{ contrib.percentage|floatformat:1 }} %</td>
+            <td style="text-align: center;">=</td>
+            <td class="consumption-cell"><strong>{{ contrib.euro_anteil|floatformat:2 }} €</strong></td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        {# Rundungsdifferenz ausgeblendet #}
+        <tr style="border-top:2px solid #333; background:#f8f9fa;">
+            <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
+            <td class="consumption-cell"><strong>{{ summary.sum_euro_anteil|floatformat:2 }} €</strong></td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}

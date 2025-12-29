@@ -5,5 +5,17 @@
       "envManager": "ms-python.python:venv",
       "packageManager": "ms-python.python:pip"
     }
-  ]
+  ],
+  "[html]": {
+    "editor.wordWrap": "off",
+    "editor.wordWrapColumn": 9999,
+    "editor.formatOnSave": false,
+    "files.trimTrailingWhitespace": true
+  },
+  "[django-html]": {
+    "editor.wordWrap": "off",
+    "editor.wordWrapColumn": 9999,
+    "editor.formatOnSave": false,
+    "files.trimTrailingWhitespace": true
+  }
 }

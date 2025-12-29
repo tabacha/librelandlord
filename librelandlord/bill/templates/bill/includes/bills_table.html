@@ -1,0 +1,29 @@
+{% comment %}Rechnungsübersicht Tabelle{% endcomment %}
+<table class="meter-readings-table">
+    <thead>
+        <tr>
+            <th>Rechnungsdatum</th>
+            <th>Rechnungsnummer</th>
+            <th>Text</th>
+            <th>Zeitraum</th>
+            <th>Betrag</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bill in bills %}
+        <tr>
+            <td>{{ bill.bill_date|date:"d.m.Y" }}</td>
+            <td class="number-cell">{{ bill.bill_number }}</td>
+            <td>{{ bill.text }}</td>
+            <td>{{ bill.from_date|date:"d.m.Y" }} - {{ bill.to_date|date:"d.m.Y" }}</td>
+            <td class="consumption-cell">{{ bill.value|floatformat:2 }} €</td>
+        </tr>
+        {% endfor %}
+        <tr style="border-top: 2px solid #333;">
+            <td colspan="4" style="text-align: right; font-weight: bold;">Gesamtsumme:</td>
+            <td class="consumption-cell" style="font-size: 1.1em;">
+                <strong>{{ total_amount|floatformat:2 }} €</strong>
+            </td>
+        </tr>
+    </tbody>
+</table>

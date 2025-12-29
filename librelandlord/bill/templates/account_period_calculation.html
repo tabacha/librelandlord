@@ -412,35 +412,7 @@
             <div class="bills-section">
                 <h3 class="section-title">Rechnungen</h3>
 
-                <table class="meter-readings-table">
-                    <thead>
-                        <tr>
-                            <th>Rechnungsdatum</th>
-                            <th>Rechnungsnummer</th>
-                            <th>Text</th>
-                            <th>Zeitraum</th>
-                            <th>Betrag</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for bill in summary.bills %}
-                        <tr>
-                            <td>{{ bill.bill_date|date:"d.m.Y" }}</td>
-                            <td class="number-cell">{{ bill.bill_number }}</td>
-                            <td>{{ bill.text }}</td>
-                            <td>{{ bill.from_date|date:"d.m.Y" }} -
-                                {{ bill.to_date|date:"d.m.Y" }}</td>
-                            <td class="consumption-cell">{{ bill.value|floatformat:2 }} €</td>
-                        </tr>
-                        {% endfor %}
-                        <tr style="border-top: 2px solid #333;">
-                            <td colspan="4" style="text-align: right; font-weight: bold;">Gesamtsumme:</td>
-                            <td class="consumption-cell" style="font-size: 1.1em;">
-                                <strong>{{ summary.total_amount|floatformat:2 }} €</strong>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                {% include 'bill/includes/bills_table.html' with bills=summary.bills total_amount=summary.total_amount %}
             </div>
 
             {% if summary.cost_center_calculation and apartment_filter_id %}
@@ -450,69 +422,13 @@
                 {% for contrib in summary.cost_center_calculation.contribution_results %}
                 {% if contrib.contribution.apartment_id == apartment_filter_id %}
                 {% for step in contrib.consumption_result.calculation_steps %}
-                {% if step.step_type == 'argument' and step.source_details and step.source_details.meters %}
-                <div class="section-group">
-                    <h5>Zählerstände {{ step.source_details.meter_place.name }}
-                        (Ort: {{ step.source_details.meter_place.location }})</h5>
-                    <table class="meter-readings-table">
-                        <thead>
-                            <tr>
-                                <th>Zähler Nr</th>
-                                <th>Von</th>
-                                <th>Bis</th>
-                                <th>Endstand</th>
-                                <th></th>
-                                <th>Anfangsstand</th>
-                                <th></th>
-                                <th>Verbrauch</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for meter_info in step.source_details.meters %}
-                            <tr>
-                                <td class="number-cell">{{ meter_info.meter_number }}</td>
-                                <td>{{ meter_info.start_reading.date|date:"d.m.Y" }}</td>
-                                <td>{{ meter_info.end_reading.date|date:"d.m.Y" }}</td>
-                                <td class="number-cell">
-                                    {{ meter_info.end_reading.calculated_reading|floatformat:0 }}
-                                    {{ step.source_details.meter_place.unit }}
-                                </td>
-                                <td> - </td>
-                                <td class="number-cell">
-                                    {{ meter_info.start_reading.calculated_reading|floatformat:0 }}
-                                    {{ step.source_details.meter_place.unit }}
-                                </td>
-                                <td>=</td>
-                                <td class="consumption-cell">
-                                    {% if meter_info.consumption %}
-                                    {{ meter_info.consumption|floatformat:0 }}
-                                    {{ step.source_details.meter_place.unit }}
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                            <tr style="border-top:2px solid #333; background:#f8f9fa;">
-                                <td colspan="7" style="text-align: right; font-weight:bold;">
-                                    Summe
-                                </td>
-                                <td class="consumption-cell">
-                                    <strong>
-                                        {{ step.source_details.total_consumption|floatformat:0 }}
-                                        {{ step.source_details.meter_place.unit }}
-                                    </strong>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                {% endif %}
+                {% include 'bill/includes/meter_readings_table.html' with step=step %}
                 {% endfor %}
                 {% endif %}
                 {% endfor %}
             </div>
 
             <div class="consumption-section">
-                <h3 class="section-title">Berechnungsschritte</h3>
                 {% for contrib in summary.cost_center_calculation.contribution_results %}
                 {% if contrib.contribution.apartment_id == apartment_filter_id %}
                 {% for step in contrib.consumption_result.calculation_steps %}
@@ -560,62 +476,7 @@
                     <div class="apartment-content">
                         <!-- Zählerstände Tabelle -->
                         {% for step in contrib.consumption_result.calculation_steps %}
-                        {% if step.step_type == 'argument' and step.source_details and step.source_details.meters %}
-                        <div class="meter-readings-section">
-                            <h5>Zählerstände {{ step.source_details.meter_place.name }}
-                                (Ort: {{ step.source_details.meter_place.location }})</h5>
-                            <table class="meter-readings-table">
-                                <thead>
-                                    <tr>
-                                        <th>Zähler Nr</th>
-                                        <th>Datum Anfang</th>
-                                        <th>Datum Endstand</th>
-                                        <th>Endstand</th>
-                                        <th></th>
-                                        <th>Anfangsstand</th>
-                                        <th></th>
-                                        <th>Verbrauch</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for meter_info in step.source_details.meters %}
-                                    <tr>
-                                        <td class="number-cell">{{ meter_info.meter_number }}</td>
-                                        <td>{{ meter_info.start_reading.date|date:"d.m.Y" }}</td>
-                                        <td>{{ meter_info.end_reading.date|date:"d.m.Y" }}</td>
-                                        <td class="number-cell">
-                                            {{ meter_info.end_reading.calculated_reading|floatformat:0 }}
-                                            {{ step.source_details.meter_place.unit }}
-                                        </td>
-                                        <td> - </td>
-                                        <td class="number-cell">
-                                            {{ meter_info.start_reading.calculated_reading|floatformat:0 }}
-                                            {{ step.source_details.meter_place.unit }}
-                                        </td>
-                                        <td>=</td>
-                                        <td class="consumption-cell">
-                                            {% if meter_info.consumption %}
-                                            {{ meter_info.consumption|floatformat:0 }}
-                                            {{ step.source_details.meter_place.unit }}
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                    <tr style="border-top:2px solid #333; background:#f8f9fa;">
-                                        <td colspan="7" style="text-align: right; font-weight:bold;">
-                                            Summe
-                                        </td>
-                                        <td class="consumption-cell">
-                                            <strong>
-                                                {{ step.source_details.total_consumption|floatformat:0 }}
-                                                {{ step.source_details.meter_place.unit }}
-                                            </strong>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        {% endif %}
+                        {% include 'bill/includes/meter_readings_table.html' with step=step %}
                         {% endfor %}
 
                         {% for step in contrib.consumption_result.calculation_steps %}
@@ -676,125 +537,15 @@
         <div class="cost-center-content">
             <div class="consumption-section">
                 {% if not apartment_filter_id %}
-                <table class="meter-readings-table">
-                    <thead>
-                        <tr>
-                            <th>Verbrauchsberechnung</th>
-                            <th>Verbrauch</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for summary in cost_center_summaries %}
-                        {% if summary.cost_center_calculation %}
-                        {% for contrib in summary.cost_center_calculation.contribution_results %}
-                        <tr>
-                            <td>{{ contrib.consumption_calc_name }}</td>
-                            <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }}
-                                {{ summary.cost_center_calculation.total_consumption_unit }}</td>
-                        </tr>
-                        {% endfor %}
-                        <tr style="border-top:2px solid #333; background:#f8f9fa;">
-                            <td style="text-align:right; font-weight:bold;">Gesamtverbrauch</td>
-                            <td class="consumption-cell">
-                                <strong>{{ summary.cost_center_calculation.total_consumption|floatformat:0 }}</strong>
-
-                                {{ summary.cost_center_calculation.total_consumption_unit }}
-                            </td>
-                        </tr>
-                        {% endif %}
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% endif %}
-
-                <div class="section-group">
+                {% include 'bill/includes/consumption_summary_table.html' with cost_center_summaries=cost_center_summaries %}
+                {% endif %} <div class="section-group">
                     <h3 class="section-title" style="margin-top: 30px;">Verbrauchsverteilung in Prozent</h3>
 
-                    <table class="meter-readings-table">
-                        <thead>
-                            <tr>
-                                <th>Verbrauchsberechnung</th>
-                                <th>Verbrauch</th>
-                                <th></th>
-                                <th>Gesamtverbrauch</th>
-                                <th></th>
-                                <th>Ergebnis</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for summary in cost_center_summaries %}
-                            {% if summary.cost_center_calculation %}
-                            {% for contrib in summary.cost_center_calculation.contribution_results %}
-                            {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
-                            <tr>
-                                <td>{{ contrib.consumption_calc_name }}</td>
-                                <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }}
-                                    {{ summary.cost_center_calculation.total_consumption_unit }}</td>
-                                <td style="text-align: center;">÷</td>
-                                <td class="consumption-cell">
-                                    {{ summary.cost_center_calculation.total_consumption|floatformat:0 }}
-                                    {{ summary.cost_center_calculation.total_consumption_unit }}</td>
-                                <td style="text-align: center;">=</td>
-                                <td class="consumption-cell">
-                                    <strong>{{ contrib.percentage|floatformat:1 }} %</strong>
-                                </td>
-                            </tr>
-                            {% endif %}
-                            {% endfor %}
-                            {% endif %}
-                            {% endfor %}
-                            {% if not apartment_filter_id %}
-                            <tr style="border-top:2px solid #333; background:#f8f9fa;">
-                                <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
-                                <td class="consumption-cell"><strong>100 %</strong>
-                                </td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
+                    {% include 'bill/includes/percentage_distribution_table.html' with cost_center_summaries=cost_center_summaries apartment_filter_id=apartment_filter_id %}
                 </div>
-
                 <div class="section-group">
                     <h3 class="section-title" style="margin-top: 30px;">Anteil am Gesamtrechnungsbetrag</h3>
-                    <table class="meter-readings-table">
-                        <thead>
-                            <tr>
-                                <th>Verbrauchsberechnung</th>
-                                <th>Gesamtrechnungsbetrag</th>
-                                <th></th>
-                                <th>Prozentsatz</th>
-                                <th></th>
-                                <th>Anteil</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for summary in cost_center_summaries %}
-                            {% if summary.cost_center_calculation %}
-                            {% for contrib in summary.cost_center_calculation.contribution_results %}
-                            {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
-                            <tr>
-                                <td>{{ contrib.consumption_calc_name }}</td>
-                                <td class="consumption-cell">{{ summary.total_amount|floatformat:2 }} €</td>
-                                <td style="text-align: center;">*</td>
-                                <td class="consumption-cell">{{ contrib.percentage|floatformat:1 }} %</td>
-                                <td style="text-align: center;">=</td>
-                                <td class="consumption-cell">
-                                    <strong>{{ contrib.euro_anteil|floatformat:2 }} €</strong>
-                                </td>
-                            </tr>
-                            {% endif %}
-                            {% endfor %}
-                            {# Rundungsdifferenz ausgeblendet #}
-                            <tr style="border-top:2px solid #333; background:#f8f9fa;">
-                                <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
-                                <td class="consumption-cell"><strong>{{ summary.sum_euro_anteil|floatformat:2 }}
-                                        €</strong>
-                                </td>
-                            </tr>
-                            {% endif %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    {% include 'bill/includes/amount_share_table.html' with cost_center_summaries=cost_center_summaries apartment_filter_id=apartment_filter_id %}
                 </div>
             </div>
         </div>

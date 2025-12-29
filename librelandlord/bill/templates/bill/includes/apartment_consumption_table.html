@@ -1,0 +1,28 @@
+{% comment %}Apartment-Verbrauch Tabelle (gefiltert) + Gesamtverbrauch{% endcomment %}
+{% if calc %}
+<table class="meter-readings-table">
+    <thead>
+        <tr>
+            <th>Verbrauchsberechnung</th>
+            <th>Verbrauch</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for contrib in calc.contribution_results %}
+        {% if contrib.contribution.apartment_id == apartment_filter_id %}
+        <tr>
+            <td>{{ contrib.consumption_calc_name }}</td>
+            <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }} {{ calc.total_consumption_unit }}
+            </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        <tr style="border-top:2px solid #333; background:#f8f9fa;">
+            <td style="text-align:right; font-weight:bold;">Gesamtverbrauch</td>
+            <td class="consumption-cell">
+                <strong>{{ calc.total_consumption|floatformat:0 }}</strong> {{ calc.total_consumption_unit }}
+            </td>
+        </tr>
+    </tbody>
+</table>
+{% endif %}

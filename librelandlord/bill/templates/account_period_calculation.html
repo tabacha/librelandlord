@@ -6,6 +6,164 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Abrechnungsberechnung - {{ account_period.text }}</title>
     <style>
+        /* Druck-Einstellungen für DIN A4 Hochformat */
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                font-size: 10pt;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Startseite dichter und ohne visuelle Übersicht */
+            .summary {
+                display: none !important;
+            }
+
+            .consumption-summary {
+                display: none !important;
+            }
+
+            /* Eigene Seitenzählung */
+            .page-footer {
+                position: fixed;
+                bottom: 0;
+                right: 0;
+                font-size: 8pt;
+                color: #666;
+            }
+
+            .cost-center {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+
+            .apartment-item {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .meter-readings-table {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .header {
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+
+            .header h1 {
+                margin: 0 0 5px 0;
+                font-size: 1.4em;
+            }
+
+            .header h2 {
+                margin: 0 0 5px 0;
+                font-size: 1.1em;
+            }
+
+            .cost-center {
+                margin-bottom: 12px;
+                overflow: visible;
+            }
+
+            .cost-center-header {
+                padding: 6px 12px;
+                font-size: 1em;
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
+            .cost-center-content {
+                padding: 8px;
+            }
+
+            .section-title {
+                margin-bottom: 8px;
+                margin-top: 10px;
+                font-size: 0.95em;
+            }
+
+            .meter-readings-table th,
+            .meter-readings-table td {
+                padding: 3px 6px;
+                font-size: 8pt;
+            }
+
+            .consumption-summary {
+                padding: 8px;
+                margin-bottom: 8px;
+            }
+
+            .apartment-item {
+                margin-bottom: 10px;
+            }
+
+            .apartment-header {
+                padding: 6px 10px;
+                font-size: 0.95em;
+            }
+
+            .apartment-content {
+                padding: 8px;
+            }
+
+            .apartment-content h4 {
+                margin: 0 0 8px 0;
+                font-size: 0.9em;
+            }
+
+            .apartment-content h5 {
+                margin: 8px 0 5px 0;
+                font-size: 0.85em;
+            }
+
+            .calculation-step {
+                padding: 4px 8px;
+                margin: 2px 0;
+                font-size: 8pt;
+            }
+
+            .meter-readings-section {
+                margin-bottom: 8px;
+            }
+
+            .bills-section {
+                margin-bottom: 15px;
+            }
+
+            .consumption-section {
+                margin-bottom: 10px;
+            }
+
+            /* Verhindere Seitenumbruch zwischen Überschrift und zugehöriger Tabelle */
+            .section-group {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .section-group .meter-readings-table {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .section-title {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+        }
+
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -122,18 +280,11 @@
             margin: 5px 0;
             font-family: monospace;
             font-size: 0.9em;
+            text-align: right;
         }
 
-        .step-argument {
-            border-left: 4px solid #2196f3;
-        }
-
-        .step-operation {
-            border-left: 4px solid #ff9800;
-        }
 
         .step-result {
-            border-left: 4px solid #4caf50;
             font-weight: bold;
         }
 
@@ -153,6 +304,88 @@
             color: #666;
             font-size: 0.9em;
         }
+
+        /* Zählerstände Tabelle */
+        .meter-readings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: white;
+        }
+
+        .meter-readings-table th,
+        .meter-readings-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .meter-readings-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .meter-readings-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .meter-readings-table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .meter-readings-table .number-cell,
+        .meter-readings-table td.number-cell {
+            text-align: right !important;
+            font-family: monospace;
+        }
+
+        .meter-readings-table .consumption-cell,
+        .meter-readings-table td.consumption-cell,
+        td.consumption-cell,
+        .consumption-cell {
+            text-align: right !important;
+            font-weight: bold;
+            color: #2e7d32;
+            font-family: monospace;
+        }
+
+        span.consumption-cell {
+            margin-left: 10%;
+            font-size: 12pt;
+
+        }
+
+        .calculation-grid {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 10px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        .calculation-label {
+            font-weight: bold;
+        }
+
+        .calculation-equation {
+            font-family: monospace;
+        }
+
+        .calculation-result {
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #2e7d32;
+            text-align: right;
+        }
+
+        /* calc-cell für Berechnungsschritte */
+        .calc-cell {
+            font-family: monospace;
+        }
     </style>
 </head>
 
@@ -163,20 +396,6 @@
         <p class="date-range">{{ account_period.start_date }} bis {{ account_period.end_date }}</p>
     </div>
 
-    <div class="summary">
-        <div class="summary-card">
-            <h3>Gesamtsumme</h3>
-            <div class="amount" style="font-size: 1.5em;">{{ summary.grand_total }} €</div>
-        </div>
-        <div class="summary-card">
-            <h3>Anzahl Rechnungen</h3>
-            <div style="font-size: 1.5em;">{{ summary.total_bill_count }}</div>
-        </div>
-        <div class="summary-card">
-            <h3>Cost Center</h3>
-            <div style="font-size: 1.5em;">{{ summary.cost_center_count }}</div>
-        </div>
-    </div>
 
     {% for summary in cost_center_summaries %}
     <div class="cost-center">
@@ -191,35 +410,63 @@
 
             <!-- Rechnungsübersicht -->
             <div class="bills-section">
-                <h3 class="section-title">Rechnungen ({{ summary.total_amount }} €)</h3>
-                <p class="date-range">Zeitraum: {{ summary.date_range.earliest }} bis {{ summary.date_range.latest }}
-                </p>
+                <h3 class="section-title">Rechnungen</h3>
 
-                <div class="bills-grid">
-                    {% for bill in summary.bills %}
-                    <div class="bill-item">
-                        <strong>{{ bill.text }}</strong> - <span class="amount">{{ bill.value }} €</span>
-                        <div class="bill-meta">
-                            Rechnungsnummer: {{ bill.bill_number }} |
-                            Rechnungsdatum: {{ bill.bill_date }} |
-                            Leistungszeitraum: {{ bill.from_date }} - {{ bill.to_date }}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
+                {% include 'bill/includes/bills_table.html' with bills=summary.bills total_amount=summary.total_amount %}
             </div>
 
+            {% if summary.cost_center_calculation and apartment_filter_id %}
+
+            <div class="meter-readings-section">
+                <h3 class="section-title">Zählerstände</h3>
+                {% for contrib in summary.cost_center_calculation.contribution_results %}
+                {% if contrib.contribution.apartment_id == apartment_filter_id %}
+                {% for step in contrib.consumption_result.calculation_steps %}
+                {% include 'bill/includes/meter_readings_table.html' with step=step %}
+                {% endfor %}
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="consumption-section">
+                {% for contrib in summary.cost_center_calculation.contribution_results %}
+                {% if contrib.contribution.apartment_id == apartment_filter_id %}
+                {% for step in contrib.consumption_result.calculation_steps %}
+                {% if step.step_type == 'operation' %}
+                <div class="calculation-step step-{{ step.step_type }}">
+                    <span class="calc-cell">
+                        {{ step.operand1 }} {{ step.unit }} {{ step.operator }} {{ step.operand2 }}
+                        {{ step.unit}} =
+                    </span>
+                    <span class="consumption-cell">
+                        <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
+                    </span>
+                </div>
+                {% elif step.step_type == 'result' %}
+                <div class="calculation-step step-{{ step.step_type }}">
+                    <strong>Endergebnis:</strong>
+                    <span class="consumption-cell">
+                        <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
+                    </span>
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% if contrib.consumption_result.calculation_str %}
+                <div class="calculation-step">
+                    <span class="calc-cell">{{ contrib.consumption_result.calculation_str_left }} =</span>
+                    <span class="consumption-cell"><strong>{{ contrib.consumption_result.calculation_result
+                            }}</strong></span>
+                </div>
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
             <!-- Verbrauchsberechnung -->
-            {% if summary.cost_center_calculation %}
+            {% if summary.cost_center_calculation and not apartment_filter_id %}
             <div class="consumption-section">
                 <h3 class="section-title">Verbrauchsberechnung</h3>
-
-                <div class="consumption-summary">
-                    <strong>Gesamtverbrauch:</strong> {{ summary.cost_center_calculation.total_consumption }} kWh/m³<br>
-                    <strong>Anzahl Apartments:</strong> {{ summary.cost_center_calculation.apartment_count }}<br>
-                    <strong>Berechnungszeitraum:</strong> {{ summary.cost_center_calculation.calculation_period_start }}
-                    bis {{ summary.cost_center_calculation.calculation_period_end }}
-                </div>
 
                 {% for contrib in summary.cost_center_calculation.contribution_results %}
                 <div class="apartment-item">
@@ -227,34 +474,49 @@
                         {{ contrib.apartment_name }} - {{ contrib.consumption_calc_name }}
                     </div>
                     <div class="apartment-content">
-                        <p><strong>Verbrauch:</strong> <span class="amount">{{ contrib.final_consumption }}</span>
-                            kWh/m³</p>
-
-                        <h4>Berechnungsschritte:</h4>
+                        <!-- Zählerstände Tabelle -->
                         {% for step in contrib.consumption_result.calculation_steps %}
-                        <div class="calculation-step step-{{ step.step_type }}">
-                            {% if step.step_type == 'argument' %}
-                            <strong>{{ step.argument_name }}:</strong> {{ step.result }}
-                            {% if step.source_details %}
-                            <pre>
-                                {{ step.source_details | pprint }}
-                            </pre>
-                            {% endif %}
-                            {% if step.source_details and step.source_details.meter_place_name %}
-                            ({{ step.source_details.meter_place_name }})
-                            {% endif %}
-                            {% elif step.step_type == 'operation' %}
-                            {{ step.operand1 }} {{ step.operator }} {{ step.operand2 }} = {{ step.result }}
-                            {% elif step.step_type == 'result' %}
-                            <strong>Endergebnis:</strong> {{ step.result }}
-                            {% endif %}
-                        </div>
+                        {% include 'bill/includes/meter_readings_table.html' with step=step %}
                         {% endfor %}
+
+                        {% for step in contrib.consumption_result.calculation_steps %}
+                        {% if step.step_type == 'operation' %}
+                        <div class="calculation-step step-{{ step.step_type }}">
+                            <span class="calc-cell">
+                                {{ step.operand1 }} {{ step.unit }} {{ step.operator }} {{ step.operand2 }}
+                                {{ step.unit}} =
+                            </span>
+                            <span class="consumption-cell">
+                                <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
+                            </span>
+
+                        </div>
+                        {% elif step.step_type == 'result' %}
+                        <!-- Zeige Endergebnis nur wenn es Operationen gab -->
+                        {% if contrib.consumption_result.calculation_steps|length > 4 %}
+                        <div class="calculation-step step-{{ step.step_type }}">
+                            <strong>Endergebnis:</strong>
+                            <span class="consumption-cell">
+                                <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                        {% endfor %}
+                        {% if contrib.consumption_result.calculation_str %}
+                        <div class="calculation-step">
+                            <span class="calc-cell">{{ contrib.consumption_result.calculation_str_left }} =</span>
+                            <span class="consumption-cell"><strong>{{ contrib.consumption_result.calculation_result
+                                    }}</strong></span>
+                        </div>
+                        {% endif %}
+
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
+            {% if not apartment_filter_id %}
             <div class="consumption-section">
                 <h3 class="section-title">Verbrauchsberechnung</h3>
                 <div class="no-data">
@@ -262,9 +524,32 @@
                 </div>
             </div>
             {% endif %}
+            {% endif %}
         </div>
     </div>
     {% endfor %}
+
+    <!-- Verbrauchsverteilung Zusammenfassung -->
+    <div class="cost-center">
+        <div class="cost-center-header" style="background: #4caf50;">
+            Verbrauchsverteilung - Zusammenfassung
+        </div>
+        <div class="cost-center-content">
+            <div class="consumption-section">
+                {% if not apartment_filter_id %}
+                {% include 'bill/includes/consumption_summary_table.html' with cost_center_summaries=cost_center_summaries %}
+                {% endif %} <div class="section-group">
+                    <h3 class="section-title" style="margin-top: 30px;">Verbrauchsverteilung in Prozent</h3>
+
+                    {% include 'bill/includes/percentage_distribution_table.html' with cost_center_summaries=cost_center_summaries apartment_filter_id=apartment_filter_id %}
+                </div>
+                <div class="section-group">
+                    <h3 class="section-title" style="margin-top: 30px;">Anteil am Gesamtrechnungsbetrag</h3>
+                    {% include 'bill/includes/amount_share_table.html' with cost_center_summaries=cost_center_summaries apartment_filter_id=apartment_filter_id %}
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

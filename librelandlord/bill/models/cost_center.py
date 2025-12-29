@@ -26,6 +26,7 @@ class CostCenter(models.Model):
         consumption_calc_name: str
         consumption_result: 'ConsumptionCalc.ConsumptionResult'
         final_consumption: Decimal
+        percentage: float
 
     class CostCenterCalculation(NamedTuple):
         """Gesamtberechnung eines CostCenters"""
@@ -35,6 +36,7 @@ class CostCenter(models.Model):
         contribution_results: List['ContributionResult']
         total_consumption: Decimal
         apartment_count: int
+        total_consumption_unit: str
 
     def calculate_total_consumption(self, start_date: date, end_date: date) -> CostCenterCalculation:
         """
@@ -71,12 +73,17 @@ class CostCenter(models.Model):
                 calculation_period_end=end_date,
                 contribution_results=[],
                 total_consumption=Decimal('0.00'),
-                apartment_count=0
+                apartment_count=0,
+                total_consumption_unit=""
             )
 
         contribution_results = []
         total_consumption = Decimal('0.00')
         apartment_names = set()
+        total_consumption_unit = ""
+
+        # Erst alle Contributions sammeln um Gesamtverbrauch zu berechnen
+        temp_results = []
 
         # Für jede Contribution die ConsumptionCalc berechnen
         for contribution in contributions:
@@ -88,27 +95,49 @@ class CostCenter(models.Model):
                 )
 
                 # Apartment-Name ermitteln
-                apartment_name = contribution.apartment.name if contribution.apartment else "Unbekannt"
+                apartment_name = contribution.get_display_name()
                 apartment_names.add(apartment_name)
 
-                # ContributionResult erstellen
-                contribution_result = self.ContributionResult(
-                    contribution=contribution,
-                    apartment_name=apartment_name,
-                    consumption_calc_name=contribution.consumption_calc.name,
-                    consumption_result=consumption_result,
-                    final_consumption=consumption_result.final_result
-                )
+                # Einheit vom ersten Ergebnis übernehmen
+                if not total_consumption_unit and consumption_result.calculation_steps:
+                    final_step = consumption_result.calculation_steps[-1]
+                    total_consumption_unit = final_step.unit or ""
 
-                contribution_results.append(contribution_result)
+                # Temporär speichern
+                temp_results.append({
+                    'contribution': contribution,
+                    'apartment_name': apartment_name,
+                    'consumption_result': consumption_result,
+                    'final_consumption': consumption_result.final_result
+                })
+
                 total_consumption += consumption_result.final_result
 
             except Exception as e:
                 # Bei Fehlern in einzelnen Contributions weiterfahren
-                # Könnte auch eine spezifische Exception werfen, je nach Anforderung
                 raise ValueError(
                     f"Fehler bei Berechnung für Apartment {contribution.apartment}: {str(e)}"
                 ) from e
+
+        # Jetzt ContributionResults mit Prozentsätzen erstellen
+        for temp_result in temp_results:
+            # Prozentsatz berechnen
+            if total_consumption != 0:
+                percentage = float(
+                    (temp_result['final_consumption'] / total_consumption) * 100)
+            else:
+                percentage = 0.0
+
+            contribution_result = self.ContributionResult(
+                contribution=temp_result['contribution'],
+                apartment_name=temp_result['apartment_name'],
+                consumption_calc_name=temp_result['contribution'].consumption_calc.name,
+                consumption_result=temp_result['consumption_result'],
+                final_consumption=temp_result['final_consumption'],
+                percentage=percentage
+            )
+
+            contribution_results.append(contribution_result)
 
         return self.CostCenterCalculation(
             cost_center=self,
@@ -116,5 +145,6 @@ class CostCenter(models.Model):
             calculation_period_end=end_date,
             contribution_results=contribution_results,
             total_consumption=total_consumption,
-            apartment_count=len(apartment_names)
+            apartment_count=len(apartment_names),
+            total_consumption_unit=total_consumption_unit
         )

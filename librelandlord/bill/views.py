@@ -542,7 +542,7 @@ def heating_info_task(request):
 
 @login_required
 @require_http_methods(["GET"])
-def account_period_calculation(request, account_period_id):
+def account_period_calculation(request, account_period_id, apartment_id=None):
     """
     View der die vollständige Berechnung einer AccountPeriod über ein Template ausgibt.
 
@@ -562,7 +562,55 @@ def account_period_calculation(request, account_period_id):
         # Berechnung durchführen
         calculation = account_period.calculate_bills_by_cost_center()
 
-        # Template-Kontext erstellen
+        # Euro-Anteil für jede Contribution berechnen und in die Summaries einfügen
+        cost_center_summaries = []
+        for summary in calculation.cost_center_summaries:
+            total_amount = getattr(summary, 'total_amount', None)
+            if not total_amount:
+                total_amount = 0
+            if hasattr(summary, 'cost_center_calculation') and summary.cost_center_calculation:
+                # Optional: Beiträge nach Apartment-ID filtern (Anzeige),
+                # aber Prozentwerte und Gesamtverbrauch der CostCenter-Berechnung beibehalten.
+                if apartment_id is not None:
+                    filtered_results = [
+                        cr for cr in summary.cost_center_calculation.contribution_results
+                        if getattr(getattr(cr, 'contribution', None), 'apartment_id', None) == apartment_id
+                    ]
+                else:
+                    filtered_results = list(
+                        summary.cost_center_calculation.contribution_results)
+
+                new_contribs = []
+                sum_euro_anteil = 0
+                for contrib in filtered_results:
+                    # Prozentwert aus der ursprünglichen Gesamtrechnung übernehmen
+                    perc = getattr(contrib, 'percentage', 0.0)
+                    euro_anteil = (perc / 100) * float(total_amount)
+                    contrib_dict = contrib._asdict()
+                    contrib_dict['euro_anteil'] = euro_anteil
+                    new_contribs.append(contrib_dict)
+                    sum_euro_anteil += euro_anteil
+
+                # CostCenterCalculation in Dict-Form nur mit gefilterten Beiträgen aktualisieren
+                calc_dict = summary.cost_center_calculation._asdict()
+                calc_dict['contribution_results'] = new_contribs
+                # WICHTIG: Gesamtverbrauch nicht überschreiben, damit "Gesamtverbrauch" sichtbar bleibt
+
+                summary_dict = summary._asdict() if hasattr(
+                    summary, '_asdict') else dict(summary)
+                summary_dict['cost_center_calculation'] = calc_dict
+                summary_dict['total_amount'] = total_amount
+                summary_dict['sum_euro_anteil'] = sum_euro_anteil
+                # Rundungsdifferenz berechnen
+                rounding_diff = round(float(total_amount) - sum_euro_anteil, 2)
+                if abs(rounding_diff) >= 0.01:
+                    summary_dict['rounding_diff'] = rounding_diff
+                else:
+                    summary_dict['rounding_diff'] = None
+                cost_center_summaries.append(summary_dict)
+            else:
+                cost_center_summaries.append(summary)
+
         context = {
             'calculation': calculation,
             'account_period': calculation.account_period,
@@ -571,7 +619,8 @@ def account_period_calculation(request, account_period_id):
                 'total_bill_count': calculation.total_bill_count,
                 'cost_center_count': calculation.cost_center_count
             },
-            'cost_center_summaries': calculation.cost_center_summaries,
+            'cost_center_summaries': cost_center_summaries,
+            'apartment_filter_id': apartment_id,
         }
 
         # Template rendern

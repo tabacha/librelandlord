@@ -15,12 +15,23 @@ class ConsumptionCalc(models.Model):
         DIVIDE = '/', _('/')
         NONE = ' ', _(' ')
 
-    # Define fields for the ConsumptionCalc model.
+    # Define choices for units
+    class Unit(models.TextChoices):
+        EMPTY = '', _('')
+        KWH = 'kWh', _('kWh')
+        M3 = 'm³', _('m³')
+        LITER = 'Liter', _('Liter')
+        M2 = 'm²', _('m²')
+        PERCENT = '%', _('%')    # Define fields for the ConsumptionCalc model.
     name = models.CharField(max_length=30, verbose_name=_("Name"))
     argument1 = models.ForeignKey(
         MeterPlace, related_name="arg1", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Argument 1"))
     argument1_value = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Argument 1 Value"))
+    argument1_unit = models.CharField(
+        max_length=10, choices=Unit.choices, blank=True, default='', verbose_name=_("Argument 1 Unit"))
+    argument1_explanation = models.CharField(
+        max_length=200, blank=True, default='', verbose_name=_("Argument 1 Explanation"))
     operator1 = models.CharField(
         max_length=1,
         choices=Operator.choices,
@@ -32,6 +43,10 @@ class ConsumptionCalc(models.Model):
         MeterPlace, related_name="arg2", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Argument 2"))
     argument2_value = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Argument 2 Value"))
+    argument2_unit = models.CharField(
+        max_length=10, choices=Unit.choices, blank=True, default='', verbose_name=_("Argument 2 Unit"))
+    argument2_explanation = models.CharField(
+        max_length=200, blank=True, default='', verbose_name=_("Argument 2 Explanation"))
 
     operator2 = models.CharField(
         max_length=1,
@@ -44,6 +59,10 @@ class ConsumptionCalc(models.Model):
         MeterPlace,  related_name="arg3", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Argument 3"))
     argument3_value = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Argument 3 Value"))
+    argument3_unit = models.CharField(
+        max_length=10, choices=Unit.choices, blank=True, default='', verbose_name=_("Argument 3 Unit"))
+    argument3_explanation = models.CharField(
+        max_length=200, blank=True, default='', verbose_name=_("Argument 3 Explanation"))
 
     def __str__(self):
         return f"{self.name}"
@@ -66,6 +85,7 @@ class ConsumptionCalc(models.Model):
         result: Optional[Decimal]
         argument_name: Optional[str]
         source_details: Optional[dict]  # Zusätzliche Informationen
+        unit: Optional[str]  # Einheit des Ergebnisses
 
     class ConsumptionResult(NamedTuple):
         """Vollständiges Berechnungsergebnis"""
@@ -109,13 +129,14 @@ class ConsumptionCalc(models.Model):
 
         calculation_steps.append(self.CalculationStep(
             step_type="argument",
-            description=f"Argument 1 ({arg1_result.source_type})",
+            description=self.argument1_explanation or f"Argument 1 ({arg1_result.source_type})",
             operand1=None,
             operator=None,
             operand2=None,
             result=arg1_result.value,
             argument_name="Argument 1",
-            source_details=self._get_source_details(arg1_result)
+            source_details=self._get_source_details(arg1_result),
+            unit=self._get_unit_from_argument(arg1_result, "Argument 1")
         ))
 
         result = arg1_result.value
@@ -133,13 +154,14 @@ class ConsumptionCalc(models.Model):
 
             calculation_steps.append(self.CalculationStep(
                 step_type="argument",
-                description=f"Argument 2 ({arg2_result.source_type})",
+                description=self.argument2_explanation or f"Argument 2 ({arg2_result.source_type})",
                 operand1=None,
                 operator=None,
                 operand2=None,
                 result=arg2_result.value,
                 argument_name="Argument 2",
-                source_details=self._get_source_details(arg2_result)
+                source_details=self._get_source_details(arg2_result),
+                unit=self._get_unit_from_argument(arg2_result, "Argument 2")
             ))
 
             old_result = result
@@ -154,7 +176,9 @@ class ConsumptionCalc(models.Model):
                 operand2=arg2_result.value,
                 result=result,
                 argument_name=None,
-                source_details=None
+                source_details=None,
+                unit=self._calculate_operation_unit(
+                    arg1_result, self.operator1, arg2_result)
             ))
 
         # Argument 3 berechnen (optional)
@@ -170,13 +194,14 @@ class ConsumptionCalc(models.Model):
 
             calculation_steps.append(self.CalculationStep(
                 step_type="argument",
-                description=f"Argument 3 ({arg3_result.source_type})",
+                description=self.argument3_explanation or f"Argument 3 ({arg3_result.source_type})",
                 operand1=None,
                 operator=None,
                 operand2=None,
                 result=arg3_result.value,
                 argument_name="Argument 3",
-                source_details=self._get_source_details(arg3_result)
+                source_details=self._get_source_details(arg3_result),
+                unit=self._get_unit_from_argument(arg3_result, "Argument 3")
             ))
 
             old_result = result
@@ -191,10 +216,13 @@ class ConsumptionCalc(models.Model):
                 operand2=arg3_result.value,
                 result=result,
                 argument_name=None,
-                source_details=None
+                source_details=None,
+                unit=self._calculate_operation_unit(
+                    calculation_steps[-2], self.operator2, arg3_result) if calculation_steps else None
             ))
 
         # Endergebnis
+        final_unit = calculation_steps[-1].unit if calculation_steps else None
         calculation_steps.append(self.CalculationStep(
             step_type="result",
             description=f"Endergebnis der Berechnung '{self.name}'",
@@ -207,7 +235,8 @@ class ConsumptionCalc(models.Model):
                 'calculation_name': self.name,
                 'period_start': start_date.isoformat(),
                 'period_end': end_date.isoformat()
-            }
+            },
+            unit=final_unit
         ))
 
         return self.ConsumptionResult(
@@ -297,3 +326,80 @@ class ConsumptionCalc(models.Model):
             }
         else:
             return {}
+
+    def _get_unit_from_argument(self, arg_result: ArgumentResult, arg_name: str = "") -> str:
+        """Ermittelt die Einheit eines Arguments"""
+        # Zuerst prüfen, ob eine explizite Unit gesetzt ist
+        if arg_name == "Argument 1" and self.argument1_unit:
+            return self.argument1_unit
+        elif arg_name == "Argument 2" and self.argument2_unit:
+            return self.argument2_unit
+        elif arg_name == "Argument 3" and self.argument3_unit:
+            return self.argument3_unit
+        # Fallback auf MeterPlace Unit
+        elif arg_result.source_type == "meter_place" and arg_result.source:
+            return arg_result.source.unit
+        else:
+            # Für feste Werte keine Einheit oder eine Standard-Einheit
+            return ""
+
+    def _calculate_operation_unit(self, operand1_source, operator: str, operand2_source) -> str:
+        """Berechnet die Einheit nach einer Operation zwischen zwei Operanden"""
+        # Hole Einheiten der beiden Operanden
+        if hasattr(operand1_source, 'unit'):
+            unit1 = operand1_source.unit
+        elif isinstance(operand1_source, self.CalculationStep):
+            unit1 = operand1_source.unit or ""
+        elif hasattr(operand1_source, 'source_type'):
+            # ArgumentResult
+            if operand1_source.source_type == "meter_place":
+                unit1 = self._get_unit_from_argument(
+                    operand1_source, "Argument 1")
+            else:
+                unit1 = ""
+        else:
+            unit1 = ""
+
+        if hasattr(operand2_source, 'source_type'):
+            # ArgumentResult
+            if operand2_source.source_type == "meter_place":
+                unit2 = self._get_unit_from_argument(
+                    operand2_source, "Argument 2")
+            else:
+                unit2 = ""
+        else:
+            unit2 = ""
+
+        # Einfache Einheitenberechnung
+        if operator == '+' or operator == '-':
+            # Bei Addition/Subtraktion sollten die Einheiten gleich sein
+            if unit1 == unit2:
+                return unit1
+            elif unit1 and not unit2:
+                return unit1
+            elif unit2 and not unit1:
+                return unit2
+            else:
+                return f"{unit1}+{unit2}" if unit1 and unit2 else ""
+        elif operator == '*':
+            # Bei Multiplikation werden Einheiten multipliziert
+            if unit1 and unit2:
+                return f"{unit1}×{unit2}"
+            elif unit1:
+                return unit1
+            elif unit2:
+                return unit2
+            else:
+                return ""
+        elif operator == '/':
+            # Bei Division wird durch die zweite Einheit geteilt
+            if unit1 and unit2:
+                if unit1 == unit2:
+                    return ""  # Einheit kürzt sich weg
+                return f"{unit1}/{unit2}"
+            elif unit1:
+                return unit1
+            else:
+                return ""
+        else:
+            return unit1 or ""

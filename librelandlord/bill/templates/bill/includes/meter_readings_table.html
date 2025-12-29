@@ -1,0 +1,57 @@
+{% comment %}Reusable meter readings table for a calculation step with source_details.meters{% endcomment %}
+{% if step.step_type == 'argument' and step.source_details and step.source_details.meters %}
+<div class="section-group">
+    <h5>Zählerstände {{ step.source_details.meter_place.name }}
+        (Ort: {{ step.source_details.meter_place.location }})</h5>
+    <table class="meter-readings-table">
+        <thead>
+            <tr>
+                <th>Zähler Nr</th>
+                <th>Von</th>
+                <th>Bis</th>
+                <th>Endstand</th>
+                <th></th>
+                <th>Anfangsstand</th>
+                <th></th>
+                <th>Verbrauch</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for meter_info in step.source_details.meters %}
+            <tr>
+                <td class="number-cell">{{ meter_info.meter_number }}</td>
+                <td>{{ meter_info.start_reading.date|date:"d.m.Y" }}</td>
+                <td>{{ meter_info.end_reading.date|date:"d.m.Y" }}</td>
+                <td class="number-cell">
+                    {{ meter_info.end_reading.calculated_reading|floatformat:0 }}
+                    {{ step.source_details.meter_place.unit }}
+                </td>
+                <td> - </td>
+                <td class="number-cell">
+                    {{ meter_info.start_reading.calculated_reading|floatformat:0 }}
+                    {{ step.source_details.meter_place.unit }}
+                </td>
+                <td>=</td>
+                <td class="consumption-cell">
+                    {% if meter_info.consumption %}
+                    {{ meter_info.consumption|floatformat:0 }}
+                    {{ step.source_details.meter_place.unit }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top:2px solid #333; background:#f8f9fa;">
+                <td colspan="7" style="text-align: right; font-weight:bold;">
+                    Summe
+                </td>
+                <td class="consumption-cell">
+                    <strong>
+                        {{ step.source_details.total_consumption|floatformat:0 }}
+                        {{ step.source_details.meter_place.unit }}
+                    </strong>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endif %}

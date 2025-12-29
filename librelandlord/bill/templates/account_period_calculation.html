@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Abrechnungsberechnung - {{ account_period.text }}</title>
     <style>
-        /* Druck-Einstellungen für DIN A4 Querformat */
+        /* Druck-Einstellungen für DIN A4 Hochformat */
         @page {
-            size: A4 landscape;
+            size: A4;
             margin: 12mm;
         }
 
@@ -415,27 +415,26 @@
                 <table class="meter-readings-table">
                     <thead>
                         <tr>
-                            <th>Text</th>
-                            <th>Rechnungsnummer</th>
                             <th>Rechnungsdatum</th>
-                            <th>Von</th>
-                            <th>Bis</th>
+                            <th>Rechnungsnummer</th>
+                            <th>Text</th>
+                            <th>Zeitraum</th>
                             <th>Betrag</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for bill in summary.bills %}
                         <tr>
-                            <td>{{ bill.text }}</td>
-                            <td class="number-cell">{{ bill.bill_number }}</td>
                             <td>{{ bill.bill_date|date:"d.m.Y" }}</td>
-                            <td>{{ bill.from_date|date:"d.m.Y" }}</td>
-                            <td>{{ bill.to_date|date:"d.m.Y" }}</td>
+                            <td class="number-cell">{{ bill.bill_number }}</td>
+                            <td>{{ bill.text }}</td>
+                            <td>{{ bill.from_date|date:"d.m.Y" }} -
+                                {{ bill.to_date|date:"d.m.Y" }}</td>
                             <td class="consumption-cell">{{ bill.value|floatformat:2 }} €</td>
                         </tr>
                         {% endfor %}
                         <tr style="border-top: 2px solid #333;">
-                            <td colspan="5" style="text-align: right; font-weight: bold;">Gesamtsumme:</td>
+                            <td colspan="4" style="text-align: right; font-weight: bold;">Gesamtsumme:</td>
                             <td class="consumption-cell" style="font-size: 1.1em;">
                                 <strong>{{ summary.total_amount|floatformat:2 }} €</strong>
                             </td>
@@ -445,35 +444,6 @@
             </div>
 
             {% if summary.cost_center_calculation and apartment_filter_id %}
-            <div class="consumption-section">
-                <h3 class="section-title">Apartment-Verbrauch</h3>
-                <table class="meter-readings-table">
-                    <thead>
-                        <tr>
-                            <th>Verbrauchsberechnung</th>
-                            <th>Verbrauch</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for contrib in summary.cost_center_calculation.contribution_results %}
-                        {% if contrib.contribution.apartment_id == apartment_filter_id %}
-                        <tr>
-                            <td>{{ contrib.consumption_calc_name }}</td>
-                            <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }}
-                                {{ summary.cost_center_calculation.total_consumption_unit }}</td>
-                        </tr>
-                        {% endif %}
-                        {% endfor %}
-                        <tr style="border-top:2px solid #333; background:#f8f9fa;">
-                            <td style="text-align:right; font-weight:bold;">Gesamtverbrauch</td>
-                            <td class="consumption-cell">
-                                <strong>{{ summary.cost_center_calculation.total_consumption|floatformat:0 }}</strong>
-                                {{ summary.cost_center_calculation.total_consumption_unit }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
 
             <div class="meter-readings-section">
                 <h3 class="section-title">Zählerstände</h3>
@@ -482,14 +452,14 @@
                 {% for step in contrib.consumption_result.calculation_steps %}
                 {% if step.step_type == 'argument' and step.source_details and step.source_details.meters %}
                 <div class="section-group">
-                    <h5>{{ step.argument_name }} - Zählerstände {{ step.source_details.meter_place.name }}
+                    <h5>Zählerstände {{ step.source_details.meter_place.name }}
                         (Ort: {{ step.source_details.meter_place.location }})</h5>
                     <table class="meter-readings-table">
                         <thead>
                             <tr>
                                 <th>Zähler Nr</th>
-                                <th>Datum Anfang</th>
-                                <th>Datum Endstand</th>
+                                <th>Von</th>
+                                <th>Bis</th>
                                 <th>Endstand</th>
                                 <th></th>
                                 <th>Anfangsstand</th>
@@ -592,7 +562,7 @@
                         {% for step in contrib.consumption_result.calculation_steps %}
                         {% if step.step_type == 'argument' and step.source_details and step.source_details.meters %}
                         <div class="meter-readings-section">
-                            <h5>{{ step.argument_name }} - Zählerstände {{ step.source_details.meter_place.name }}
+                            <h5>Zählerstände {{ step.source_details.meter_place.name }}
                                 (Ort: {{ step.source_details.meter_place.location }})</h5>
                             <table class="meter-readings-table">
                                 <thead>
@@ -705,7 +675,7 @@
         </div>
         <div class="cost-center-content">
             <div class="consumption-section">
-
+                {% if not apartment_filter_id %}
                 <table class="meter-readings-table">
                     <thead>
                         <tr>
@@ -717,13 +687,11 @@
                         {% for summary in cost_center_summaries %}
                         {% if summary.cost_center_calculation %}
                         {% for contrib in summary.cost_center_calculation.contribution_results %}
-                        {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
                         <tr>
                             <td>{{ contrib.consumption_calc_name }}</td>
                             <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }}
                                 {{ summary.cost_center_calculation.total_consumption_unit }}</td>
                         </tr>
-                        {% endif %}
                         {% endfor %}
                         <tr style="border-top:2px solid #333; background:#f8f9fa;">
                             <td style="text-align:right; font-weight:bold;">Gesamtverbrauch</td>
@@ -737,6 +705,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                {% endif %}
 
                 <div class="section-group">
                     <h3 class="section-title" style="margin-top: 30px;">Verbrauchsverteilung in Prozent</h3>
@@ -774,11 +743,13 @@
                             {% endfor %}
                             {% endif %}
                             {% endfor %}
+                            {% if not apartment_filter_id %}
                             <tr style="border-top:2px solid #333; background:#f8f9fa;">
                                 <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
                                 <td class="consumption-cell"><strong>100 %</strong>
                                 </td>
                             </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>

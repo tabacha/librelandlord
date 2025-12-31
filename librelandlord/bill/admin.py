@@ -6,6 +6,7 @@ from . import models
 
 class MeterPlaceAdmin(admin.ModelAdmin):
     list_display = ('name', 'type', 'remark', 'location')
+    search_fields = ['name', 'location', 'type']
 
 
 admin.site.register(models.MeterPlace, MeterPlaceAdmin)
@@ -26,8 +27,55 @@ class MeterReadingAdmin(admin.ModelAdmin):
 admin.site.register(models.MeterReading, MeterReadingAdmin)
 
 
+class ConsumptionCalcArgumentInline(admin.TabularInline):
+    model = models.ConsumptionCalcArgument
+    fk_name = 'consumption_calc'  # Spezifiziere welcher FK verwendet werden soll
+    extra = 1
+    fields = ['position', 'meter_place', 'value',
+              'unit', 'nested_calc', 'explanation']
+    ordering = ['position']
+    autocomplete_fields = ['meter_place', 'nested_calc']
+
+    class Media:
+        css = {
+            'all': ('admin/css/changelists.css',)
+        }
+
+
 class ConsumptionCalcAdmin(admin.ModelAdmin):
-    list_display = ['name']
+    list_display = ['name', 'operator', 'start_date',
+                    'end_date', 'get_formula_preview']
+    list_filter = ['operator', 'start_date']
+    search_fields = ['name']
+    inlines = [ConsumptionCalcArgumentInline]
+
+    # Blende die alten deprecated Felder aus
+    exclude = [
+        'argument1', 'argument1_value', 'argument1_unit', 'argument1_explanation', 'operator1',
+        'argument2', 'argument2_value', 'argument2_unit', 'argument2_explanation', 'operator2',
+        'argument3', 'argument3_value', 'argument3_unit', 'argument3_explanation'
+    ]
+
+    def get_formula_preview(self, obj):
+        """Zeigt Formel-Vorschau in der Liste"""
+        args = obj.arguments.all()[:5]  # Max 5 Arguments anzeigen
+        if not args:
+            return "-"
+        parts = []
+        for arg in args:
+            if arg.meter_place:
+                parts.append(str(arg.meter_place.name)[:20])
+            elif arg.nested_calc:
+                parts.append(f"({arg.nested_calc.name[:15]})")
+            elif arg.value is not None:
+                parts.append(f"{arg.value}{arg.unit}")
+
+        formula = f" {obj.operator} ".join(parts)
+        if obj.arguments.count() > 5:
+            formula += " ..."
+        return formula
+
+    get_formula_preview.short_description = "Formel"
 
 
 admin.site.register(models.ConsumptionCalc, ConsumptionCalcAdmin)

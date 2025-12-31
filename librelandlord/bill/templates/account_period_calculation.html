@@ -415,31 +415,13 @@
                 {% include 'bill/includes/bills_table.html' with bills=summary.bills total_amount=summary.total_amount %}
             </div>
 
-            {% if summary.cost_center_calculation and apartment_filter_id %}
-
-            <div class="consumption-section">
-                <h3 class="section-title">Verbrauchsberechnung</h3>
-                {% for contrib in summary.cost_center_calculation.contribution_results %}
-                {% if contrib.contribution.apartment_id == apartment_filter_id %}
-                    <div class="apartment-item">
-                    <div class="apartment-header">
-                        {{ contrib.apartment_name }} - {{ contrib.consumption_calc_name }}
-                    </div>
-                    <div class="apartment-content">
-                {% include 'bill/includes/calculation_steps.html' with contrib=contrib %}
-                </div>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </div>
-            {% endif %}
-
             <!-- Verbrauchsberechnung -->
-            {% if summary.cost_center_calculation and not apartment_filter_id %}
+            {% if summary.cost_center_calculation %}
             <div class="consumption-section">
                 <h3 class="section-title">Verbrauchsberechnung</h3>
 
                 {% for contrib in summary.cost_center_calculation.contribution_results %}
+                {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
                 <div class="apartment-item">
                     <div class="apartment-header">
                         {{ contrib.apartment_name }} - {{ contrib.consumption_calc_name }}
@@ -448,17 +430,16 @@
                         {% include 'bill/includes/calculation_steps.html' with contrib=contrib %}
                     </div>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
             {% else %}
-            {% if not apartment_filter_id %}
             <div class="consumption-section">
                 <h3 class="section-title">Verbrauchsberechnung</h3>
                 <div class="no-data">
                     Keine Verbrauchsberechnung verfügbar für dieses Cost Center.
                 </div>
             </div>
-            {% endif %}
             {% endif %}
         </div>
     </div>

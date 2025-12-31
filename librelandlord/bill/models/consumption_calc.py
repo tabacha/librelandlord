@@ -118,7 +118,7 @@ class ConsumptionCalc(models.Model):
         """
         if start_date >= end_date:
             raise ValueError(
-                f"Start date {start_date} must be before end date {end_date}")
+                f"Consumption Result Start date {start_date} must be before end date {end_date}")
 
         calculation_steps = []
 

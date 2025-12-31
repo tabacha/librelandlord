@@ -1,8 +1,10 @@
-{% comment %}Anteil am Gesamtrechnungsbetrag Tabelle (mit optionalem Apartment-Filter){% endcomment %}
+{% comment %}Anteil am Gesamtrechnungsbetrag Tabelle (mit optionalem Renter-Filter){% endcomment %}
 {% if cost_center_summaries %}
 <table class="meter-readings-table">
     <thead>
         <tr>
+            <th>Wohnung / Mieter</th>
+            <th>Zeitraum</th>
             <th>Verbrauchsberechnung</th>
             <th>Gesamtrechnungsbetrag</th>
             <th></th>
@@ -15,8 +17,19 @@
         {% for summary in cost_center_summaries %}
         {% if summary.cost_center_calculation %}
         {% for contrib in summary.cost_center_calculation.contribution_results %}
-        {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
+        {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
         <tr>
+            <td>
+                {{ contrib.apartment_name }}<br>
+                <small style="color: #666;">
+                    {% if contrib.renter_id %}
+                    {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+                    {% else %}
+                    <em>Leerstand</em>
+                    {% endif %}
+                </small>
+            </td>
+            <td><small>{{ contrib.period_start }} - {{ contrib.period_end }}</small></td>
             <td>{{ contrib.consumption_calc_name }}</td>
             <td class="consumption-cell">{{ summary.total_amount|floatformat:2 }} €</td>
             <td style="text-align: center;">*</td>
@@ -28,7 +41,7 @@
         {% endfor %}
         {# Rundungsdifferenz ausgeblendet #}
         <tr style="border-top:2px solid #333; background:#f8f9fa;">
-            <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
+            <td colspan="7" style="text-align:right; font-weight:bold;">Summe</td>
             <td class="consumption-cell"><strong>{{ summary.sum_euro_anteil|floatformat:2 }} €</strong></td>
         </tr>
         {% endif %}

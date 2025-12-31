@@ -421,12 +421,19 @@
                 <h3 class="section-title">Verbrauchsberechnung</h3>
 
                 {% for contrib in summary.cost_center_calculation.contribution_results %}
-                {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
+                {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
                 <div class="apartment-item">
                     <div class="apartment-header">
-                        {{ contrib.apartment_name }} - {{ contrib.consumption_calc_name }}
+                        {{ contrib.apartment_name }}
+                        {% if contrib.renter_id %}
+                        - {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+                        {% else %}
+                        - Leerstand
+                        {% endif %}
+                        ({{ contrib.period_start }} bis {{ contrib.period_end }})
                     </div>
                     <div class="apartment-content">
+                        <strong>{{ contrib.consumption_calc_name }}</strong>
                         {% include 'bill/includes/calculation_steps.html' with contrib=contrib %}
                     </div>
                 </div>
@@ -452,16 +459,16 @@
         </div>
         <div class="cost-center-content">
             <div class="consumption-section">
-                {% if not apartment_filter_id %}
+                {% if not renter_filter_id %}
                 {% include 'bill/includes/consumption_summary_table.html' with cost_center_summaries=cost_center_summaries %}
                 {% endif %} <div class="section-group">
                     <h3 class="section-title" style="margin-top: 30px;">Verbrauchsverteilung in Prozent</h3>
 
-                    {% include 'bill/includes/percentage_distribution_table.html' with cost_center_summaries=cost_center_summaries apartment_filter_id=apartment_filter_id %}
+                    {% include 'bill/includes/percentage_distribution_table.html' with cost_center_summaries=cost_center_summaries renter_filter_id=renter_filter_id %}
                 </div>
                 <div class="section-group">
                     <h3 class="section-title" style="margin-top: 30px;">Anteil am Gesamtrechnungsbetrag</h3>
-                    {% include 'bill/includes/amount_share_table.html' with cost_center_summaries=cost_center_summaries apartment_filter_id=apartment_filter_id %}
+                    {% include 'bill/includes/amount_share_table.html' with cost_center_summaries=cost_center_summaries renter_filter_id=renter_filter_id %}
                 </div>
             </div>
         </div>

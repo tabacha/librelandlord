@@ -14,13 +14,13 @@
             {% for contrib in summary.cost_center_calculation.contribution_results %}
             <tr>
                 <td>{{ contrib.consumption_calc_name }}</td>
-                <td class="consumption-cell">{{ contrib.final_consumption|floatformat:0 }} {{ summary.cost_center_calculation.total_consumption_unit }}</td>
+                <td class="consumption-cell">{{ contrib.final_consumption|floatformat:1 }} {{ summary.cost_center_calculation.total_consumption_unit }}</td>
             </tr>
             {% endfor %}
             <tr style="border-top:2px solid #333; background:#f8f9fa;">
                 <td style="text-align:right; font-weight:bold;">Gesamtverbrauch</td>
                 <td class="consumption-cell">
-                    <strong>{{ summary.cost_center_calculation.total_consumption|floatformat:0 }}</strong> {{ summary.cost_center_calculation.total_consumption_unit }}
+                    <strong>{{ summary.cost_center_calculation.total_consumption|floatformat:1 }}</strong> {{ summary.cost_center_calculation.total_consumption_unit }}
                 </td>
             </tr>
             {% endif %}

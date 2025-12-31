@@ -415,115 +415,31 @@
                 {% include 'bill/includes/bills_table.html' with bills=summary.bills total_amount=summary.total_amount %}
             </div>
 
-            {% if summary.cost_center_calculation and apartment_filter_id %}
-
-            <div class="meter-readings-section">
-                <h3 class="section-title">Zählerstände</h3>
-                {% for contrib in summary.cost_center_calculation.contribution_results %}
-                {% if contrib.contribution.apartment_id == apartment_filter_id %}
-                {% for step in contrib.consumption_result.calculation_steps %}
-                {% include 'bill/includes/meter_readings_table.html' with step=step %}
-                {% endfor %}
-                {% endif %}
-                {% endfor %}
-            </div>
-
-            <div class="consumption-section">
-                {% for contrib in summary.cost_center_calculation.contribution_results %}
-                {% if contrib.contribution.apartment_id == apartment_filter_id %}
-                {% for step in contrib.consumption_result.calculation_steps %}
-                {% if step.step_type == 'operation' %}
-                <div class="calculation-step step-{{ step.step_type }}">
-                    <span class="calc-cell">
-                        {{ step.operand1 }} {{ step.unit }} {{ step.operator }} {{ step.operand2 }}
-                        {{ step.unit}} =
-                    </span>
-                    <span class="consumption-cell">
-                        <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
-                    </span>
-                </div>
-                {% elif step.step_type == 'result' %}
-                <div class="calculation-step step-{{ step.step_type }}">
-                    <strong>Endergebnis:</strong>
-                    <span class="consumption-cell">
-                        <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
-                    </span>
-                </div>
-                {% endif %}
-                {% endfor %}
-                {% if contrib.consumption_result.calculation_str %}
-                <div class="calculation-step">
-                    <span class="calc-cell">{{ contrib.consumption_result.calculation_str_left }} =</span>
-                    <span class="consumption-cell"><strong>{{ contrib.consumption_result.calculation_result
-                            }}</strong></span>
-                </div>
-                {% endif %}
-                {% endif %}
-                {% endfor %}
-            </div>
-            {% endif %}
-
             <!-- Verbrauchsberechnung -->
-            {% if summary.cost_center_calculation and not apartment_filter_id %}
+            {% if summary.cost_center_calculation %}
             <div class="consumption-section">
                 <h3 class="section-title">Verbrauchsberechnung</h3>
 
                 {% for contrib in summary.cost_center_calculation.contribution_results %}
+                {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
                 <div class="apartment-item">
                     <div class="apartment-header">
                         {{ contrib.apartment_name }} - {{ contrib.consumption_calc_name }}
                     </div>
                     <div class="apartment-content">
-                        <!-- Zählerstände Tabelle -->
-                        {% for step in contrib.consumption_result.calculation_steps %}
-                        {% include 'bill/includes/meter_readings_table.html' with step=step %}
-                        {% endfor %}
-
-                        {% for step in contrib.consumption_result.calculation_steps %}
-                        {% if step.step_type == 'operation' %}
-                        <div class="calculation-step step-{{ step.step_type }}">
-                            <span class="calc-cell">
-                                {{ step.operand1 }} {{ step.unit }} {{ step.operator }} {{ step.operand2 }}
-                                {{ step.unit}} =
-                            </span>
-                            <span class="consumption-cell">
-                                <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
-                            </span>
-
-                        </div>
-                        {% elif step.step_type == 'result' %}
-                        <!-- Zeige Endergebnis nur wenn es Operationen gab -->
-                        {% if contrib.consumption_result.calculation_steps|length > 4 %}
-                        <div class="calculation-step step-{{ step.step_type }}">
-                            <strong>Endergebnis:</strong>
-                            <span class="consumption-cell">
-                                <strong>{{ step.result|floatformat:0 }} {{ step.unit }}</strong>
-                            </span>
-                        </div>
-                        {% endif %}
-                        {% endif %}
-                        {% endfor %}
-                        {% if contrib.consumption_result.calculation_str %}
-                        <div class="calculation-step">
-                            <span class="calc-cell">{{ contrib.consumption_result.calculation_str_left }} =</span>
-                            <span class="consumption-cell"><strong>{{ contrib.consumption_result.calculation_result
-                                    }}</strong></span>
-                        </div>
-                        {% endif %}
-
+                        {% include 'bill/includes/calculation_steps.html' with contrib=contrib %}
                     </div>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
             {% else %}
-            {% if not apartment_filter_id %}
             <div class="consumption-section">
                 <h3 class="section-title">Verbrauchsberechnung</h3>
                 <div class="no-data">
                     Keine Verbrauchsberechnung verfügbar für dieses Cost Center.
                 </div>
             </div>
-            {% endif %}
             {% endif %}
         </div>
     </div>

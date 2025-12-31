@@ -50,7 +50,6 @@
                     <tr>
                         <th>Zählerplatz</th>
                         <th>Typ</th>
-                        <th>Standort</th>
                         <th>Zählernummer</th>
                         <th>Letzter Zählerstand</th>
                         <th>Neuer Zählerstand</th>
@@ -58,6 +57,11 @@
                 </thead>
                 <tbody>
                     {% for meter_data in meters_data %}
+                    {% ifchanged meter_data.meter_place.location %}
+                    <tr class="location-header">
+                        <td colspan="5"><strong>{{ meter_data.meter_place.location }}</strong></td>
+                    </tr>
+                    {% endifchanged %}
                     <tr>
                         <td>
                             {{ meter_data.meter_place.name }}
@@ -66,12 +70,11 @@
                             <span class="meter-icon meter-type-{{ meter_data.meter_place.type }}"
                                 title="{{ meter_data.meter_place.get_type_display }} ({{ meter_data.meter_place.unit }})"></span>
                         </td>
-                        <td>{{ meter_data.meter_place.location }}</td>
                         <td><strong>{{ meter_data.meter.meter_number }}</strong></td>
                         <td>
                             {% if meter_data.last_reading %}
                             <strong>
-                                {{ meter_data.last_reading.meter_reading }}
+                                {{ meter_data.last_reading.meter_reading|floatformat:1 }}
                                 {{ meter_data.meter_place.unit}}
                             </strong>
                             <div class="last-reading">
@@ -90,7 +93,7 @@
                                 data-meter-type="{{ meter_data.meter_place.type }}"
                                 data-last-reading="{% if meter_data.last_reading %}{{ meter_data.last_reading.meter_reading|unlocalize }}{% endif %}"
                                 value="{% if meter_data.current_reading %}{{ meter_data.current_reading.meter_reading|unlocalize }}{% endif %}"
-                                class="meter-input auto-save" placeholder=""><span
+                                class="meter-input auto-save" placeholder="">&nbsp;<span
                                 class="unit">{{meter_data.meter_place.unit }}</span>
                             <span class="save-indicator" id="indicator-{{ meter_data.meter.id }}"></span>
                             <i class="fas fa-triangle-exclamation warning-icon" id="warning-{{ meter_data.meter.id }}"

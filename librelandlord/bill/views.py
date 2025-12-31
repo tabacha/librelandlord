@@ -542,7 +542,7 @@ def heating_info_task(request):
 
 @login_required
 @require_http_methods(["GET"])
-def account_period_calculation(request, account_period_id, apartment_id=None):
+def account_period_calculation(request, account_period_id, renter_id=None):
     """
     View der die vollständige Berechnung einer AccountPeriod über ein Template ausgibt.
 
@@ -550,6 +550,7 @@ def account_period_calculation(request, account_period_id, apartment_id=None):
     über ein Jinja Template.
 
     URL: /account-period/<id>/calculation/
+    URL: /account-period/<id>/calculation/renter/<renter_id>/
     Method: GET
 
     Returns:
@@ -569,12 +570,13 @@ def account_period_calculation(request, account_period_id, apartment_id=None):
             if not total_amount:
                 total_amount = 0
             if hasattr(summary, 'cost_center_calculation') and summary.cost_center_calculation:
-                # Optional: Beiträge nach Apartment-ID filtern (Anzeige),
+                # Optional: Beiträge nach Renter-ID filtern (Anzeige),
                 # aber Prozentwerte und Gesamtverbrauch der CostCenter-Berechnung beibehalten.
-                if apartment_id is not None:
+                if renter_id is not None:
+                    # Filtere nach renter_id direkt
                     filtered_results = [
                         cr for cr in summary.cost_center_calculation.contribution_results
-                        if getattr(getattr(cr, 'contribution', None), 'apartment_id', None) == apartment_id
+                        if cr.renter_id == renter_id
                     ]
                 else:
                     filtered_results = list(
@@ -620,7 +622,7 @@ def account_period_calculation(request, account_period_id, apartment_id=None):
                 'cost_center_count': calculation.cost_center_count
             },
             'cost_center_summaries': cost_center_summaries,
-            'apartment_filter_id': apartment_id,
+            'renter_filter_id': renter_id,
         }
 
         # Template rendern

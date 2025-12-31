@@ -1,8 +1,10 @@
-{% comment %}Verbrauchsverteilung in Prozent Tabelle (mit optionalem Apartment-Filter){% endcomment %}
+{% comment %}Verbrauchsverteilung in Prozent Tabelle (mit optionalem Renter-Filter){% endcomment %}
 {% if cost_center_summaries %}
 <table class="meter-readings-table">
     <thead>
         <tr>
+            {% if not renter_filter_id %}<th>Mieter</th>
+            <th>Zeitraum</th>{% endif %}
             <th>Verbrauchsberechnung</th>
             <th>Verbrauch</th>
             <th></th>
@@ -15,8 +17,20 @@
         {% for summary in cost_center_summaries %}
         {% if summary.cost_center_calculation %}
         {% for contrib in summary.cost_center_calculation.contribution_results %}
-        {% if not apartment_filter_id or contrib.contribution.apartment_id == apartment_filter_id %}
+        {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
         <tr>
+            {% if not renter_filter_id %}
+            <td>
+
+                {% if contrib.renter_id %}
+                    {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+                {% else %}
+                    <em>Leerstand</em>
+                {% endif %}
+
+            </td>
+            <td><small>{{ contrib.period_start|date:"d.m.Y" }} - {{ contrib.period_end|date:"d.m.Y" }}</small></td>
+            {% endif %}
             <td>{{ contrib.consumption_calc_name }}</td>
             <td class="consumption-cell">
                 {{ contrib.final_consumption|floatformat:1 }}
@@ -28,15 +42,15 @@
                 {{ summary.cost_center_calculation.total_consumption_unit }}
             </td>
             <td style="text-align: center;">=</td>
-            <td class="consumption-cell"><strong>{{ contrib.percentage|floatformat:1 }} %</strong></td>
+            <td class="consumption-cell"><strong>{{ contrib.percentage|floatformat:2 }} %</strong></td>
         </tr>
         {% endif %}
         {% endfor %}
         {% endif %}
         {% endfor %}
-        {% if not apartment_filter_id %}
+        {% if not renter_filter_id %}
         <tr style="border-top:2px solid #333; background:#f8f9fa;">
-            <td colspan="5" style="text-align:right; font-weight:bold;">Summe</td>
+            <td colspan="7" style="text-align:right; font-weight:bold;">Summe</td>
             <td class="consumption-cell"><strong>100 %</strong></td>
         </tr>
         {% endif %}

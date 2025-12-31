@@ -27,6 +27,12 @@ class CostCenter(models.Model):
         consumption_result: 'ConsumptionCalc.ConsumptionResult'
         final_consumption: Decimal
         percentage: float
+        # Renter-Informationen
+        renter_id: int  # None bei Leerstand
+        renter_first_name: str  # None bei Leerstand
+        renter_last_name: str  # None bei Leerstand
+        period_start: date  # Tatsächliches Startdatum für diesen Renter/Leerstand
+        period_end: date  # Tatsächliches Enddatum für diesen Renter/Leerstand
 
     class CostCenterCalculation(NamedTuple):
         """Gesamtberechnung eines CostCenters"""
@@ -56,10 +62,9 @@ class CostCenter(models.Model):
             ValueError: Bei ungültigen Eingabedaten
         """
         from .cost_center_contribution import CostCenterContribution
-
         if start_date >= end_date:
             raise ValueError(
-                f"Start date {start_date} must be before end date {end_date}")
+                f"Total Consumption {self.text} Start date {start_date} must be before end date {end_date}")
 
         # Alle CostCenterContributions für dieses CostCenter holen
         contributions = CostCenterContribution.objects.filter(
@@ -86,32 +91,61 @@ class CostCenter(models.Model):
         temp_results = []
 
         # Für jede Contribution die ConsumptionCalc berechnen
+        # Aber jetzt für jede Renter-Periode separat
         for contribution in contributions:
             try:
-                # ConsumptionResult von der ConsumptionCalc holen
-                consumption_result = contribution.consumption_calc.calculate(
-                    start_date=start_date,
-                    end_date=end_date
-                )
+                # Hole alle Renter-Perioden für diese Wohnung
+                if contribution.apartment:
+                    periods = contribution.apartment.get_renters_for_period(
+                        start_date=start_date,
+                        end_date=end_date
+                    )
+                else:
+                    # Keine Wohnung (special_designation) - behandle als eine Periode ohne Renter
+                    periods = [{
+                        'start_date': start_date,
+                        'end_date': end_date,
+                        'renter_id': None,
+                        'renter': None
+                    }]
 
-                # Apartment-Name ermitteln
-                apartment_name = contribution.get_display_name()
-                apartment_names.add(apartment_name)
+                # Für jede Periode eine separate Berechnung
+                for period in periods:
+                    # ConsumptionResult von der ConsumptionCalc holen
+                    consumption_result = contribution.consumption_calc.calculate(
+                        start_date=period['start_date'],
+                        end_date=period['end_date']
+                    )
 
-                # Einheit vom ersten Ergebnis übernehmen
-                if not total_consumption_unit and consumption_result.calculation_steps:
-                    final_step = consumption_result.calculation_steps[-1]
-                    total_consumption_unit = final_step.unit or ""
+                    # Apartment-Name ermitteln
+                    apartment_name = contribution.get_display_name()
+                    apartment_names.add(apartment_name)
 
-                # Temporär speichern
-                temp_results.append({
-                    'contribution': contribution,
-                    'apartment_name': apartment_name,
-                    'consumption_result': consumption_result,
-                    'final_consumption': consumption_result.final_result
-                })
+                    # Renter-Informationen
+                    renter = period.get('renter')
+                    renter_id = period.get('renter_id')
+                    renter_first_name = renter.first_name if renter else None
+                    renter_last_name = renter.last_name if renter else None
 
-                total_consumption += consumption_result.final_result
+                    # Einheit vom ersten Ergebnis übernehmen
+                    if not total_consumption_unit and consumption_result.calculation_steps:
+                        final_step = consumption_result.calculation_steps[-1]
+                        total_consumption_unit = final_step.unit or ""
+
+                    # Temporär speichern
+                    temp_results.append({
+                        'contribution': contribution,
+                        'apartment_name': apartment_name,
+                        'consumption_result': consumption_result,
+                        'final_consumption': consumption_result.final_result,
+                        'renter_id': renter_id,
+                        'renter_first_name': renter_first_name,
+                        'renter_last_name': renter_last_name,
+                        'period_start': period['start_date'],
+                        'period_end': period['end_date']
+                    })
+
+                    total_consumption += consumption_result.final_result
 
             except Exception as e:
                 # Bei Fehlern in einzelnen Contributions weiterfahren
@@ -134,7 +168,12 @@ class CostCenter(models.Model):
                 consumption_calc_name=temp_result['contribution'].consumption_calc.name,
                 consumption_result=temp_result['consumption_result'],
                 final_consumption=temp_result['final_consumption'],
-                percentage=percentage
+                percentage=percentage,
+                renter_id=temp_result['renter_id'],
+                renter_first_name=temp_result['renter_first_name'],
+                renter_last_name=temp_result['renter_last_name'],
+                period_start=temp_result['period_start'],
+                period_end=temp_result['period_end']
             )
 
             contribution_results.append(contribution_result)

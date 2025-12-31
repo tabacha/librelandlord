@@ -6,6 +6,103 @@ from decimal import Decimal
 from .meter_place import MeterPlace
 
 
+class ConsumptionCalcArgument(models.Model):
+    """
+    Ein Argument in einer ConsumptionCalc-Berechnung.
+    Kann entweder ein MeterPlace, ein fester Wert oder eine verschachtelte Berechnung sein.
+    """
+    consumption_calc = models.ForeignKey(
+        'ConsumptionCalc',
+        related_name='arguments',
+        on_delete=models.CASCADE,
+        verbose_name=_("Berechnung")
+    )
+
+    position = models.PositiveSmallIntegerField(
+        verbose_name=_("Position"),
+        help_text=_("Reihenfolge in der Berechnung")
+    )
+
+    # Einer von drei möglichen Quellen für den Wert
+    meter_place = models.ForeignKey(
+        MeterPlace,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        verbose_name=_("Zählerplatz")
+    )
+
+    value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name=_("Festwert")
+    )
+
+    nested_calc = models.ForeignKey(
+        'ConsumptionCalc',
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        related_name='used_in_arguments',
+        verbose_name=_("Verschachtelte Berechnung")
+    )
+
+    unit = models.CharField(
+        max_length=10,
+        choices=[
+            ('', _('')),
+            ('kWh', _('kWh')),
+            ('m³', _('m³')),
+            ('Liter', _('Liter')),
+            ('m²', _('m²')),
+            ('%', _('%'))
+        ],
+        blank=True,
+        default='',
+        verbose_name=_("Einheit")
+    )
+
+    explanation = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        verbose_name=_("Erklärung")
+    )
+
+    class Meta:
+        ordering = ['position']
+        unique_together = [['consumption_calc', 'position']]
+        verbose_name = _("Berechnungs-Argument")
+        verbose_name_plural = _("Berechnungs-Argumente")
+
+    def __str__(self):
+        if self.meter_place:
+            return f"Pos {self.position}: {self.meter_place}"
+        elif self.nested_calc:
+            return f"Pos {self.position}: ({self.nested_calc.name})"
+        elif self.value is not None:
+            return f"Pos {self.position}: {self.value} {self.unit}"
+        else:
+            return f"Pos {self.position}: (leer)"
+
+    def clean(self):
+        """Validierung: Genau eine Quelle muss gesetzt sein"""
+        from django.core.exceptions import ValidationError
+        sources = sum([
+            bool(self.meter_place),
+            self.value is not None,
+            bool(self.nested_calc)
+        ])
+        if sources == 0:
+            raise ValidationError(
+                _("Mindestens eine Quelle (Zählerplatz, Festwert oder verschachtelte Berechnung) muss angegeben werden."))
+        if sources > 1:
+            raise ValidationError(
+                _("Es darf nur eine Quelle (Zählerplatz, Festwert oder verschachtelte Berechnung) angegeben werden."))
+
+
 class ConsumptionCalc(models.Model):
     # Define choices for operators used in calculation.
     class Operator(models.TextChoices):
@@ -22,51 +119,65 @@ class ConsumptionCalc(models.Model):
         M3 = 'm³', _('m³')
         LITER = 'Liter', _('Liter')
         M2 = 'm²', _('m²')
-        PERCENT = '%', _('%')    # Define fields for the ConsumptionCalc model.
-    name = models.CharField(max_length=30, verbose_name=_("Name"))
+        PERCENT = '%', _('%')
+
+    # Define fields for the ConsumptionCalc model.
+    name = models.CharField(max_length=50, verbose_name=_("Name"))
+
+    # Neuer Ansatz: Ein Operator für alle Arguments
+    operator = models.CharField(
+        max_length=1,
+        choices=Operator.choices,
+        default='+',
+        verbose_name=_("Operator"),
+        help_text=_("Operator, der alle Argumente verknüpft")
+    )
+
+    start_date = models.DateField(verbose_name=_("Start Date"))
+    end_date = models.DateField(
+        blank=True, null=True, verbose_name=_("End Date"))
+
+    # DEPRECATED: Alte Felder bleiben für Migration erhalten
+    # Diese werden in einer späteren Migration entfernt
     argument1 = models.ForeignKey(
-        MeterPlace, related_name="arg1", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Argument 1"))
+        MeterPlace, related_name="arg1", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Argument 1 (DEPRECATED)"))
     argument1_value = models.DecimalField(
-        max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Argument 1 Value"))
+        max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Argument 1 Value (DEPRECATED)"))
     argument1_unit = models.CharField(
-        max_length=10, choices=Unit.choices, blank=True, default='', verbose_name=_("Argument 1 Unit"))
+        max_length=10, choices=Unit.choices, blank=True, default='', verbose_name=_("Argument 1 Unit (DEPRECATED)"))
     argument1_explanation = models.CharField(
-        max_length=200, blank=True, default='', verbose_name=_("Argument 1 Explanation"))
+        max_length=200, blank=True, default='', verbose_name=_("Argument 1 Explanation (DEPRECATED)"))
     operator1 = models.CharField(
         max_length=1,
         choices=Operator.choices,
         blank=True,
         null=True,
-        verbose_name=_("Operator 1")
+        verbose_name=_("Operator 1 (DEPRECATED)")
     )
     argument2 = models.ForeignKey(
-        MeterPlace, related_name="arg2", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Argument 2"))
+        MeterPlace, related_name="arg2", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Argument 2 (DEPRECATED)"))
     argument2_value = models.DecimalField(
-        max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Argument 2 Value"))
+        max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Argument 2 Value (DEPRECATED)"))
     argument2_unit = models.CharField(
-        max_length=10, choices=Unit.choices, blank=True, default='', verbose_name=_("Argument 2 Unit"))
+        max_length=10, choices=Unit.choices, blank=True, default='', verbose_name=_("Argument 2 Unit (DEPRECATED)"))
     argument2_explanation = models.CharField(
-        max_length=200, blank=True, default='', verbose_name=_("Argument 2 Explanation"))
+        max_length=200, blank=True, default='', verbose_name=_("Argument 2 Explanation (DEPRECATED)"))
 
     operator2 = models.CharField(
         max_length=1,
         choices=Operator.choices,
         blank=True,
         null=True,
-        verbose_name=_("Operator 2")
+        verbose_name=_("Operator 2 (DEPRECATED)")
     )
     argument3 = models.ForeignKey(
-        MeterPlace,  related_name="arg3", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Argument 3"))
+        MeterPlace,  related_name="arg3", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Argument 3 (DEPRECATED)"))
     argument3_value = models.DecimalField(
-        max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Argument 3 Value"))
+        max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Argument 3 Value (DEPRECATED)"))
     argument3_unit = models.CharField(
-        max_length=10, choices=Unit.choices, blank=True, default='', verbose_name=_("Argument 3 Unit"))
+        max_length=10, choices=Unit.choices, blank=True, default='', verbose_name=_("Argument 3 Unit (DEPRECATED)"))
     argument3_explanation = models.CharField(
-        max_length=200, blank=True, default='', verbose_name=_("Argument 3 Explanation"))
-
-    start_date = models.DateField(verbose_name=_("Start Date"))
-    end_date = models.DateField(
-        blank=True, null=True, verbose_name=_("End Date"))
+        max_length=200, blank=True, default='', verbose_name=_("Argument 3 Explanation (DEPRECATED)"))
 
     def __str__(self):
         return f"{self.name}"

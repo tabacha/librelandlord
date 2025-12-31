@@ -16,8 +16,6 @@ import json
 from django.forms.models import model_to_dict
 from django.db.models.query import QuerySet
 
-import operator
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -371,66 +369,8 @@ def meter_place_consumption(request, meter_place: int, start_date: date, end_dat
     return response
 
 
-def process_calc_argument(argument_value, argument, label, calculation, start_date, end_date):
-    if argument_value:
-        calculation[label] = {'type': 'fixed', 'val': argument_value}
-        return argument_value
-    elif argument:
-        calc_result = calculate_meter_place_consumption(
-            argument, start_date, end_date)
-        calculation[label] = {'type': 'consumption', 'calc': calc_result}
-        return calc_result['consumption']
-#                           consumption
-    return None
-
-
-def calc_consumption_calc(calc: ConsumptionCalc,
-                          start_date: date, end_date: date):
-    operations = {
-        '+': operator.add,
-        '-': operator.sub,
-        '*': operator.mul,
-        '/': operator.truediv
-    }
-    calculation = {}
-    arg1 = process_calc_argument(
-        argument_value=calc.argument1_value,
-        argument=calc.argument1,
-        label='arg1',
-        calculation=calculation,
-        start_date=start_date,
-        end_date=end_date)
-    arg2 = process_calc_argument(
-        argument_value=calc.argument2_value,
-        argument=calc.argument2,
-        label='arg2',
-        calculation=calculation,
-        start_date=start_date,
-        end_date=end_date)
-    arg3 = process_calc_argument(
-        argument_value=calc.argument3_value,
-        argument=calc.argument3,
-        label='arg3',
-        calculation=calculation,
-        start_date=start_date,
-        end_date=end_date)
-    # Berechne den finalen Wert basierend auf den Operatoren
-    try:
-        if arg1 is not None and arg2 is not None:
-            result = operations[calc.operator1](arg1, arg2)
-            result_calc = f' {arg1} {calc.operator1} {arg2}'
-            if arg3 is not None:
-                result = operations[calc.operator2](result, arg3)
-                result_calc = f'{result_calc} {calc.operator2} {arg3}'
-        else:
-            result = arg1
-            result_calc = ''
-    except ZeroDivisionError:
-        result = None  # Division durch Null vermeiden
-    return {'result': result,
-            'result_calc': result_calc,
-            'arg_calc': calculation
-            }
+# Die Funktionen process_calc_argument und calc_consumption_calc wurden entfernt.
+# Stattdessen wird die calculate()-Methode des ConsumptionCalc-Models verwendet.
 
 
 @login_required
@@ -472,8 +412,9 @@ def heating_info_task(request):
             if month_okay and template.next_year == calc_year and template.next_month == calc_month:
                 if template.calc_heating is not None:
                     try:
-                        heat_val = calc_consumption_calc(
-                            template.calc_heating, start_date, end_date)['result']
+                        result = template.calc_heating.calculate(
+                            start_date, end_date)
+                        heat_val = result.value if result.success else None
                     except:
                         heat_val = None
                     if heat_val is None:
@@ -486,8 +427,9 @@ def heating_info_task(request):
                         val[f"h{template.id}"] = heat_val
                 if template.calc_hot_water is not None:
                     try:
-                        water_val = calc_consumption_calc(
-                            template.calc_hot_water, start_date, end_date)['result']
+                        result = template.calc_hot_water.calculate(
+                            start_date, end_date)
+                        water_val = result.value if result.success else None
                     except:
                         water_val = None
                     if water_val is None:

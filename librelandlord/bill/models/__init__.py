@@ -2,7 +2,7 @@ from .account_entry import AccountEntry
 from .account_period import AccountPeriod
 from .apartment import Apartment
 from .bill import Bill
-from .consumption_calc import ConsumptionCalc
+from .consumption_calc import ConsumptionCalc, ConsumptionCalcArgument
 from .cost_center_bill_entry import CostCenterBillEntry
 from .cost_center_contribution import CostCenterContribution
 from .cost_center import CostCenter

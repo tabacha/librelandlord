@@ -10,6 +10,20 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'bill/css/all.min.css' %}">
     <link rel="stylesheet" href="{% static 'bill/css/meter-readings.css' %}">
+    <style>
+        @media print {
+            .location-group {
+                page-break-inside: avoid;
+            }
+            .print-notes {
+                margin-bottom: 50px;
+                page-break-inside: avoid;
+            }
+            body {
+                padding-bottom: 60px;
+            }
+        }
+    </style>
 
 </head>
 
@@ -55,13 +69,16 @@
                         <th>Neuer Zählerstand</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for meter_data in meters_data %}
-                    {% ifchanged meter_data.meter_place.location %}
+                {% for meter_data in meters_data %}
+                {% ifchanged meter_data.meter_place.location %}
+                {% if not forloop.first %}
+                </tbody>
+                {% endif %}
+                <tbody class="location-group">
                     <tr class="location-header">
                         <td colspan="5"><strong>{{ meter_data.meter_place.location }}</strong></td>
                     </tr>
-                    {% endifchanged %}
+                {% endifchanged %}
                     <tr>
                         <td>
                             {{ meter_data.meter_place.name }}
@@ -100,8 +117,10 @@
                                 title="Warnung: Neuer Zählerstand ist kleiner als der vorherige"></i>
                         </td>
                     </tr>
-                    {% endfor %}
+                {% if forloop.last %}
                 </tbody>
+                {% endif %}
+                {% endfor %}
             </table>
 
         </form>
@@ -113,6 +132,20 @@
             <div class="note-lines"></div>
             <div class="note-lines"></div>
             <div class="note-lines"></div>
+            <div style="margin-top: 40px; display: flex; justify-content: space-between;">
+                <div style="width: 15%;">
+                    <div style="border-bottom: 1px solid #000; margin-bottom: 5px;">&nbsp;</div>
+                    <small>Ort</small>
+                </div>
+                <div style="width: 15%;">
+                    <div style="border-bottom: 1px solid #000; margin-bottom: 5px;">&nbsp;</div>
+                    <small>Datum</small>
+                </div>
+                <div style="width: 65%;">
+                    <div style="border-bottom: 1px solid #000; margin-bottom: 5px;">&nbsp;</div>
+                    <small>Unterschrift</small>
+                </div>
+            </div>
         </div>
 
         {% else %}

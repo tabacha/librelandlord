@@ -3,8 +3,8 @@
 <table class="meter-readings-table">
     <thead>
         <tr>
-            <th>Wohnung / Mieter</th>
-            <th>Zeitraum</th>
+            {% if not renter_filter_id %}<th>Mieter</th>
+            <th>Zeitraum</th>{% endif %}
             <th>Verbrauchsberechnung</th>
             <th>Gesamtrechnungsbetrag</th>
             <th></th>
@@ -19,9 +19,9 @@
         {% for contrib in summary.cost_center_calculation.contribution_results %}
         {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
         <tr>
+            {% if not renter_filter_id %}
             <td>
-                {{ contrib.apartment_name }}<br>
-                <small style="color: #666;">
+
                     {% if contrib.renter_id %}
                     {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
                     {% else %}
@@ -29,11 +29,12 @@
                     {% endif %}
                 </small>
             </td>
-            <td><small>{{ contrib.period_start }} - {{ contrib.period_end }}</small></td>
+            <td><small>{{ contrib.period_start|date:"d.m.Y" }} - {{ contrib.period_end|date:"d.m.Y" }}</small></td>
+            {% endif %}
             <td>{{ contrib.consumption_calc_name }}</td>
             <td class="consumption-cell">{{ summary.total_amount|floatformat:2 }} €</td>
             <td style="text-align: center;">*</td>
-            <td class="consumption-cell">{{ contrib.percentage|floatformat:1 }} %</td>
+            <td class="consumption-cell">{{ contrib.percentage|floatformat:2 }} %</td>
             <td style="text-align: center;">=</td>
             <td class="consumption-cell"><strong>{{ contrib.euro_anteil|floatformat:2 }} €</strong></td>
         </tr>
@@ -41,7 +42,7 @@
         {% endfor %}
         {# Rundungsdifferenz ausgeblendet #}
         <tr style="border-top:2px solid #333; background:#f8f9fa;">
-            <td colspan="7" style="text-align:right; font-weight:bold;">Summe</td>
+            <td colspan="{% if not renter_filter_id %}7{% else %}5{% endif %}" style="text-align:right; font-weight:bold;">Summe</td>
             <td class="consumption-cell"><strong>{{ summary.sum_euro_anteil|floatformat:2 }} €</strong></td>
         </tr>
         {% endif %}

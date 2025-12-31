@@ -111,10 +111,34 @@ class CostCenter(models.Model):
 
                 # Für jede Periode eine separate Berechnung
                 for period in periods:
-                    # ConsumptionResult von der ConsumptionCalc holen
+                    # Prüfe ob die Periode mit dem gültigen Bereich der ConsumptionCalc überlappt
+                    calc_start = contribution.consumption_calc.start_date
+                    calc_end = contribution.consumption_calc.end_date
+
+                    # Wenn end_date der ConsumptionCalc None ist, gibt es kein oberes Limit
+                    # Prüfe ob überhaupt eine Überlappung existiert
+                    if period['end_date'] <= calc_start:
+                        # Periode endet vor dem gültigen Bereich - überspringen
+                        continue
+                    if calc_end is not None and period['start_date'] >= calc_end:
+                        # Periode beginnt nach dem gültigen Bereich - überspringen
+                        continue
+
+                    # Passe die Datumsangaben an den gültigen Bereich an
+                    adjusted_start = max(period['start_date'], calc_start)
+                    if calc_end is not None:
+                        adjusted_end = min(period['end_date'], calc_end)
+                    else:
+                        adjusted_end = period['end_date']
+
+                    # Stelle sicher, dass adjusted_start < adjusted_end
+                    if adjusted_start >= adjusted_end:
+                        continue
+
+                    # ConsumptionResult von der ConsumptionCalc holen mit angepassten Daten
                     consumption_result = contribution.consumption_calc.calculate(
-                        start_date=period['start_date'],
-                        end_date=period['end_date']
+                        start_date=adjusted_start,
+                        end_date=adjusted_end
                     )
 
                     # Apartment-Name ermitteln
@@ -141,8 +165,8 @@ class CostCenter(models.Model):
                         'renter_id': renter_id,
                         'renter_first_name': renter_first_name,
                         'renter_last_name': renter_last_name,
-                        'period_start': period['start_date'],
-                        'period_end': period['end_date']
+                        'period_start': adjusted_start,
+                        'period_end': adjusted_end
                     })
 
                     total_consumption += consumption_result.final_result

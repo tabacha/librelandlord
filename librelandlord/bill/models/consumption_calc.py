@@ -64,6 +64,10 @@ class ConsumptionCalc(models.Model):
     argument3_explanation = models.CharField(
         max_length=200, blank=True, default='', verbose_name=_("Argument 3 Explanation"))
 
+    start_date = models.DateField(verbose_name=_("Start Date"))
+    end_date = models.DateField(
+        blank=True, null=True, verbose_name=_("End Date"))
+
     def __str__(self):
         return f"{self.name}"
 
@@ -119,6 +123,15 @@ class ConsumptionCalc(models.Model):
         if start_date >= end_date:
             raise ValueError(
                 f"Consumption Result Start date {start_date} must be before end date {end_date}")
+
+        # Prüfe ob der Berechnungszeitraum im gültigen Bereich liegt
+        if start_date < self.start_date:
+            raise ValueError(
+                f"Start date {start_date} liegt vor dem gültigen Startdatum {self.start_date} der Berechnung '{self.name}'")
+
+        if self.end_date is not None and end_date > self.end_date:
+            raise ValueError(
+                f"End date {end_date} liegt nach dem gültigen Enddatum {self.end_date} der Berechnung '{self.name}'")
 
         calculation_steps = []
 

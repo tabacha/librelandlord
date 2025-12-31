@@ -33,6 +33,11 @@ class MeterReadingAtDate(NamedTuple):
     is_exact: bool  # True wenn exakter Messwert, False wenn interpoliert
     reading_before: Optional['MeterReading']  # Messwert vor dem Datum
     reading_after: Optional['MeterReading']   # Messwert nach dem Datum
+    # Interpolations-Details (nur bei is_exact=False)
+    interpolation_formula: Optional[str] = None  # Berechnungsformel als Text
+    days_total: Optional[int] = None  # Tage zwischen before und after
+    days_to_target: Optional[int] = None  # Tage von before zu target
+    daily_consumption: Optional[float] = None  # Täglicher Verbrauch
 
 
 class MeterReadingManager(models.Manager):
@@ -106,9 +111,17 @@ class MeterReadingManager(models.Manager):
                 daily_consumption = reading_diff / days_total
                 calculated_reading = float(
                     reading_before.meter_reading) + (daily_consumption * days_to_target)
+
+                # Erstelle Formel-String
+                interpolation_formula = (
+                    f"{reading_before.meter_reading:.0f} + "
+                    f"(({reading_after.meter_reading:.0f} - {reading_before.meter_reading:.0f}) / {days_total}) * {days_to_target}"
+                )
             else:
                 # Gleiche Daten - sollte nicht passieren durch unique constraint
                 calculated_reading = float(reading_before.meter_reading)
+                daily_consumption = 0
+                interpolation_formula = f"{reading_before.meter_reading:.0f} (gleiche Daten)"
 
         elif reading_before and not reading_after:
             # Nur Messwert davor vorhanden - Exception werfen
@@ -137,7 +150,11 @@ class MeterReadingManager(models.Manager):
             calculated_reading=calculated_reading,
             is_exact=False,
             reading_before=reading_before,
-            reading_after=reading_after
+            reading_after=reading_after,
+            interpolation_formula=interpolation_formula,
+            days_total=days_total,
+            days_to_target=days_to_target,
+            daily_consumption=daily_consumption
         )
         logger.error("Interpolated reading: %s", rtn)
         return rtn

@@ -73,6 +73,7 @@ class ConsumptionCalcAdmin(admin.ModelAdmin):
     list_filter = ['operator', 'start_date']
     search_fields = ['name']
     inlines = [ConsumptionCalcArgumentInline]
+
     ordering = ['name']
 
     # Blende die alten deprecated Felder aus

@@ -10,6 +10,20 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'bill/css/all.min.css' %}">
     <link rel="stylesheet" href="{% static 'bill/css/meter-readings.css' %}">
+    <style>
+        @media print {
+            .location-group {
+                page-break-inside: avoid;
+            }
+            .print-notes {
+                margin-bottom: 50px;
+                page-break-inside: avoid;
+            }
+            body {
+                padding-bottom: 60px;
+            }
+        }
+    </style>
 
 </head>
 
@@ -50,14 +64,21 @@
                     <tr>
                         <th>Zählerplatz</th>
                         <th>Typ</th>
-                        <th>Standort</th>
                         <th>Zählernummer</th>
                         <th>Letzter Zählerstand</th>
                         <th>Neuer Zählerstand</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for meter_data in meters_data %}
+                {% for meter_data in meters_data %}
+                {% ifchanged meter_data.meter_place.location %}
+                {% if not forloop.first %}
+                </tbody>
+                {% endif %}
+                <tbody class="location-group">
+                    <tr class="location-header">
+                        <td colspan="5"><strong>{{ meter_data.meter_place.location }}</strong></td>
+                    </tr>
+                {% endifchanged %}
                     <tr>
                         <td>
                             {{ meter_data.meter_place.name }}
@@ -66,12 +87,11 @@
                             <span class="meter-icon meter-type-{{ meter_data.meter_place.type }}"
                                 title="{{ meter_data.meter_place.get_type_display }} ({{ meter_data.meter_place.unit }})"></span>
                         </td>
-                        <td>{{ meter_data.meter_place.location }}</td>
                         <td><strong>{{ meter_data.meter.meter_number }}</strong></td>
                         <td>
                             {% if meter_data.last_reading %}
                             <strong>
-                                {{ meter_data.last_reading.meter_reading }}
+                                {{ meter_data.last_reading.meter_reading|floatformat:1 }}
                                 {{ meter_data.meter_place.unit}}
                             </strong>
                             <div class="last-reading">
@@ -90,15 +110,17 @@
                                 data-meter-type="{{ meter_data.meter_place.type }}"
                                 data-last-reading="{% if meter_data.last_reading %}{{ meter_data.last_reading.meter_reading|unlocalize }}{% endif %}"
                                 value="{% if meter_data.current_reading %}{{ meter_data.current_reading.meter_reading|unlocalize }}{% endif %}"
-                                class="meter-input auto-save" placeholder=""><span
+                                class="meter-input auto-save" placeholder="">&nbsp;<span
                                 class="unit">{{meter_data.meter_place.unit }}</span>
                             <span class="save-indicator" id="indicator-{{ meter_data.meter.id }}"></span>
                             <i class="fas fa-triangle-exclamation warning-icon" id="warning-{{ meter_data.meter.id }}"
                                 title="Warnung: Neuer Zählerstand ist kleiner als der vorherige"></i>
                         </td>
                     </tr>
-                    {% endfor %}
+                {% if forloop.last %}
                 </tbody>
+                {% endif %}
+                {% endfor %}
             </table>
 
         </form>
@@ -110,6 +132,20 @@
             <div class="note-lines"></div>
             <div class="note-lines"></div>
             <div class="note-lines"></div>
+            <div style="margin-top: 40px; display: flex; justify-content: space-between;">
+                <div style="width: 15%;">
+                    <div style="border-bottom: 1px solid #000; margin-bottom: 5px;">&nbsp;</div>
+                    <small>Ort</small>
+                </div>
+                <div style="width: 15%;">
+                    <div style="border-bottom: 1px solid #000; margin-bottom: 5px;">&nbsp;</div>
+                    <small>Datum</small>
+                </div>
+                <div style="width: 65%;">
+                    <div style="border-bottom: 1px solid #000; margin-bottom: 5px;">&nbsp;</div>
+                    <small>Unterschrift</small>
+                </div>
+            </div>
         </div>
 
         {% else %}

@@ -538,11 +538,13 @@ class ConsumptionCalc(models.Model):
         elif arg_result.source_type == "meter_place" and arg_result.source:
             return arg_result.source.unit
         elif arg_result.source_type == "nested_calculation" and arg_result.nested_result:
-            # Bei verschachtelten Berechnungen: Einheit aus dem letzten Schritt der nested calculation
+            # Bei verschachtelten Berechnungen: Einheit aus dem letzten operation oder result Schritt
+            # (nicht argument steps, da diese die Einheit vor der Berechnung haben)
             nested_steps = arg_result.nested_result.calculation_steps
             for step in reversed(nested_steps):
-                if step.unit:
-                    return step.unit
+                if step.step_type in ('operation', 'result'):
+                    # Auch leere Einheit ist ein gültiges Ergebnis (z.B. bei m²/m²)
+                    return step.unit or ""
             return ""
         else:
             return ""
@@ -561,23 +563,19 @@ class ConsumptionCalc(models.Model):
             else:
                 return f"{unit1}+{unit2}" if unit1 and unit2 else ""
         elif operator == '*':
-            # Bei Multiplikation: Wenn einer der Operanden Prozent ist, behalte die andere Einheit
-            if unit2 == '%':
-                return unit1  # Prozent ist dimensionslos
-            elif unit1 == '%':
-                return unit2  # Prozent ist dimensionslos
+            # Bei Multiplikation: Wenn einer der Operanden dimensionslos ist (leer oder %), behalte die andere Einheit
+            if not unit2 or unit2 == '%':
+                return unit1  # unit2 ist dimensionslos
+            elif not unit1 or unit1 == '%':
+                return unit2  # unit1 ist dimensionslos
             elif unit1 and unit2:
                 return f"{unit1}×{unit2}"
-            elif unit1:
-                return unit1
-            elif unit2:
-                return unit2
             else:
                 return ""
         elif operator == '/':
-            # Bei Division: Wenn der Divisor Prozent ist, behalte die Einheit des Dividenden
-            if unit2 == '%':
-                return unit1  # Division durch Prozent ändert die Einheit nicht
+            # Bei Division: Wenn der Divisor dimensionslos ist, behalte die Einheit des Dividenden
+            if not unit2 or unit2 == '%':
+                return unit1  # Division durch dimensionslosen Wert ändert die Einheit nicht
             elif unit1 and unit2:
                 if unit1 == unit2:
                     return ""  # Einheit kürzt sich weg

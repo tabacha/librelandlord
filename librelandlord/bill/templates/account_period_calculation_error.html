@@ -110,6 +110,13 @@
                 {{ error_message }}
             </div>
 
+            {% if debug and traceback %}
+            <div class="error-details" style="text-align: left; white-space: pre-wrap; font-size: 0.8em; max-height: 400px; overflow-y: auto;">
+                <strong>Stack-Trace (nur in DEBUG-Modus sichtbar):</strong><br><br>
+                {{ traceback|safe }}
+            </div>
+            {% endif %}
+
             <div class="error-types">
                 <h3>Mögliche Ursachen:</h3>
                 <ul>

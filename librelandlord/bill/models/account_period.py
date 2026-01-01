@@ -93,25 +93,11 @@ class AccountPeriod(models.Model):
                 'latest': max(bill_dates)
             }
 
-            # CostCenterCalculation berechnen (falls möglich)
-            cost_center_calculation = None
-            try:
-                cost_center_calculation = cost_center.calculate_total_consumption(
-                    start_date=self.start_date,
-                    end_date=self.end_date
-                )
-            except Exception as e:
-                # Falls die Berechnung fehlschlägt (z.B. keine Contributions),
-                # loggen wir den Fehler und setzen None
-                logger.warning(
-                    "CostCenter calculation failed for %s (AccountPeriod: %s, %s-%s): %s",
-                    cost_center.text,
-                    self.text,
-                    self.start_date,
-                    self.end_date,
-                    str(e)
-                )
-                cost_center_calculation = None
+            # CostCenterCalculation berechnen
+            cost_center_calculation = cost_center.calculate_total_consumption(
+                start_date=self.start_date,
+                end_date=self.end_date
+            )
 
             # Summary erstellen
             summary = self.CostCenterSummary(

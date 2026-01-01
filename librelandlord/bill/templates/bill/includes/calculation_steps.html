@@ -1,31 +1,45 @@
 {% comment %}Reusable calculation steps display for a contribution{% endcomment %}
 
-<!-- Zählerstände Tabelle -->
+{% comment %}
+Kompakte Darstellung:
+- Bei Multiplikation/Division: Verschachtelte Berechnungen inline in Klammern
+  Beispiel: (16,0 m³ - 12,0 m³) * 28,6 % = 1,1 m³
+- Bei Addition/Subtraktion: Alle Werte auf einer Zeile
+  Beispiel: 3427,6 kWh - 1430,2 kWh - 444,0 kWh = 1045,9 kWh
+{% endcomment %}
+
+<!-- Zählerstände der verschachtelten Berechnungen anzeigen -->
+{% for arg_result in contrib.consumption_result.argument_results %}
+    {% if arg_result.source_type == 'nested_calculation' and arg_result.nested_result %}
+        {% for nested_step in arg_result.nested_result.calculation_steps %}
+            {% include 'bill/includes/meter_readings_table.html' with step=nested_step %}
+        {% endfor %}
+    {% endif %}
+{% endfor %}
+
+<!-- Normale Zählerstände der Hauptberechnung -->
 {% for step in contrib.consumption_result.calculation_steps %}
 {% include 'bill/includes/meter_readings_table.html' with step=step %}
 {% endfor %}
 
-<!-- Berechnungsschritte -->
-{% for step in contrib.consumption_result.calculation_steps %}
-{% if step.step_type == 'operation' %}
-<div class="calculation-step step-{{ step.step_type }}">
-    {% if step.operand1_label or step.operand2_label %}
-    <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
-        {% if step.operand1_label %}({{ step.operand1|floatformat:1 }} {{ step.operand1_unit }} = {{ step.operand1_label }}){% endif %}
-        {% if step.operand2_label %}({{ step.operand2|floatformat:1 }} {{ step.operand2_unit }} = {{ step.operand2_label }}){% endif %}
-    </div>
-    {% endif %}
-    <span class="calc-cell">
-        {{ step.operand1|floatformat:1 }} {{ step.operand1_unit }} {{ step.operator }} {{ step.operand2|floatformat:1 }} {{ step.operand2_unit }} =
-    </span>
+<!-- Kompakte Formel-Anzeige -->
+{% if contrib.consumption_result.formula_display %}
+<div class="calculation-step">
+    {% comment %}Erklärungen über der Formel{% endcomment %}
+    {% for step in contrib.consumption_result.calculation_steps %}
+        {% if step.step_type == 'operation' and step.operand2_label %}
+            <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
+                ({% if step.operand2_display %}{{ step.operand2_display|floatformat:1 }} {{ step.operand2_display_unit }}{% else %}{{ step.operand2|floatformat:1 }} {{ step.operand2_unit }}{% endif %} = {{ step.operand2_label }})
+            </div>
+        {% endif %}
+    {% endfor %}
+
+    <span class="calc-cell">{{ contrib.consumption_result.formula_display }} =</span>
     <span class="consumption-cell">
-        <strong>{{ step.result|floatformat:1 }} {{ step.unit }}</strong>
+        <strong>{{ contrib.consumption_result.formula_result_display }}</strong>
     </span>
 </div>
-{% elif step.step_type == 'result' %}
-{% comment %}Result step can be handled here if needed{% endcomment %}
 {% endif %}
-{% endfor %}
 
 {% if contrib.consumption_result.calculation_str %}
 <div class="calculation-step">

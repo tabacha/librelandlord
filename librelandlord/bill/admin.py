@@ -83,6 +83,52 @@ class ConsumptionCalcAdmin(admin.ModelAdmin):
         'argument3', 'argument3_value', 'argument3_unit', 'argument3_explanation'
     ]
 
+    # Admin Actions für Listenansicht
+    actions = ['duplicate_consumption_calc_action']
+
+    # Button auf Change-Seite aktivieren
+    change_form_template = 'admin/bill/consumptioncalc/change_form.html'
+
+    def _duplicate_single(self, obj):
+        """Dupliziert ein einzelnes ConsumptionCalc Objekt inkl. Arguments"""
+        original_arguments = list(obj.arguments.all())
+        original_name = obj.name
+
+        obj.pk = None
+        obj.name = f"{original_name} (Kopie)"
+        obj.save()
+
+        for arg in original_arguments:
+            arg.pk = None
+            arg.consumption_calc = obj
+            arg.save()
+
+        return obj
+
+    def duplicate_consumption_calc_action(self, request, queryset):
+        """Admin Action: Dupliziert ausgewählte ConsumptionCalc Objekte"""
+        for obj in queryset:
+            self._duplicate_single(obj)
+        self.message_user(
+            request,
+            f"{queryset.count()} ConsumptionCalc(s) erfolgreich dupliziert."
+        )
+    duplicate_consumption_calc_action.short_description = "Ausgewählte ConsumptionCalcs duplizieren"
+
+    def response_change(self, request, obj):
+        """Handle den Duplizieren-Button auf der Change-Seite"""
+        if "_duplicate" in request.POST:
+            original_name = obj.name
+            new_obj = self._duplicate_single(obj)
+            self.message_user(
+                request, f"'{original_name}' wurde als '{new_obj.name}' dupliziert.")
+            from django.urls import reverse
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(
+                reverse('admin:bill_consumptioncalc_change', args=[new_obj.pk])
+            )
+        return super().response_change(request, obj)
+
     def get_formula_preview(self, obj):
         """Zeigt Formel-Vorschau in der Liste"""
         args = obj.arguments.all()[:5]  # Max 5 Arguments anzeigen

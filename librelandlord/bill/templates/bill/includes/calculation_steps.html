@@ -1,8 +1,11 @@
 {% comment %}Reusable calculation steps display for a contribution{% endcomment %}
 
 {% comment %}
-Kompakte Darstellung: Verschachtelte Berechnungen inline in Klammern
-Beispiel: (16,0 m³ - 12,0 m³) * 28,6 % = 1,1 m³
+Kompakte Darstellung:
+- Bei Multiplikation/Division: Verschachtelte Berechnungen inline in Klammern
+  Beispiel: (16,0 m³ - 12,0 m³) * 28,6 % = 1,1 m³
+- Bei Addition/Subtraktion: Alle Werte auf einer Zeile
+  Beispiel: 3427,6 kWh - 1430,2 kWh - 444,0 kWh = 1045,9 kWh
 {% endcomment %}
 
 <!-- Zählerstände der verschachtelten Berechnungen anzeigen -->
@@ -19,50 +22,24 @@ Beispiel: (16,0 m³ - 12,0 m³) * 28,6 % = 1,1 m³
 {% include 'bill/includes/meter_readings_table.html' with step=step %}
 {% endfor %}
 
-<!-- Berechnungsschritte kompakt -->
-{% for step in contrib.consumption_result.calculation_steps %}
-{% if step.step_type == 'operation' %}
-<div class="calculation-step step-{{ step.step_type }}">
-    {% comment %}Erklärungen über der Formel (nur für Operand 2, z.B. Prozentanteil){% endcomment %}
-    {% if step.operand2_label %}
-    <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
-        ({% if step.operand2_display %}{{ step.operand2_display|floatformat:1 }} {{ step.operand2_display_unit }}{% else %}{{ step.operand2|floatformat:1 }} {{ step.operand2_unit }}{% endif %} = {{ step.operand2_label }})
-    </div>
-    {% endif %}
+<!-- Kompakte Formel-Anzeige -->
+{% if contrib.consumption_result.formula_display %}
+<div class="calculation-step">
+    {% comment %}Erklärungen über der Formel{% endcomment %}
+    {% for step in contrib.consumption_result.calculation_steps %}
+        {% if step.step_type == 'operation' and step.operand2_label %}
+            <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
+                ({% if step.operand2_display %}{{ step.operand2_display|floatformat:1 }} {{ step.operand2_display_unit }}{% else %}{{ step.operand2|floatformat:1 }} {{ step.operand2_unit }}{% endif %} = {{ step.operand2_label }})
+            </div>
+        {% endif %}
+    {% endfor %}
 
-    <span class="calc-cell">
-        {% comment %}Prüfe ob Argument 1 eine verschachtelte Berechnung ist{% endcomment %}
-        {% with first_arg=contrib.consumption_result.argument_results.0 %}
-        {% if first_arg.source_type == 'nested_calculation' and first_arg.nested_result %}
-            {% comment %}Zeige verschachtelte Berechnung inline in Klammern{% endcomment %}
-            {% for nested_step in first_arg.nested_result.calculation_steps %}
-                {% if nested_step.step_type == 'operation' %}
-                    ({% if nested_step.operand1_display %}{{ nested_step.operand1_display|floatformat:1 }} {{ nested_step.operand1_display_unit }}{% else %}{{ nested_step.operand1|floatformat:1 }} {{ nested_step.operand1_unit }}{% endif %} {{ nested_step.operator }} {% if nested_step.operand2_display %}{{ nested_step.operand2_display|floatformat:1 }} {{ nested_step.operand2_display_unit }}{% else %}{{ nested_step.operand2|floatformat:1 }} {{ nested_step.operand2_unit }}{% endif %})
-                {% endif %}
-            {% endfor %}
-        {% else %}
-            {% comment %}Normaler Operand 1{% endcomment %}
-            {% if step.operand1_display %}
-                {{ step.operand1_display|floatformat:1 }} {{ step.operand1_display_unit }}
-            {% else %}
-                {{ step.operand1|floatformat:1 }} {{ step.operand1_unit }}
-            {% endif %}
-        {% endif %}
-        {% endwith %}
-        {{ step.operator }}
-        {% if step.operand2_display %}
-            {{ step.operand2_display|floatformat:1 }} {{ step.operand2_display_unit }}
-        {% else %}
-            {{ step.operand2|floatformat:1 }} {{ step.operand2_unit }}
-        {% endif %}
-        =
-    </span>
+    <span class="calc-cell">{{ contrib.consumption_result.formula_display }} =</span>
     <span class="consumption-cell">
-        <strong>{{ step.result|floatformat:1 }} {{ step.unit }}</strong>
+        <strong>{{ contrib.consumption_result.formula_result_display }}</strong>
     </span>
 </div>
 {% endif %}
-{% endfor %}
 
 {% if contrib.consumption_result.calculation_str %}
 <div class="calculation-step">

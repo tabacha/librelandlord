@@ -221,6 +221,9 @@ class ConsumptionCalc(models.Model):
         argument_results: List['ArgumentResult']  # Alle Argument-Ergebnisse
         final_result: Decimal
         calculation_steps: List['CalculationStep']
+        # Kompakte Formel für Anzeige, z.B. "3427,6 kWh - 1430,2 kWh - 444,0 kWh = 1045,9 kWh"
+        formula_display: Optional[str] = None
+        formula_result_display: Optional[str] = None
         success: bool = True
         error_message: Optional[str] = None
 
@@ -411,13 +414,20 @@ class ConsumptionCalc(models.Model):
             unit=final_unit
         ))
 
+        # Erstelle kompakte Formel für Anzeige
+        formula_display, formula_result_display = self._build_formula_display(
+            arguments, argument_results, calculation_steps, result, final_unit
+        )
+
         return self.ConsumptionResult(
             consumption_calc=self,
             calculation_period_start=start_date,
             calculation_period_end=end_date,
             argument_results=argument_results,
             final_result=result,
-            calculation_steps=calculation_steps
+            calculation_steps=calculation_steps,
+            formula_display=formula_display,
+            formula_result_display=formula_result_display
         )
 
     def _calculate_single_argument(
@@ -578,3 +588,66 @@ class ConsumptionCalc(models.Model):
                 return ""
         else:
             return unit1 or ""
+
+    def _build_formula_display(
+        self,
+        arguments: list,
+        argument_results: list,
+        calculation_steps: list,
+        result: Decimal,
+        result_unit: str
+    ) -> tuple:
+        """
+        Erstellt eine kompakte Formel-Darstellung für die Anzeige.
+
+        Beispiele:
+        - Addition/Subtraktion: "3427,6 kWh - 1430,2 kWh - 444,0 kWh"
+        - Multiplikation: "(16,0 m³ - 12,0 m³) * 28,6 %"
+
+        Returns:
+            Tuple[str, str]: (formula_display, formula_result_display)
+        """
+        import locale
+        try:
+            locale.setlocale(locale.LC_NUMERIC, 'de_DE.UTF-8')
+        except locale.Error:
+            pass
+
+        def format_number(val: Decimal) -> str:
+            """Formatiert eine Zahl mit Komma als Dezimaltrenner"""
+            return f"{float(val):,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+        parts = []
+
+        for i, (arg, arg_result) in enumerate(zip(arguments, argument_results)):
+            # Ermittle Display-Wert und Einheit
+            if arg.unit == self.Unit.PERCENT:
+                # Prozent: Wert * 100 und % als Einheit
+                display_value = arg_result.value * 100
+                display_unit = '%'
+            else:
+                display_value = arg_result.value
+                display_unit = self._get_unit_from_arg_object(arg, arg_result)
+
+            # Prüfe auf verschachtelte Berechnung
+            if arg_result.source_type == 'nested_calculation' and arg_result.nested_result:
+                # Hole die Formel der verschachtelten Berechnung
+                nested_formula = arg_result.nested_result.formula_display
+                if nested_formula:
+                    parts.append(f"({nested_formula})")
+                else:
+                    parts.append(
+                        f"{format_number(display_value)} {display_unit}".strip())
+            else:
+                parts.append(
+                    f"{format_number(display_value)} {display_unit}".strip())
+
+        # Verbinde mit Operator
+        operator_display = f" {self.operator} "
+        formula_display = operator_display.join(parts)
+
+        # Ergebnis formatieren
+        formula_result_display = f"{format_number(result)} {result_unit or ''}".strip(
+        )
+
+        return formula_display, formula_result_display

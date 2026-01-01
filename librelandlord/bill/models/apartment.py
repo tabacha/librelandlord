@@ -18,7 +18,7 @@ class Apartment(models.Model):
         max_length=10, verbose_name=_("Postal Code"))
     city = models.CharField(max_length=30, verbose_name=_("City"))
     size_in_m2 = models.DecimalField(
-        max_digits=4, decimal_places=2, verbose_name=_("Size in Square Meters"))
+        max_digits=5, decimal_places=2, verbose_name=_("Size in Square Meters"))
 
     def __str__(self):
         return f"{self.number} {self.name}"

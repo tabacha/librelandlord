@@ -577,11 +577,11 @@ def account_period_calculation(request, account_period_id, renter_id=None):
             account_period_id,
             str(e)
         )
-        
+
         # Traceback für die Anzeige erfassen
         import traceback
         traceback_str = traceback.format_exc()
-        
+
         # Fehler-Template rendern
         error_context = {
             'error_message': str(e),

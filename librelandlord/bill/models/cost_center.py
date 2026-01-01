@@ -172,9 +172,14 @@ class CostCenter(models.Model):
                     total_consumption += consumption_result.final_result
 
             except Exception as e:
-                # Bei Fehlern in einzelnen Contributions weiterfahren
+                # Bei Fehlern detaillierte Information ausgeben
+                consumption_calc_name = contribution.consumption_calc.name if contribution.consumption_calc else 'N/A'
+                consumption_calc_id = contribution.consumption_calc.id if contribution.consumption_calc else 'N/A'
                 raise ValueError(
-                    f"Fehler bei Berechnung für Apartment {contribution.apartment}: {str(e)}"
+                    f"Fehler bei Berechnung für Apartment {contribution.apartment} "
+                    f"(CostCenterContribution ID: {contribution.id}, "
+                    f"ConsumptionCalc: '{consumption_calc_name}' [ID: {consumption_calc_id}]): "
+                    f"{str(e)}"
                 ) from e
 
         # Jetzt ContributionResults mit Prozentsätzen erstellen

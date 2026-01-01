@@ -571,11 +571,24 @@ def account_period_calculation(request, account_period_id, renter_id=None):
         return render(request, 'account_period_calculation.html', context)
 
     except Exception as e:
+        # Fehler mit vollem Stack-Trace loggen
+        logger.exception(
+            "Error calculating account period %s: %s",
+            account_period_id,
+            str(e)
+        )
+        
+        # Traceback für die Anzeige erfassen
+        import traceback
+        traceback_str = traceback.format_exc()
+        
         # Fehler-Template rendern
         error_context = {
             'error_message': str(e),
             'error_type': type(e).__name__,
-            'account_period_id': account_period_id
+            'account_period_id': account_period_id,
+            'traceback': traceback_str,
+            'debug': settings.DEBUG
         }
         return render(request, 'account_period_calculation_error.html', error_context, status=500)
 

@@ -527,8 +527,12 @@ class ConsumptionCalc(models.Model):
         # Fallback auf MeterPlace Unit
         elif arg_result.source_type == "meter_place" and arg_result.source:
             return arg_result.source.unit
-        elif arg_result.source_type == "nested_calculation":
-            # Bei verschachtelten Berechnungen keine Einheit (wird vom nested_calc bestimmt)
+        elif arg_result.source_type == "nested_calculation" and arg_result.nested_result:
+            # Bei verschachtelten Berechnungen: Einheit aus dem letzten Schritt der nested calculation
+            nested_steps = arg_result.nested_result.calculation_steps
+            for step in reversed(nested_steps):
+                if step.unit:
+                    return step.unit
             return ""
         else:
             return ""

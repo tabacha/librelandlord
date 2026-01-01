@@ -1,58 +1,16 @@
 {% comment %}Reusable calculation steps display for a contribution{% endcomment %}
 
-<!-- Zählerstände und verschachtelte Berechnungen -->
+{% comment %}
+Kompakte Darstellung: Verschachtelte Berechnungen inline in Klammern
+Beispiel: (16,0 m³ - 12,0 m³) * 28,6 % = 1,1 m³
+{% endcomment %}
+
+<!-- Zählerstände der verschachtelten Berechnungen anzeigen -->
 {% for arg_result in contrib.consumption_result.argument_results %}
     {% if arg_result.source_type == 'nested_calculation' and arg_result.nested_result %}
-        <!-- Verschachtelte Berechnung -->
-        <div style="margin: 15px 0; padding: 10px; background: #f0f0f0; border-left: 4px solid #ff9800;">
-            <h5 style="margin: 0 0 10px 0; color: #ff9800;">
-                🔗 Verschachtelte Berechnung: {{ arg_result.nested_result.consumption_calc.name }}
-            </h5>
-
-            <!-- Rekursiv: Zählerstände der verschachtelten Berechnung -->
-            {% for nested_step in arg_result.nested_result.calculation_steps %}
-                {% include 'bill/includes/meter_readings_table.html' with step=nested_step %}
-            {% endfor %}
-
-            <!-- Rekursiv: Berechnungsschritte der verschachtelten Berechnung -->
-            {% for nested_step in arg_result.nested_result.calculation_steps %}
-                {% if nested_step.step_type == 'operation' %}
-                <div class="calculation-step step-{{ nested_step.step_type }}" style="background: #f8f8f8;">
-                    {% if nested_step.operand1_label or nested_step.operand2_label %}
-                    <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
-                        {% if nested_step.operand1_label %}
-                            ({% if nested_step.operand1_display %}{{ nested_step.operand1_display|floatformat:1 }} {{ nested_step.operand1_display_unit }}{% else %}{{ nested_step.operand1|floatformat:1 }} {{ nested_step.operand1_unit }}{% endif %} = {{ nested_step.operand1_label }})
-                        {% endif %}
-                        {% if nested_step.operand2_label %}
-                            ({% if nested_step.operand2_display %}{{ nested_step.operand2_display|floatformat:1 }} {{ nested_step.operand2_display_unit }}{% else %}{{ nested_step.operand2|floatformat:1 }} {{ nested_step.operand2_unit }}{% endif %} = {{ nested_step.operand2_label }})
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    <span class="calc-cell">
-                        {% if nested_step.operand1_display %}
-                            {{ nested_step.operand1_display|floatformat:1 }} {{ nested_step.operand1_display_unit }}
-                        {% else %}
-                            {{ nested_step.operand1|floatformat:1 }} {{ nested_step.operand1_unit }}
-                        {% endif %}
-                        {{ nested_step.operator }}
-                        {% if nested_step.operand2_display %}
-                            {{ nested_step.operand2_display|floatformat:1 }} {{ nested_step.operand2_display_unit }}
-                        {% else %}
-                            {{ nested_step.operand2|floatformat:1 }} {{ nested_step.operand2_unit }}
-                        {% endif %}
-                        =
-                    </span>
-                    <span class="consumption-cell">
-                        <strong>{{ nested_step.result|floatformat:1 }} {{ nested_step.unit }}</strong>
-                    </span>
-                </div>
-                {% endif %}
-            {% endfor %}
-
-            <div style="margin-top: 10px; padding: 8px; background: white; border: 1px solid #ddd; text-align: right;">
-                <strong>Ergebnis:</strong> {{ arg_result.nested_result.final_result|floatformat:1 }}
-            </div>
-        </div>
+        {% for nested_step in arg_result.nested_result.calculation_steps %}
+            {% include 'bill/includes/meter_readings_table.html' with step=nested_step %}
+        {% endfor %}
     {% endif %}
 {% endfor %}
 
@@ -61,26 +19,36 @@
 {% include 'bill/includes/meter_readings_table.html' with step=step %}
 {% endfor %}
 
-<!-- Berechnungsschritte der Hauptberechnung -->
+<!-- Berechnungsschritte kompakt -->
 {% for step in contrib.consumption_result.calculation_steps %}
 {% if step.step_type == 'operation' %}
 <div class="calculation-step step-{{ step.step_type }}">
-    {% if step.operand1_label or step.operand2_label %}
+    {% comment %}Erklärungen über der Formel (nur für Operand 2, z.B. Prozentanteil){% endcomment %}
+    {% if step.operand2_label %}
     <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
-        {% if step.operand1_label %}
-            ({% if step.operand1_display %}{{ step.operand1_display|floatformat:1 }} {{ step.operand1_display_unit }}{% else %}{{ step.operand1|floatformat:1 }} {{ step.operand1_unit }}{% endif %} = {{ step.operand1_label }})
-        {% endif %}
-        {% if step.operand2_label %}
-            ({% if step.operand2_display %}{{ step.operand2_display|floatformat:1 }} {{ step.operand2_display_unit }}{% else %}{{ step.operand2|floatformat:1 }} {{ step.operand2_unit }}{% endif %} = {{ step.operand2_label }})
-        {% endif %}
+        ({% if step.operand2_display %}{{ step.operand2_display|floatformat:1 }} {{ step.operand2_display_unit }}{% else %}{{ step.operand2|floatformat:1 }} {{ step.operand2_unit }}{% endif %} = {{ step.operand2_label }})
     </div>
     {% endif %}
+
     <span class="calc-cell">
-        {% if step.operand1_display %}
-            {{ step.operand1_display|floatformat:1 }} {{ step.operand1_display_unit }}
+        {% comment %}Prüfe ob Argument 1 eine verschachtelte Berechnung ist{% endcomment %}
+        {% with first_arg=contrib.consumption_result.argument_results.0 %}
+        {% if first_arg.source_type == 'nested_calculation' and first_arg.nested_result %}
+            {% comment %}Zeige verschachtelte Berechnung inline in Klammern{% endcomment %}
+            {% for nested_step in first_arg.nested_result.calculation_steps %}
+                {% if nested_step.step_type == 'operation' %}
+                    ({% if nested_step.operand1_display %}{{ nested_step.operand1_display|floatformat:1 }} {{ nested_step.operand1_display_unit }}{% else %}{{ nested_step.operand1|floatformat:1 }} {{ nested_step.operand1_unit }}{% endif %} {{ nested_step.operator }} {% if nested_step.operand2_display %}{{ nested_step.operand2_display|floatformat:1 }} {{ nested_step.operand2_display_unit }}{% else %}{{ nested_step.operand2|floatformat:1 }} {{ nested_step.operand2_unit }}{% endif %})
+                {% endif %}
+            {% endfor %}
         {% else %}
-            {{ step.operand1|floatformat:1 }} {{ step.operand1_unit }}
+            {% comment %}Normaler Operand 1{% endcomment %}
+            {% if step.operand1_display %}
+                {{ step.operand1_display|floatformat:1 }} {{ step.operand1_display_unit }}
+            {% else %}
+                {{ step.operand1|floatformat:1 }} {{ step.operand1_unit }}
+            {% endif %}
         {% endif %}
+        {% endwith %}
         {{ step.operator }}
         {% if step.operand2_display %}
             {{ step.operand2_display|floatformat:1 }} {{ step.operand2_display_unit }}
@@ -93,8 +61,6 @@
         <strong>{{ step.result|floatformat:1 }} {{ step.unit }}</strong>
     </span>
 </div>
-{% elif step.step_type == 'result' %}
-{% comment %}Result step can be handled here if needed{% endcomment %}
 {% endif %}
 {% endfor %}
 

@@ -25,12 +25,41 @@ Kompakte Darstellung:
 <!-- Kompakte Formel-Anzeige -->
 {% if contrib.consumption_result.formula_display %}
 <div class="calculation-step">
-    {% comment %}Erklärungen über der Formel{% endcomment %}
+    {% comment %}Erklärungen über der Formel - auch aus nested calculations{% endcomment %}
+    
+    {% comment %}Erklärungen aus nested calculations{% endcomment %}
+    {% for arg_result in contrib.consumption_result.argument_results %}
+        {% if arg_result.source_type == 'nested_calculation' and arg_result.nested_result %}
+            {% for nested_step in arg_result.nested_result.calculation_steps %}
+                {% if nested_step.step_type == 'operation' %}
+                    {% if nested_step.operand1_label %}
+                        <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
+                            ({% if nested_step.operand1_display %}{{ nested_step.operand1_display|floatformat:1 }} {{ nested_step.operand1_display_unit }}{% else %}{{ nested_step.operand1|floatformat:1 }} {{ nested_step.operand1_unit }}{% endif %} = {{ nested_step.operand1_label }})
+                        </div>
+                    {% endif %}
+                    {% if nested_step.operand2_label %}
+                        <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
+                            ({% if nested_step.operand2_display %}{{ nested_step.operand2_display|floatformat:1 }} {{ nested_step.operand2_display_unit }}{% else %}{{ nested_step.operand2|floatformat:1 }} {{ nested_step.operand2_unit }}{% endif %} = {{ nested_step.operand2_label }})
+                        </div>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    {% endfor %}
+    
+    {% comment %}Erklärungen aus der Hauptberechnung{% endcomment %}
     {% for step in contrib.consumption_result.calculation_steps %}
-        {% if step.step_type == 'operation' and step.operand2_label %}
-            <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
-                ({% if step.operand2_display %}{{ step.operand2_display|floatformat:1 }} {{ step.operand2_display_unit }}{% else %}{{ step.operand2|floatformat:1 }} {{ step.operand2_unit }}{% endif %} = {{ step.operand2_label }})
-            </div>
+        {% if step.step_type == 'operation' %}
+            {% if step.operand1_label %}
+                <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
+                    ({% if step.operand1_display %}{{ step.operand1_display|floatformat:1 }} {{ step.operand1_display_unit }}{% else %}{{ step.operand1|floatformat:1 }} {{ step.operand1_unit }}{% endif %} = {{ step.operand1_label }})
+                </div>
+            {% endif %}
+            {% if step.operand2_label %}
+                <div style="color: #666; font-style: italic; margin-bottom: 3px; font-size: 0.9em;">
+                    ({% if step.operand2_display %}{{ step.operand2_display|floatformat:1 }} {{ step.operand2_display_unit }}{% else %}{{ step.operand2|floatformat:1 }} {{ step.operand2_unit }}{% endif %} = {{ step.operand2_label }})
+                </div>
+            {% endif %}
         {% endif %}
     {% endfor %}
 

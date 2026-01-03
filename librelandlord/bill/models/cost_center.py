@@ -5,15 +5,34 @@ from typing import List, NamedTuple
 from decimal import Decimal
 
 
-# CostCenter
-# Examples:
-# m2 Kalt+Warmwasserzähler der jeweiligen Wohnugen
-
-
 class CostCenter(models.Model):
+    """
+    Kostenstelle für die Nebenkostenabrechnung.
+
+    Distribution Types:
+    - CONSUMPTION: Anteil nach consumption_calc Ergebnis (z.B. Wasser nach Zähler)
+    - TIME: Anteil nach Tagen, aufgeteilt bei Mieterwechsel (z.B. Müll, Internet)
+    - AREA: Anteil nach m², aufgeteilt bei Mieterwechsel (z.B. Grundsteuer)
+    - DIRECT: Bill geht 1:1 an den Mieter im Bill-Zeitraum (z.B. Waschvorgänge)
+    """
+
+    class DistributionType(models.TextChoices):
+        CONSUMPTION = 'CONSUMPTION', _('Consumption based (meter reading)')
+        TIME = 'TIME', _('By time (days)')
+        AREA = 'AREA', _('By area (m²)')
+        DIRECT = 'DIRECT', _('Direct assignment (bill period = renter)')
+
     text = models.CharField(max_length=27, verbose_name=_("Cost Center Text"))
     is_oiltank = models.BooleanField(
         verbose_name=_('Is Oiltank')
+    )
+    distribution_type = models.CharField(
+        max_length=20,
+        choices=DistributionType.choices,
+        default=DistributionType.CONSUMPTION,
+        verbose_name=_("Distribution Type"),
+        help_text=_(
+            "CONSUMPTION: by meter, TIME: by days, AREA: by m², DIRECT: bill goes to renter in bill period")
     )
 
     def __str__(self):
@@ -43,13 +62,20 @@ class CostCenter(models.Model):
         total_consumption: Decimal
         apartment_count: int
         total_consumption_unit: str
+        # Zusätzliche Felder für die Darstellung der Berechnungsformel
+        total_days: int = 0  # Gesamttage des Abrechnungszeitraums
+        # Gesamt-m² aller Wohnungen (für AREA)
+        total_area: Decimal = Decimal('0')
 
     def calculate_total_consumption(self, start_date: date, end_date: date) -> CostCenterCalculation:
         """
-        Berechnet den Gesamtverbrauch dieses CostCenters für den angegebenen Zeitraum.
+        Berechnet den Gesamtverbrauch/Anteil dieses CostCenters für den angegebenen Zeitraum.
 
-        Ruft für alle zugehörigen CostCenterContributions die ConsumptionCalc auf
-        und summiert die Ergebnisse.
+        Je nach distribution_type:
+        - CONSUMPTION: Nutzt consumption_calc für Verbrauchsberechnung
+        - TIME: Berechnet Anteil nach Tagen (gleiche Aufteilung pro Wohnung)
+        - AREA: Berechnet Anteil nach m² der Wohnung
+        - DIRECT: 1:1 Zuordnung zum Mieter im Bill-Zeitraum
 
         Args:
             start_date: Startdatum der Berechnung
@@ -62,6 +88,8 @@ class CostCenter(models.Model):
             ValueError: Bei ungültigen Eingabedaten
         """
         from .cost_center_contribution import CostCenterContribution
+        from .consumption_calc import ConsumptionCalc
+
         if start_date >= end_date:
             raise ValueError(
                 f"Total Consumption {self.text} Start date {start_date} must be before end date {end_date}")
@@ -82,18 +110,35 @@ class CostCenter(models.Model):
                 total_consumption_unit=""
             )
 
+        # Je nach distribution_type unterschiedliche Berechnung
+        if self.distribution_type == self.DistributionType.CONSUMPTION:
+            return self._calculate_consumption_based(contributions, start_date, end_date)
+        elif self.distribution_type == self.DistributionType.TIME:
+            return self._calculate_time_based(contributions, start_date, end_date)
+        elif self.distribution_type == self.DistributionType.AREA:
+            return self._calculate_area_based(contributions, start_date, end_date)
+        elif self.distribution_type == self.DistributionType.DIRECT:
+            return self._calculate_direct(contributions, start_date, end_date)
+        else:
+            raise ValueError(
+                f"Unknown distribution_type: {self.distribution_type}")
+
+    def _calculate_consumption_based(self, contributions, start_date: date, end_date: date) -> CostCenterCalculation:
+        """Berechnung basierend auf consumption_calc (Zählerstand)"""
+        from .consumption_calc import ConsumptionCalc
+
         contribution_results = []
         total_consumption = Decimal('0.00')
         apartment_names = set()
         total_consumption_unit = ""
-
-        # Erst alle Contributions sammeln um Gesamtverbrauch zu berechnen
         temp_results = []
 
-        # Für jede Contribution die ConsumptionCalc berechnen
-        # Aber jetzt für jede Renter-Periode separat
         for contribution in contributions:
             try:
+                if not contribution.consumption_calc:
+                    raise ValueError(
+                        "consumption_calc is required for CONSUMPTION distribution type")
+
                 # Hole alle Renter-Perioden für diese Wohnung
                 if contribution.apartment:
                     periods = contribution.apartment.get_renters_for_period(
@@ -101,7 +146,6 @@ class CostCenter(models.Model):
                         end_date=end_date
                     )
                 else:
-                    # Keine Wohnung (special_designation) - behandle als eine Periode ohne Renter
                     periods = [{
                         'start_date': start_date,
                         'end_date': end_date,
@@ -109,62 +153,45 @@ class CostCenter(models.Model):
                         'renter': None
                     }]
 
-                # Für jede Periode eine separate Berechnung
                 for period in periods:
-                    # Prüfe ob die Periode mit dem gültigen Bereich der ConsumptionCalc überlappt
                     calc_start = contribution.consumption_calc.start_date
                     calc_end = contribution.consumption_calc.end_date
 
-                    # Wenn end_date der ConsumptionCalc None ist, gibt es kein oberes Limit
-                    # Prüfe ob überhaupt eine Überlappung existiert
                     if period['end_date'] <= calc_start:
-                        # Periode endet vor dem gültigen Bereich - überspringen
                         continue
                     if calc_end is not None and period['start_date'] >= calc_end:
-                        # Periode beginnt nach dem gültigen Bereich - überspringen
                         continue
 
-                    # Passe die Datumsangaben an den gültigen Bereich an
                     adjusted_start = max(period['start_date'], calc_start)
-                    if calc_end is not None:
-                        adjusted_end = min(period['end_date'], calc_end)
-                    else:
-                        adjusted_end = period['end_date']
+                    adjusted_end = min(
+                        period['end_date'], calc_end) if calc_end else period['end_date']
 
-                    # Stelle sicher, dass adjusted_start < adjusted_end
                     if adjusted_start >= adjusted_end:
                         continue
 
-                    # ConsumptionResult von der ConsumptionCalc holen mit angepassten Daten
                     consumption_result = contribution.consumption_calc.calculate(
                         start_date=adjusted_start,
                         end_date=adjusted_end
                     )
 
-                    # Apartment-Name ermitteln
                     apartment_name = contribution.get_display_name()
                     apartment_names.add(apartment_name)
 
-                    # Renter-Informationen
                     renter = period.get('renter')
                     renter_id = period.get('renter_id')
-                    renter_first_name = renter.first_name if renter else None
-                    renter_last_name = renter.last_name if renter else None
 
-                    # Einheit vom ersten Ergebnis übernehmen
                     if not total_consumption_unit and consumption_result.calculation_steps:
                         final_step = consumption_result.calculation_steps[-1]
                         total_consumption_unit = final_step.unit or ""
 
-                    # Temporär speichern
                     temp_results.append({
                         'contribution': contribution,
                         'apartment_name': apartment_name,
                         'consumption_result': consumption_result,
                         'final_consumption': consumption_result.final_result,
                         'renter_id': renter_id,
-                        'renter_first_name': renter_first_name,
-                        'renter_last_name': renter_last_name,
+                        'renter_first_name': renter.first_name if renter else None,
+                        'renter_last_name': renter.last_name if renter else None,
                         'period_start': adjusted_start,
                         'period_end': adjusted_end
                     })
@@ -172,7 +199,6 @@ class CostCenter(models.Model):
                     total_consumption += consumption_result.final_result
 
             except Exception as e:
-                # Bei Fehlern detaillierte Information ausgeben
                 consumption_calc_name = contribution.consumption_calc.name if contribution.consumption_calc else 'N/A'
                 consumption_calc_id = contribution.consumption_calc.id if contribution.consumption_calc else 'N/A'
                 raise ValueError(
@@ -182,16 +208,12 @@ class CostCenter(models.Model):
                     f"{str(e)}"
                 ) from e
 
-        # Jetzt ContributionResults mit Prozentsätzen erstellen
+        # ContributionResults mit Prozentsätzen erstellen
         for temp_result in temp_results:
-            # Prozentsatz berechnen
-            if total_consumption != 0:
-                percentage = float(
-                    (temp_result['final_consumption'] / total_consumption) * 100)
-            else:
-                percentage = 0.0
+            percentage = float(
+                (temp_result['final_consumption'] / total_consumption) * 100) if total_consumption != 0 else 0.0
 
-            contribution_result = self.ContributionResult(
+            contribution_results.append(self.ContributionResult(
                 contribution=temp_result['contribution'],
                 apartment_name=temp_result['apartment_name'],
                 consumption_calc_name=temp_result['contribution'].consumption_calc.name,
@@ -203,9 +225,7 @@ class CostCenter(models.Model):
                 renter_last_name=temp_result['renter_last_name'],
                 period_start=temp_result['period_start'],
                 period_end=temp_result['period_end']
-            )
-
-            contribution_results.append(contribution_result)
+            ))
 
         return self.CostCenterCalculation(
             cost_center=self,
@@ -215,4 +235,341 @@ class CostCenter(models.Model):
             total_consumption=total_consumption,
             apartment_count=len(apartment_names),
             total_consumption_unit=total_consumption_unit
+        )
+
+    def _calculate_time_based(self, contributions, start_date: date, end_date: date) -> CostCenterCalculation:
+        """Berechnung basierend auf Zeit (Tage) - gleiche Aufteilung pro Wohnung"""
+        from .consumption_calc import ConsumptionCalc
+
+        contribution_results = []
+        total_consumption = Decimal('0.00')
+        apartment_names = set()
+        temp_results = []
+
+        total_days = (end_date - start_date).days
+
+        for contribution in contributions:
+            try:
+                if contribution.apartment:
+                    periods = contribution.apartment.get_renters_for_period(
+                        start_date=start_date,
+                        end_date=end_date
+                    )
+                else:
+                    periods = [{
+                        'start_date': start_date,
+                        'end_date': end_date,
+                        'renter_id': None,
+                        'renter': None
+                    }]
+
+                for period in periods:
+                    period_start = period['start_date']
+                    period_end = period['end_date']
+                    period_days = (period_end - period_start).days
+
+                    # Anteil = Tage der Periode (wird später durch Gesamttage aller Contributions geteilt)
+                    consumption_value = Decimal(str(period_days))
+
+                    apartment_name = contribution.get_display_name()
+                    apartment_names.add(apartment_name)
+
+                    renter = period.get('renter')
+                    renter_id = period.get('renter_id')
+
+                    # Dummy ConsumptionResult erstellen
+                    dummy_result = ConsumptionCalc.ConsumptionResult(
+                        consumption_calc=None,
+                        calculation_period_start=period_start,
+                        calculation_period_end=period_end,
+                        argument_results=[],
+                        final_result=consumption_value,
+                        calculation_steps=[
+                            ConsumptionCalc.CalculationStep(
+                                step_type="result",
+                                description=f"Zeitanteil: {period_days} Tage",
+                                operand1=None,
+                                operator=None,
+                                operand2=None,
+                                result=consumption_value,
+                                argument_name=None,
+                                source_details=None,
+                                unit="Tage"
+                            )
+                        ]
+                    )
+
+                    temp_results.append({
+                        'contribution': contribution,
+                        'apartment_name': apartment_name,
+                        'consumption_result': dummy_result,
+                        'final_consumption': consumption_value,
+                        'renter_id': renter_id,
+                        'renter_first_name': renter.first_name if renter else None,
+                        'renter_last_name': renter.last_name if renter else None,
+                        'period_start': period_start,
+                        'period_end': period_end
+                    })
+
+                    total_consumption += consumption_value
+
+            except Exception as e:
+                raise ValueError(
+                    f"Fehler bei TIME-Berechnung für Apartment {contribution.apartment} "
+                    f"(CostCenterContribution ID: {contribution.id}): {str(e)}"
+                ) from e
+
+        # ContributionResults mit Prozentsätzen erstellen
+        for temp_result in temp_results:
+            percentage = float(
+                (temp_result['final_consumption'] / total_consumption) * 100) if total_consumption != 0 else 0.0
+
+            contribution_results.append(self.ContributionResult(
+                contribution=temp_result['contribution'],
+                apartment_name=temp_result['apartment_name'],
+                consumption_calc_name="TIME",
+                consumption_result=temp_result['consumption_result'],
+                final_consumption=temp_result['final_consumption'],
+                percentage=percentage,
+                renter_id=temp_result['renter_id'],
+                renter_first_name=temp_result['renter_first_name'],
+                renter_last_name=temp_result['renter_last_name'],
+                period_start=temp_result['period_start'],
+                period_end=temp_result['period_end']
+            ))
+
+        return self.CostCenterCalculation(
+            cost_center=self,
+            calculation_period_start=start_date,
+            calculation_period_end=end_date,
+            contribution_results=contribution_results,
+            total_consumption=total_consumption,
+            apartment_count=len(apartment_names),
+            total_consumption_unit="Tage",
+            total_days=total_days
+        )
+
+    def _calculate_area_based(self, contributions, start_date: date, end_date: date) -> CostCenterCalculation:
+        """Berechnung basierend auf Fläche (m²) und Zeit"""
+        from .consumption_calc import ConsumptionCalc
+
+        contribution_results = []
+        total_consumption = Decimal('0.00')
+        apartment_names = set()
+        apartment_areas = {}  # Speichere m² pro Wohnung um Gesamt-m² zu berechnen
+        temp_results = []
+
+        total_days = (end_date - start_date).days
+
+        for contribution in contributions:
+            try:
+                if not contribution.apartment:
+                    raise ValueError(
+                        "AREA distribution requires an apartment with size_in_m2")
+
+                apartment_area = contribution.apartment.size_in_m2 or Decimal(
+                    '0')
+                apartment_areas[contribution.apartment.id] = apartment_area
+
+                periods = contribution.apartment.get_renters_for_period(
+                    start_date=start_date,
+                    end_date=end_date
+                )
+
+                for period in periods:
+                    period_start = period['start_date']
+                    period_end = period['end_date']
+                    period_days = (period_end - period_start).days
+
+                    # Anteil = m² × Tage (wird später durch Gesamt-m²-Tage geteilt)
+                    consumption_value = apartment_area * \
+                        Decimal(str(period_days))
+
+                    apartment_name = contribution.get_display_name()
+                    apartment_names.add(apartment_name)
+
+                    renter = period.get('renter')
+                    renter_id = period.get('renter_id')
+
+                    dummy_result = ConsumptionCalc.ConsumptionResult(
+                        consumption_calc=None,
+                        calculation_period_start=period_start,
+                        calculation_period_end=period_end,
+                        argument_results=[],
+                        final_result=consumption_value,
+                        calculation_steps=[
+                            ConsumptionCalc.CalculationStep(
+                                step_type="result",
+                                description=f"Flächenanteil: {apartment_area} m² × {period_days} Tage",
+                                operand1=apartment_area,
+                                operator="×",
+                                operand2=Decimal(str(period_days)),
+                                result=consumption_value,
+                                argument_name=None,
+                                source_details=None,
+                                unit="m²×Tage",
+                                operand1_label="Fläche",
+                                operand2_label="Tage",
+                                operand1_unit="m²",
+                                operand2_unit="Tage"
+                            )
+                        ]
+                    )
+
+                    temp_results.append({
+                        'contribution': contribution,
+                        'apartment_name': apartment_name,
+                        'consumption_result': dummy_result,
+                        'final_consumption': consumption_value,
+                        'renter_id': renter_id,
+                        'renter_first_name': renter.first_name if renter else None,
+                        'renter_last_name': renter.last_name if renter else None,
+                        'period_start': period_start,
+                        'period_end': period_end
+                    })
+
+                    total_consumption += consumption_value
+
+            except Exception as e:
+                raise ValueError(
+                    f"Fehler bei AREA-Berechnung für Apartment {contribution.apartment} "
+                    f"(CostCenterContribution ID: {contribution.id}): {str(e)}"
+                ) from e
+
+        # ContributionResults mit Prozentsätzen erstellen
+        for temp_result in temp_results:
+            percentage = float(
+                (temp_result['final_consumption'] / total_consumption) * 100) if total_consumption != 0 else 0.0
+
+            contribution_results.append(self.ContributionResult(
+                contribution=temp_result['contribution'],
+                apartment_name=temp_result['apartment_name'],
+                consumption_calc_name="AREA",
+                consumption_result=temp_result['consumption_result'],
+                final_consumption=temp_result['final_consumption'],
+                percentage=percentage,
+                renter_id=temp_result['renter_id'],
+                renter_first_name=temp_result['renter_first_name'],
+                renter_last_name=temp_result['renter_last_name'],
+                period_start=temp_result['period_start'],
+                period_end=temp_result['period_end']
+            ))
+
+        # Berechne Gesamt-m² aller beteiligten Wohnungen
+        total_area = sum(apartment_areas.values())
+
+        return self.CostCenterCalculation(
+            cost_center=self,
+            calculation_period_start=start_date,
+            calculation_period_end=end_date,
+            contribution_results=contribution_results,
+            total_consumption=total_consumption,
+            apartment_count=len(apartment_names),
+            total_consumption_unit="m²×Tage",
+            total_days=total_days,
+            total_area=total_area
+        )
+
+    def _calculate_direct(self, contributions, start_date: date, end_date: date) -> CostCenterCalculation:
+        """Direkte Zuordnung - Bill geht 1:1 an den Mieter im Bill-Zeitraum"""
+        from .consumption_calc import ConsumptionCalc
+
+        contribution_results = []
+        total_consumption = Decimal('0.00')
+        apartment_names = set()
+        temp_results = []
+
+        for contribution in contributions:
+            try:
+                if contribution.apartment:
+                    periods = contribution.apartment.get_renters_for_period(
+                        start_date=start_date,
+                        end_date=end_date
+                    )
+                else:
+                    periods = [{
+                        'start_date': start_date,
+                        'end_date': end_date,
+                        'renter_id': None,
+                        'renter': None
+                    }]
+
+                for period in periods:
+                    # Bei DIRECT: Jede Periode bekommt Anteil 1 (100% wenn nur ein Mieter)
+                    consumption_value = Decimal('1')
+
+                    apartment_name = contribution.get_display_name()
+                    apartment_names.add(apartment_name)
+
+                    renter = period.get('renter')
+                    renter_id = period.get('renter_id')
+
+                    dummy_result = ConsumptionCalc.ConsumptionResult(
+                        consumption_calc=None,
+                        calculation_period_start=period['start_date'],
+                        calculation_period_end=period['end_date'],
+                        argument_results=[],
+                        final_result=consumption_value,
+                        calculation_steps=[
+                            ConsumptionCalc.CalculationStep(
+                                step_type="result",
+                                description="Direkte Zuordnung",
+                                operand1=None,
+                                operator=None,
+                                operand2=None,
+                                result=consumption_value,
+                                argument_name=None,
+                                source_details=None,
+                                unit="Anteil"
+                            )
+                        ]
+                    )
+
+                    temp_results.append({
+                        'contribution': contribution,
+                        'apartment_name': apartment_name,
+                        'consumption_result': dummy_result,
+                        'final_consumption': consumption_value,
+                        'renter_id': renter_id,
+                        'renter_first_name': renter.first_name if renter else None,
+                        'renter_last_name': renter.last_name if renter else None,
+                        'period_start': period['start_date'],
+                        'period_end': period['end_date']
+                    })
+
+                    total_consumption += consumption_value
+
+            except Exception as e:
+                raise ValueError(
+                    f"Fehler bei DIRECT-Berechnung für Apartment {contribution.apartment} "
+                    f"(CostCenterContribution ID: {contribution.id}): {str(e)}"
+                ) from e
+
+        # ContributionResults mit Prozentsätzen erstellen
+        for temp_result in temp_results:
+            percentage = float(
+                (temp_result['final_consumption'] / total_consumption) * 100) if total_consumption != 0 else 0.0
+
+            contribution_results.append(self.ContributionResult(
+                contribution=temp_result['contribution'],
+                apartment_name=temp_result['apartment_name'],
+                consumption_calc_name="DIRECT",
+                consumption_result=temp_result['consumption_result'],
+                final_consumption=temp_result['final_consumption'],
+                percentage=percentage,
+                renter_id=temp_result['renter_id'],
+                renter_first_name=temp_result['renter_first_name'],
+                renter_last_name=temp_result['renter_last_name'],
+                period_start=temp_result['period_start'],
+                period_end=temp_result['period_end']
+            ))
+
+        return self.CostCenterCalculation(
+            cost_center=self,
+            calculation_period_start=start_date,
+            calculation_period_end=end_date,
+            contribution_results=contribution_results,
+            total_consumption=total_consumption,
+            apartment_count=len(apartment_names),
+            total_consumption_unit="Anteil"
         )

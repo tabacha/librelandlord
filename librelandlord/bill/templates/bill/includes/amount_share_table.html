@@ -5,7 +5,7 @@
         <tr>
             {% if not renter_filter_id %}<th>Mieter</th>
             <th>Zeitraum</th>{% endif %}
-            <th>Verbrauchsberechnung</th>
+            <th>Kostenverteilung</th>
             <th>Gesamtrechnungsbetrag</th>
             <th></th>
             <th>Prozentsatz</th>
@@ -16,6 +16,14 @@
     <tbody>
         {% for summary in cost_center_summaries %}
         {% if summary.cost_center_calculation %}
+        <tr style="background-color: #e8e8e8;">
+            <td colspan="{% if not renter_filter_id %}8{% else %}6{% endif %}" style="font-weight: bold; padding: 8px;">
+                {{ summary.cost_center.text }}
+                <small style="font-weight: normal; color: #666;">
+                    ({% if summary.cost_center.distribution_type == 'CONSUMPTION' %}Verbrauch{% elif summary.cost_center.distribution_type == 'TIME' %}nach Zeit{% elif summary.cost_center.distribution_type == 'AREA' %}nach Fläche{% else %}Direktzuordnung{% endif %})
+                </small>
+            </td>
+        </tr>
         {% for contrib in summary.cost_center_calculation.contribution_results %}
         {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
         <tr>
@@ -31,7 +39,7 @@
             </td>
             <td><small>{{ contrib.period_start|date:"d.m.Y" }} - {{ contrib.period_end|date:"d.m.Y" }}</small></td>
             {% endif %}
-            <td>{{ contrib.consumption_calc_name }}</td>
+            <td>{% if summary.cost_center.distribution_type == 'CONSUMPTION' %}{{ contrib.consumption_calc_name }}{% else %}{{ summary.cost_center.text }} {{ contrib.apartment_name }}{% endif %}</td>
             <td class="consumption-cell">{{ summary.total_amount|floatformat:2 }} €</td>
             <td style="text-align: center;">*</td>
             <td class="consumption-cell">{{ contrib.percentage|floatformat:2 }} %</td>

@@ -415,36 +415,42 @@
                 {% include 'bill/includes/bills_table.html' with bills=summary.bills total_amount=summary.total_amount %}
             </div>
 
-            <!-- Verbrauchsberechnung -->
+            <!-- Kostenverteilung -->
             {% if summary.cost_center_calculation %}
             <div class="consumption-section">
-                <h3 class="section-title">Verbrauchsberechnung</h3>
+                <h3 class="section-title">Kostenverteilung</h3>
 
-                {% for contrib in summary.cost_center_calculation.contribution_results %}
-                {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
-                <div class="apartment-item">
-                    <div class="apartment-header">
-                        {{ contrib.apartment_name }}
-                        {% if contrib.renter_id %}
-                        - {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
-                        {% else %}
-                        - Leerstand
-                        {% endif %}
-                        ({{ contrib.period_start }} bis {{ contrib.period_end }})
+                {% if summary.cost_center.distribution_type == 'CONSUMPTION' %}
+                    <!-- Verbrauchsbasierte Darstellung (wie bisher) -->
+                    {% for contrib in summary.cost_center_calculation.contribution_results %}
+                    {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
+                    <div class="apartment-item">
+                        <div class="apartment-header">
+                            {{ contrib.apartment_name }}
+                            {% if contrib.renter_id %}
+                            - {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+                            {% else %}
+                            - Leerstand
+                            {% endif %}
+                            ({{ contrib.period_start }} bis {{ contrib.period_end }})
+                        </div>
+                        <div class="apartment-content">
+                            <strong>{{ contrib.consumption_calc_name }}</strong>
+                            {% include 'bill/includes/calculation_steps.html' with contrib=contrib %}
+                        </div>
                     </div>
-                    <div class="apartment-content">
-                        <strong>{{ contrib.consumption_calc_name }}</strong>
-                        {% include 'bill/includes/calculation_steps.html' with contrib=contrib %}
-                    </div>
-                </div>
+                    {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <!-- Tabellarische Darstellung für TIME, AREA, DIRECT -->
+                    {% include 'bill/includes/distribution_table.html' with calculation=summary.cost_center_calculation distribution_type=summary.cost_center.distribution_type renter_filter_id=renter_filter_id %}
                 {% endif %}
-                {% endfor %}
             </div>
             {% else %}
             <div class="consumption-section">
-                <h3 class="section-title">Verbrauchsberechnung</h3>
+                <h3 class="section-title">Kostenverteilung</h3>
                 <div class="no-data">
-                    Keine Verbrauchsberechnung verfügbar für dieses Cost Center.
+                    Keine Kostenverteilung verfügbar für diese Kostenstelle.
                 </div>
             </div>
             {% endif %}

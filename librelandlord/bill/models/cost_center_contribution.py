@@ -13,20 +13,11 @@ from .consumption_calc import ConsumptionCalc
 
 class CostCenterContribution(models.Model):
     """
-    Definiert wie eine Wohnung an einem CostCenter beteiligt ist.
+    Verbindet eine Wohnung mit einem CostCenter.
 
-    Distribution Types:
-    - CONSUMPTION: Anteil nach consumption_calc Ergebnis (z.B. Wasser nach Zähler)
-    - TIME: Anteil nach Tagen, aufgeteilt bei Mieterwechsel (z.B. Müll, Internet)
-    - AREA: Anteil nach m², aufgeteilt bei Mieterwechsel (z.B. Grundsteuer)
-    - DIRECT: Bill geht 1:1 an den Mieter im Bill-Zeitraum (z.B. Waschvorgänge)
+    Bei distribution_type=CONSUMPTION im CostCenter muss consumption_calc gesetzt sein.
+    Bei anderen distribution_types ist consumption_calc nicht erforderlich.
     """
-
-    class DistributionType(models.TextChoices):
-        CONSUMPTION = 'CONSUMPTION', _('Consumption based (meter reading)')
-        TIME = 'TIME', _('By time (days)')
-        AREA = 'AREA', _('By area (m²)')
-        DIRECT = 'DIRECT', _('Direct assignment (bill period = renter)')
 
     cost_center = models.ForeignKey(
         CostCenter, on_delete=models.CASCADE, verbose_name=_("Cost Center"))
@@ -36,15 +27,6 @@ class CostCenterContribution(models.Model):
     special_designation = models.CharField(
         max_length=100, blank=True, default='', verbose_name=_("Special Designation"),
         help_text=_("Alternative designation when no apartment is selected (e.g. 'Washing Machine Counter')"))
-
-    distribution_type = models.CharField(
-        max_length=20,
-        choices=DistributionType.choices,
-        default=DistributionType.CONSUMPTION,
-        verbose_name=_("Distribution Type"),
-        help_text=_(
-            "CONSUMPTION: by meter, TIME: by days, AREA: by m², DIRECT: bill goes to renter in bill period")
-    )
 
     consumption_calc = models.ForeignKey(
         ConsumptionCalc, related_name="consumption_calc", on_delete=models.CASCADE,
@@ -75,18 +57,22 @@ class CostCenterContribution(models.Model):
             raise ValidationError(
                 _("Cannot have both apartment and special designation"))
 
-        # Distribution type specific validation
-        if self.distribution_type == self.DistributionType.CONSUMPTION and not self.consumption_calc:
-            raise ValidationError(
-                _("Consumption calculation is required for consumption-based distribution"))
+        # Validierung basierend auf dem distribution_type des CostCenters
+        if self.cost_center:
+            if self.cost_center.distribution_type == CostCenter.DistributionType.CONSUMPTION:
+                if not self.consumption_calc:
+                    raise ValidationError(
+                        _("Consumption calculation is required for consumption-based distribution"))
 
-        if self.distribution_type == self.DistributionType.AREA and not self.apartment:
-            raise ValidationError(
-                _("Area-based distribution requires an apartment"))
+            if self.cost_center.distribution_type == CostCenter.DistributionType.AREA:
+                if not self.apartment:
+                    raise ValidationError(
+                        _("Area-based distribution requires an apartment"))
 
-        if self.distribution_type == self.DistributionType.DIRECT and not self.apartment:
-            raise ValidationError(
-                _("Direct distribution requires an apartment"))
+            if self.cost_center.distribution_type == CostCenter.DistributionType.DIRECT:
+                if not self.apartment:
+                    raise ValidationError(
+                        _("Direct distribution requires an apartment"))
 
     def get_display_name(self):
         """Returns the display name for this contribution"""

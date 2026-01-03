@@ -338,7 +338,8 @@ class CostCenterContributionAdmin(admin.ModelAdmin):
         return form
 
 
-admin.site.register(models.CostCenterContribution, CostCenterContributionAdmin)
+# CostCenterContribution wird nur als Inline unter CostCenter angezeigt,
+# nicht im Hauptmenü (daher keine admin.site.register)
 
 
 class CostCenterBillEntryAdmin(admin.ModelAdmin):

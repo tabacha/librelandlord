@@ -1,0 +1,80 @@
+{% comment %}
+Tabellarische Darstellung für TIME, AREA und DIRECT Verteilungen.
+
+Variablen:
+- calculation: CostCenterCalculation Objekt
+- distribution_type: 'TIME', 'AREA' oder 'DIRECT'
+- renter_filter_id: Optional - Filter auf bestimmten Mieter
+{% endcomment %}
+
+{% load i18n %}
+
+<table class="meter-readings-table">
+    <thead>
+        <tr>
+            <th>Wohnung</th>
+            <th>Mieter</th>
+            <th>Zeitraum</th>
+            {% if distribution_type == 'AREA' %}
+            <th class="number-cell">Fläche</th>
+            <th class="number-cell">Berechnung</th>
+            {% elif distribution_type == 'TIME' %}
+            <th class="number-cell">Berechnung</th>
+            {% endif %}
+            <th class="number-cell">Anteil</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for contrib in calculation.contribution_results %}
+        {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
+        <tr>
+            <td>{{ contrib.apartment_name }}</td>
+            <td>
+                {% if contrib.renter_id %}
+                {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+                {% else %}
+                <em>Leerstand</em>
+                {% endif %}
+            </td>
+            <td>{{ contrib.period_start|date:"d.m.Y" }} - {{ contrib.period_end|date:"d.m.Y" }}</td>
+            {% if distribution_type == 'AREA' %}
+            <td class="number-cell">
+                {{ contrib.consumption_result.calculation_steps.0.operand1|floatformat:2 }} m²
+            </td>
+            <td class="number-cell calc-cell" style="font-family: monospace; white-space: nowrap;">
+                ({{ contrib.consumption_result.calculation_steps.0.operand1|floatformat:2 }} m² / {{ calculation.total_area|floatformat:2 }} m²) × ({{ contrib.consumption_result.calculation_steps.0.operand2|floatformat:0 }} Tage / {{ calculation.total_days }} Tage)
+            </td>
+            {% elif distribution_type == 'TIME' %}
+            <td class="number-cell calc-cell" style="font-family: monospace; white-space: nowrap;">
+                {{ contrib.final_consumption|floatformat:0 }} Tage / {{ calculation.total_days }} Tage
+            </td>
+            {% endif %}
+            <td class="consumption-cell">{{ contrib.percentage|floatformat:2 }} %</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr style="font-weight: bold; background-color: #f0f0f0;">
+            <td colspan="{% if distribution_type == 'AREA' %}5{% elif distribution_type == 'TIME' %}4{% else %}3{% endif %}" style="text-align: right;">Gesamt:</td>
+            <td class="consumption-cell">100,00 %</td>
+        </tr>
+    </tfoot>
+</table>
+
+{% if distribution_type == 'TIME' %}
+<p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+    <strong>Verteilung nach Zeit:</strong> Die Kosten werden nach Mietdauer verteilt.
+    Jeder Mieter zahlt anteilig für die Tage, die er im Abrechnungszeitraum gewohnt hat.
+</p>
+{% elif distribution_type == 'AREA' %}
+<p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+    <strong>Verteilung nach Fläche:</strong> Die Kosten werden nach Wohnfläche und Mietdauer verteilt.
+    Größere Wohnungen und längere Mietzeiten führen zu höheren Anteilen.
+</p>
+{% elif distribution_type == 'DIRECT' %}
+<p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+    <strong>Direkte Zuordnung:</strong> Die Kosten werden direkt dem Mieter zugeordnet,
+    der im Rechnungszeitraum in der Wohnung gewohnt hat.
+</p>
+{% endif %}

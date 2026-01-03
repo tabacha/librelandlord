@@ -15,7 +15,7 @@
     </thead>
     <tbody>
         {% for summary in cost_center_summaries %}
-        {% if summary.cost_center_calculation %}
+        {% if summary.cost_center_calculation and summary.cost_center.distribution_type == 'CONSUMPTION' %}
         {% for contrib in summary.cost_center_calculation.contribution_results %}
         {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
         <tr>

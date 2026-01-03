@@ -721,3 +721,26 @@ def meter_readings_save_single(request):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': f'Serverfehler: {str(e)}'})
+
+
+@login_required
+@require_http_methods(["GET"])
+def costcenter_distribution_type(request, cost_center_id):
+    """
+    API-Endpunkt für den Admin: Gibt den distribution_type eines CostCenters zurück.
+    Wird verwendet um das consumption_calc Feld dynamisch ein-/auszublenden.
+    """
+    from .models import CostCenter
+
+    try:
+        cost_center = CostCenter.objects.get(id=cost_center_id)
+        return JsonResponse({
+            'success': True,
+            'distribution_type': cost_center.distribution_type,
+            'show_consumption_calc': cost_center.distribution_type == CostCenter.DistributionType.CONSUMPTION
+        })
+    except CostCenter.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'CostCenter not found'
+        }, status=404)

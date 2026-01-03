@@ -239,11 +239,42 @@ class BillAdmin(admin.ModelAdmin):
 admin.site.register(models.Bill, BillAdmin)
 
 
+class CostCenterContributionInline(admin.TabularInline):
+    """Inline für CostCenterContribution im CostCenter Admin"""
+    model = models.CostCenterContribution
+    extra = 1
+    autocomplete_fields = ['apartment', 'consumption_calc']
+    fields = ['apartment', 'special_designation', 'consumption_calc']
+
+    def get_formset(self, request, obj=None, **kwargs):
+        """
+        Passt das Formset an den distribution_type an.
+        """
+        formset = super().get_formset(request, obj, **kwargs)
+
+        # Wenn ein CostCenter existiert und der Typ nicht CONSUMPTION ist,
+        # mache consumption_calc nicht erforderlich
+        if obj and obj.distribution_type != models.CostCenter.DistributionType.CONSUMPTION:
+            if 'consumption_calc' in formset.form.base_fields:
+                formset.form.base_fields['consumption_calc'].required = False
+        else:
+            # Bei neuen Objekten oder CONSUMPTION: auch nicht required
+            # (wird per clean() validiert)
+            if 'consumption_calc' in formset.form.base_fields:
+                formset.form.base_fields['consumption_calc'].required = False
+
+        return formset
+
+
 class CostCenterAdmin(admin.ModelAdmin):
-    list_display = ('text', 'is_oiltank')
-    list_filter = ['is_oiltank']
+    list_display = ('text', 'distribution_type', 'is_oiltank')
+    list_filter = ['is_oiltank', 'distribution_type']
     search_fields = ['text']
     ordering = ['text']
+    inlines = [CostCenterContributionInline]
+
+    class Media:
+        js = ('bill/js/admin/costcentercontribution.js',)
 
 
 admin.site.register(models.CostCenter, CostCenterAdmin)
@@ -259,13 +290,56 @@ class CostCenterContributionAdmin(admin.ModelAdmin):
     autocomplete_fields = ['cost_center', 'apartment', 'consumption_calc']
     ordering = ['cost_center', 'apartment']
 
+    class Media:
+        js = ('bill/js/admin/costcentercontribution.js',)
+
     def get_display_name(self, obj):
         """Zeigt den Anzeigenamen"""
         return obj.get_display_name()
     get_display_name.short_description = "Name"
 
+    def get_fields(self, request, obj=None):
+        """
+        Ordnet die Felder und blendet consumption_calc aus wenn nicht benötigt.
+        """
+        fields = ['cost_center', 'apartment',
+                  'special_designation', 'consumption_calc']
+        return fields
 
-admin.site.register(models.CostCenterContribution, CostCenterContributionAdmin)
+    def get_readonly_fields(self, request, obj=None):
+        """
+        Macht consumption_calc readonly wenn der CostCenter-Typ nicht CONSUMPTION ist.
+        """
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj and obj.cost_center:
+            if obj.cost_center.distribution_type != models.CostCenter.DistributionType.CONSUMPTION:
+                # Feld nicht in readonly - wird per JS ausgeblendet
+                pass
+        return readonly
+
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        Passt das Formular an den distribution_type an.
+        """
+        form = super().get_form(request, obj, **kwargs)
+
+        # Wenn ein Objekt existiert und der Typ nicht CONSUMPTION ist,
+        # mache consumption_calc nicht erforderlich
+        if obj and obj.cost_center:
+            if obj.cost_center.distribution_type != models.CostCenter.DistributionType.CONSUMPTION:
+                if 'consumption_calc' in form.base_fields:
+                    form.base_fields['consumption_calc'].required = False
+        else:
+            # Bei neuen Objekten: nicht erforderlich machen
+            # (wird per JS und clean() validiert)
+            if 'consumption_calc' in form.base_fields:
+                form.base_fields['consumption_calc'].required = False
+
+        return form
+
+
+# CostCenterContribution wird nur als Inline unter CostCenter angezeigt,
+# nicht im Hauptmenü (daher keine admin.site.register)
 
 
 class CostCenterBillEntryAdmin(admin.ModelAdmin):

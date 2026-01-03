@@ -27,4 +27,7 @@ urlpatterns = [
          name="meter_readings_input"),
     path("meter-readings-save-single/", views.meter_readings_save_single,
          name="meter_readings_save_single"),
+    # API für Admin
+    path("api/costcenter/<int:cost_center_id>/distribution-type/",
+         views.costcenter_distribution_type, name="costcenter_distribution_type"),
 ]

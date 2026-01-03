@@ -117,21 +117,6 @@
             </div>
             {% endif %}
 
-            <div class="error-types">
-                <h3>Mögliche Ursachen:</h3>
-                <ul>
-                    <li><strong>AccountPeriod nicht gefunden:</strong> Der angegebene Abrechnungszeitraum existiert
-                        nicht.</li>
-                    <li><strong>Keine Zählerstände:</strong> Für den gewählten Zeitraum sind keine ausreichenden
-                        Zählerstände verfügbar.</li>
-                    <li><strong>Zähler nicht aktiv:</strong> Ein oder mehrere Zähler waren im Abrechnungszeitraum nicht
-                        aktiv.</li>
-                    <li><strong>Dateninkonsistenz:</strong> Die Zählerstände oder Zählerkonfiguration weist
-                        Inkonsistenzen auf.</li>
-                    <li><strong>Fehlende Konfiguration:</strong> Cost Center oder Apartments sind nicht korrekt
-                        konfiguriert.</li>
-                </ul>
-            </div>
 
             {% if account_period_id %}
             <a href="{% url 'bill:account_period_calculation' account_period_id %}" class="back-link">

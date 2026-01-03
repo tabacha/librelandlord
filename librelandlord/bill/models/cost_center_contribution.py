@@ -12,15 +12,27 @@ from .consumption_calc import ConsumptionCalc
 
 
 class CostCenterContribution(models.Model):
+    """
+    Verbindet eine Wohnung mit einem CostCenter.
+
+    Bei distribution_type=CONSUMPTION im CostCenter muss consumption_calc gesetzt sein.
+    Bei anderen distribution_types ist consumption_calc nicht erforderlich.
+    """
+
     cost_center = models.ForeignKey(
         CostCenter, on_delete=models.CASCADE, verbose_name=_("Cost Center"))
     apartment = models.ForeignKey(
-        Apartment,  related_name="appartment", on_delete=models.CASCADE, blank=True, null=True, verbose_name=_("Apartment"))
+        Apartment, related_name="appartment", on_delete=models.CASCADE,
+        blank=True, null=True, verbose_name=_("Apartment"))
     special_designation = models.CharField(
         max_length=100, blank=True, default='', verbose_name=_("Special Designation"),
         help_text=_("Alternative designation when no apartment is selected (e.g. 'Washing Machine Counter')"))
+
     consumption_calc = models.ForeignKey(
-        ConsumptionCalc, related_name="consumption_calc", on_delete=models.CASCADE, verbose_name=_("Consumption"))
+        ConsumptionCalc, related_name="consumption_calc", on_delete=models.CASCADE,
+        blank=True, null=True,
+        verbose_name=_("Consumption Calculation"),
+        help_text=_("Required for consumption-based distribution"))
 
     class Meta:
         constraints = [
@@ -34,7 +46,7 @@ class CostCenterContribution(models.Model):
         ]
 
     def clean(self):
-        """Validation to ensure either apartment or special_designation is provided"""
+        """Validation to ensure correct field combinations"""
         from django.core.exceptions import ValidationError
 
         if not self.apartment and not self.special_designation.strip():
@@ -44,6 +56,23 @@ class CostCenterContribution(models.Model):
         if self.apartment and self.special_designation.strip():
             raise ValidationError(
                 _("Cannot have both apartment and special designation"))
+
+        # Validierung basierend auf dem distribution_type des CostCenters
+        if self.cost_center:
+            if self.cost_center.distribution_type == CostCenter.DistributionType.CONSUMPTION:
+                if not self.consumption_calc:
+                    raise ValidationError(
+                        _("Consumption calculation is required for consumption-based distribution"))
+
+            if self.cost_center.distribution_type == CostCenter.DistributionType.AREA:
+                if not self.apartment:
+                    raise ValidationError(
+                        _("Area-based distribution requires an apartment"))
+
+            if self.cost_center.distribution_type == CostCenter.DistributionType.DIRECT:
+                if not self.apartment:
+                    raise ValidationError(
+                        _("Direct distribution requires an apartment"))
 
     def get_display_name(self):
         """Returns the display name for this contribution"""

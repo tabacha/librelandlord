@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import os
 
-from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace, Landlord
+from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace, Landlord, Apartment, CostCenter
 from weasyprint import HTML
 from django.conf import settings
 from django.db.models import Q
@@ -34,14 +34,44 @@ def custom_login(request):
 
 @login_required
 def index(request):
-    renter_list = Renter.objects.order_by('last_name')
-    costcentercontributions = CostCenterContribution.objects.all()
-    template = loader.get_template('index.html')
-    context = {
-        'renter_list': renter_list,
-        'costcentercontributions': costcentercontributions
+    """Dashboard mit Übersicht und Schnellzugriffen"""
+    # Statistiken sammeln
+    stats = {
+        'apartments': Apartment.objects.count(),
+        'active_renters': Renter.objects.filter(move_out_date__isnull=True).count(),
+        'meters': Meter.objects.filter(out_of_order_date__isnull=True).count(),
+        'cost_centers': CostCenter.objects.count(),
     }
-    return HttpResponse(template.render(context, request))
+
+    def get_active_renters_for_year(year):
+        """Holt alle Mieter die im Jahr aktiv waren (eingezogen vor Jahresende, nicht ausgezogen vor Jahresanfang)"""
+        year_start = date(year, 1, 1)
+        year_end = date(year, 12, 31)
+        return Renter.objects.filter(
+            move_in_date__lte=year_end  # Eingezogen vor oder während des Jahres
+        ).filter(
+            Q(move_out_date__isnull=True) |  # Noch nicht ausgezogen
+            # Oder ausgezogen nach Jahresanfang
+            Q(move_out_date__gte=year_start)
+        ).select_related('apartment').order_by('apartment__number', 'last_name')
+
+    # Die letzten 3 Jahre prüfen, ob Abrechnungsperioden existieren
+    current_year = datetime.now().year
+    available_years = []
+    for year in range(current_year, current_year - 4, -1):  # Aktuelles Jahr und 3 zurück
+        if AccountPeriod.objects.filter(billing_year=year).exists():
+            available_years.append({
+                'year': year,
+                'renters': list(get_active_renters_for_year(year))
+            })
+        if len(available_years) >= 3:
+            break
+
+    context = {
+        'stats': stats,
+        'available_years': available_years,
+    }
+    return render(request, 'dashboard.html', context)
 
 
 def to_datetime(date):

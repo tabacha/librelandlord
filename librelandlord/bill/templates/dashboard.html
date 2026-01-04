@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LibreLandlord - Dashboard</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #27ae60;
+            --warning-color: #e74c3c;
+            --bg-color: #ecf0f1;
+            --card-bg: #ffffff;
+            --text-color: #2c3e50;
+            --text-muted: #7f8c8d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header .subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .user-info {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .user-info a {
+            color: white;
+            text-decoration: none;
+            margin-left: 1rem;
+            opacity: 0.8;
+        }
+
+        .user-info a:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .card.primary { border-left: 4px solid var(--secondary-color); }
+        .card.success { border-left: 4px solid var(--accent-color); }
+        .card.warning { border-left: 4px solid var(--warning-color); }
+        .card.info { border-left: 4px solid #9b59b6; }
+
+        .admin-section {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .admin-link {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg-color);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: background 0.2s;
+        }
+
+        .admin-link:hover {
+            background: #d5dbdb;
+        }
+
+        .admin-link-icon {
+            font-size: 1.5rem;
+            margin-right: 0.75rem;
+        }
+
+        .admin-link span {
+            font-weight: 500;
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-box {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-link {
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Jahresabrechnung Card Styles */
+        .year-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .year-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .year-card-icon {
+            font-size: 2.5rem;
+            margin-right: 1rem;
+        }
+
+        .year-card h3 {
+            font-size: 1.25rem;
+            margin: 0;
+        }
+
+        .year-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .year-card-buttons {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-secondary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #219a52;
+        }
+
+        .renter-select-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .renter-select {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: white;
+        }
+
+        .btn-go {
+            padding: 0.5rem 1rem;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .btn-go:hover {
+            background: #219a52;
+        }
+
+        .btn-go:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            .container {
+                padding: 1rem;
+            }
+            .user-info {
+                position: static;
+                text-align: center;
+                margin-top: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="user-info">
+            {% if user.is_authenticated %}
+                👤 {{ user.username }}
+                <a href="{% url 'logout' %}">Abmelden</a>
+            {% endif %}
+        </div>
+        <h1>🏠 LibreLandlord</h1>
+        <p class="subtitle">Hausverwaltung & Nebenkostenabrechnung</p>
+    </header>
+
+    <div class="container">
+        <!-- Schnellstatistiken -->
+        <div class="quick-stats">
+            <a href="/admin/bill/apartment/" class="stat-box stat-link">
+                <div class="stat-number">{{ stats.apartments }}</div>
+                <div class="stat-label">Wohnungen</div>
+            </a>
+            <a href="/admin/bill/renter/?move_out_date__isnull=True" class="stat-box stat-link">
+                <div class="stat-number">{{ stats.active_renters }}</div>
+                <div class="stat-label">Aktive Mieter</div>
+            </a>
+            <a href="/admin/bill/meter/" class="stat-box stat-link">
+                <div class="stat-number">{{ stats.meters }}</div>
+                <div class="stat-label">Zähler</div>
+            </a>
+            <a href="/admin/bill/costcenter/" class="stat-box stat-link">
+                <div class="stat-number">{{ stats.cost_centers }}</div>
+                <div class="stat-label">Kostenstellen</div>
+            </a>
+        </div>
+
+        <!-- Hauptfunktionen -->
+        <h2 class="section-title">📋 Abrechnungen & Berichte</h2>
+        <div class="card-grid">
+            {% for year_data in available_years %}
+            <!-- Jahresabrechnung {{ year_data.year }} -->
+            <div class="year-card">
+                <div class="year-card-header">
+                    <span class="year-card-icon">{% if forloop.first %}📊{% else %}📈{% endif %}</span>
+                    <h3>Jahresabrechnung {{ year_data.year }}</h3>
+                </div>
+                <p>Nebenkostenabrechnung für das Abrechnungsjahr {{ year_data.year }}.</p>
+                <div class="year-card-buttons">
+                    <a href="{% url 'bill:yearly_calculation' year_data.year %}" class="btn btn-primary">
+                        📋 Gesamtübersicht
+                    </a>
+                </div>
+                {% if year_data.renters %}
+                <div class="renter-select-group">
+                    <select class="renter-select" id="renter-select-{{ year_data.year }}">
+                        <option value="">-- Mieter auswählen --</option>
+                        {% for renter in year_data.renters %}
+                        <option value="{{ renter.id }}">{{ renter.apartment.number }} - {{ renter.first_name }} {{ renter.last_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn-go" onclick="goToRenterBill({{ year_data.year }}, 'renter-select-{{ year_data.year }}')">
+                        👤 Mieterabrechnung
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="card info">
+                <div class="card-icon">ℹ️</div>
+                <h3>Keine Abrechnungsperioden</h3>
+                <p>Es wurden noch keine Abrechnungsperioden angelegt. Bitte erstellen Sie zunächst eine Abrechnungsperiode im Admin-Bereich.</p>
+            </div>
+            {% endfor %}
+
+            <a href="{% url 'bill:meter_readings_input' %}" class="card success">
+                <div class="card-icon">🔢</div>
+                <h3>Zählerstände erfassen</h3>
+                <p>Aktuelle Zählerstände für Heizung, Wasser und andere Verbrauchszähler eintragen.</p>
+            </a>
+
+            <a href="{% url 'bill:heating_info_task' %}" class="card info">
+                <div class="card-icon">🔥</div>
+                <h3>Heizinformationen</h3>
+                <p>Monatliche Heizungs- und Warmwasserinformationen für Mieter erstellen.</p>
+            </a>
+        </div>
+
+        <!-- Verwaltung -->
+        <h2 class="section-title">⚙️ Verwaltung</h2>
+        <div class="admin-section">
+            <div class="admin-grid">
+                <a href="/admin/bill/apartment/" class="admin-link">
+                    <span class="admin-link-icon">🏢</span>
+                    <span>Wohnungen</span>
+                </a>
+                <a href="/admin/bill/renter/" class="admin-link">
+                    <span class="admin-link-icon">👥</span>
+                    <span>Mieter</span>
+                </a>
+                <a href="/admin/bill/meterplace/" class="admin-link">
+                    <span class="admin-link-icon">📍</span>
+                    <span>Zählerplätze</span>
+                </a>
+                <a href="/admin/bill/meter/" class="admin-link">
+                    <span class="admin-link-icon">⏱️</span>
+                    <span>Zähler</span>
+                </a>
+                <a href="/admin/bill/meterreading/" class="admin-link">
+                    <span class="admin-link-icon">📝</span>
+                    <span>Zählerstände</span>
+                </a>
+                <a href="/admin/bill/costcenter/" class="admin-link">
+                    <span class="admin-link-icon">💰</span>
+                    <span>Kostenstellen</span>
+                </a>
+                <a href="/admin/bill/bill/" class="admin-link">
+                    <span class="admin-link-icon">🧾</span>
+                    <span>Rechnungen</span>
+                </a>
+                <a href="/admin/bill/accountperiod/" class="admin-link">
+                    <span class="admin-link-icon">📅</span>
+                    <span>Abrechnungsperioden</span>
+                </a>
+                <a href="/admin/bill/consumptioncalc/" class="admin-link">
+                    <span class="admin-link-icon">🧮</span>
+                    <span>Verbrauchsberechnungen</span>
+                </a>
+                <a href="/admin/bill/landlord/" class="admin-link">
+                    <span class="admin-link-icon">🏠</span>
+                    <span>Vermieter-Daten</span>
+                </a>
+                <a href="/admin/bill/heatinginfo/" class="admin-link">
+                    <span class="admin-link-icon">🌡️</span>
+                    <span>Heizungsdaten</span>
+                </a>
+                <a href="/admin/bill/heatinginfotemplate/" class="admin-link">
+                    <span class="admin-link-icon">📄</span>
+                    <span>Heizinfo-Vorlagen</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Django Admin Link -->
+        <div style="margin-top: 2rem; text-align: center;">
+            <a href="/admin/" class="card" style="display: inline-block; max-width: 300px;">
+                <div class="card-icon">🔧</div>
+                <h3>Django Admin</h3>
+                <p>Vollständige Administrationsoberfläche für alle Einstellungen.</p>
+            </a>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>LibreLandlord - Open Source Hausverwaltung</p>
+    </footer>
+
+    <script>
+        function goToRenterBill(year, selectId) {
+            var select = document.getElementById(selectId);
+            var renterId = select.value;
+            if (renterId) {
+                window.location.href = '/bill/yearly-calculation/' + year + '/renter/' + renterId + '/';
+            } else {
+                alert('Bitte wählen Sie einen Mieter aus.');
+            }
+        }
+    </script>
+</body>
+</html>

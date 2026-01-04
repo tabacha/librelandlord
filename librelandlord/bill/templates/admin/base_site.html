@@ -1,0 +1,26 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block branding %}
+<a href="/bill/" id="site-home-link" style="
+    display: inline-flex;
+    align-items: center;
+    background: #417690;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 4px;
+    text-decoration: none;
+    margin-right: 15px;
+    font-size: 14px;
+    transition: background 0.2s;
+" onmouseover="this.style.background='#205067'" onmouseout="this.style.background='#417690'">
+    ← Startseite
+</a>
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">LibreLandlord Admin</a>
+</h1>
+{% endblock %}
+
+{% block welcome-msg %}
+{{ block.super }}
+{% endblock %}

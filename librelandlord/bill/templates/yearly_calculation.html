@@ -6,17 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jahresabrechnung {{ billing_year }}</title>
     <style>
-        /* Druck-Einstellungen für DIN A4 Hochformat */
+        /* Druck-Einstellungen für DIN A4 Hochformat - Kompakt */
         @page {
             size: A4;
-            margin: 12mm;
+            margin: 8mm;
         }
 
         @media print {
             body {
                 margin: 0;
                 padding: 0;
-                font-size: 10pt;
+                font-size: 7pt;
+                line-height: 1.2;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
@@ -33,18 +34,21 @@
                 position: fixed;
                 bottom: 0;
                 right: 0;
-                font-size: 8pt;
+                font-size: 6pt;
                 color: #666;
             }
 
             .cost-center {
                 page-break-inside: auto;
                 break-inside: auto;
+                margin-bottom: 6px;
+                border-width: 1px;
             }
 
             .apartment-item {
                 page-break-inside: avoid;
                 break-inside: avoid;
+                margin-bottom: 4px;
             }
 
             .meter-readings-table {
@@ -57,97 +61,101 @@
             }
 
             .header {
-                padding: 10px;
-                margin-bottom: 10px;
+                padding: 5px 8px;
+                margin-bottom: 6px;
             }
 
             .header h1 {
-                margin: 0 0 5px 0;
-                font-size: 1.4em;
+                margin: 0 0 2px 0;
+                font-size: 11pt;
             }
 
-            .header h2 {
-                margin: 0 0 5px 0;
-                font-size: 1.1em;
-            }
-
-            .cost-center {
-                margin-bottom: 12px;
-                overflow: visible;
+            .header p {
+                margin: 0;
+                font-size: 8pt;
             }
 
             .cost-center-header {
-                padding: 6px 12px;
-                font-size: 1em;
+                padding: 4px 8px;
+                font-size: 8pt;
                 page-break-after: avoid;
                 break-after: avoid;
             }
 
             .cost-center-content {
-                padding: 8px;
+                padding: 4px 6px;
             }
 
             .section-title {
-                margin-bottom: 8px;
-                margin-top: 10px;
-                font-size: 0.95em;
+                margin-bottom: 4px;
+                margin-top: 6px;
+                font-size: 7pt;
+                padding-bottom: 2px;
+            }
+
+            .meter-readings-table {
+                margin: 4px 0;
             }
 
             .meter-readings-table th,
             .meter-readings-table td {
-                padding: 3px 6px;
-                font-size: 8pt;
-            }
-
-            .consumption-summary {
-                padding: 8px;
-                margin-bottom: 8px;
+                padding: 2px 4px;
+                font-size: 6.5pt;
             }
 
             .apartment-item {
-                margin-bottom: 10px;
+                margin-bottom: 4px;
             }
 
             .apartment-header {
-                padding: 6px 10px;
-                font-size: 0.95em;
+                padding: 3px 6px;
+                font-size: 7pt;
             }
 
             .apartment-content {
-                padding: 8px;
+                padding: 4px 6px;
             }
 
             .apartment-content h4 {
-                margin: 0 0 8px 0;
-                font-size: 0.9em;
+                margin: 0 0 4px 0;
+                font-size: 7pt;
             }
 
             .apartment-content h5 {
-                margin: 8px 0 5px 0;
-                font-size: 0.85em;
+                margin: 4px 0 2px 0;
+                font-size: 6.5pt;
             }
 
             .calculation-step {
-                padding: 4px 8px;
-                margin: 2px 0;
-                font-size: 8pt;
+                padding: 2px 4px;
+                margin: 1px 0;
+                font-size: 6.5pt;
             }
 
             .meter-readings-section {
-                margin-bottom: 8px;
+                margin-bottom: 4px;
             }
 
             .bills-section {
-                margin-bottom: 15px;
+                margin-bottom: 6px;
+            }
+
+            .bills-section .section-title {
+                margin-bottom: 2px;
             }
 
             .consumption-section {
-                margin-bottom: 10px;
+                margin-bottom: 4px;
             }
 
             .section-group {
                 page-break-inside: avoid;
                 break-inside: avoid;
+                margin-top: 6px !important;
+            }
+
+            .section-group .section-title {
+                margin-top: 4px !important;
             }
 
             .section-group .meter-readings-table {
@@ -161,7 +169,39 @@
             }
 
             .overall-summary {
-                page-break-before: always;
+                page-break-before: auto;
+                margin-top: 10px;
+                border-width: 2px;
+            }
+
+            .overall-summary-header {
+                padding: 6px 10px;
+                font-size: 9pt;
+            }
+
+            .overall-summary-content {
+                padding: 6px;
+            }
+
+            .overall-table th,
+            .overall-table td {
+                padding: 3px 4px;
+                font-size: 7pt;
+            }
+
+            /* Kompaktere Darstellung für Zählerstand-Erklärungen */
+            .section-group > div[style*="background: #fff3cd"] {
+                font-size: 6pt;
+                padding: 4px 6px;
+            }
+
+            .section-group > div[style*="background: #fff3cd"] ul {
+                margin: 2px 0;
+                padding-left: 12px;
+            }
+
+            .section-group > div[style*="background: #fff3cd"] li {
+                margin-bottom: 2px;
             }
         }
 
@@ -457,12 +497,83 @@
             font-weight: bold;
             font-size: 1.1em;
         }
+
+        /* Briefkopf und Anschriftsfeld */
+        .letter-header {
+            margin-bottom: 20px;
+        }
+
+        .sender-info {
+            font-size: 0.75em;
+            color: #666;
+            border-bottom: 1px solid #666;
+            padding-bottom: 2px;
+            margin-bottom: 5px;
+        }
+
+        .address-field {
+            min-height: 100px;
+            margin-bottom: 20px;
+        }
+
+        .address-field .recipient {
+            font-size: 1em;
+            line-height: 1.4;
+        }
+
+        .letter-date {
+            text-align: right;
+            margin-bottom: 15px;
+        }
+
+        @media print {
+            .letter-header {
+                margin-bottom: 10px;
+            }
+
+            .sender-info {
+                font-size: 6pt;
+            }
+
+            .address-field {
+                min-height: 80px;
+                margin-bottom: 15px;
+            }
+
+            .address-field .recipient {
+                font-size: 8pt;
+            }
+
+            .letter-date {
+                font-size: 7pt;
+                margin-bottom: 10px;
+            }
+        }
     </style>
 </head>
 
 <body>
+    {% if renter_filter_id and renter_address %}
+    <!-- Briefkopf für Mieter-Ansicht -->
+    <div class="letter-header">
+        <div class="sender-info">
+            {% if landlord %}{{ landlord.get_sender_line }}{% else %}Vermieter · Adresse nicht konfiguriert{% endif %}
+        </div>
+        <div class="address-field">
+            <div class="recipient">
+                {{ renter_address.name }}<br>
+                {{ renter_address.street }}<br>
+                {{ renter_address.postal_code }} {{ renter_address.city }}
+            </div>
+        </div>
+        <div class="letter-date">
+            {% now "j. F Y" %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="header">
-        <h1>Jahresabrechnung {{ billing_year }}</h1>
+        <h1>{% if landlord.property_name %}{{ landlord.property_name }} - {% endif %}Jahresabrechnung {{ billing_year }}</h1>
         {% if renter_filter_id %}
         <p><strong>{{ renter_filter_name }}</strong></p>
         {% else %}
@@ -499,13 +610,11 @@
                 {% endif %}
             </div>
             <div class="cost-center-content">
-                <!-- Rechnungsübersicht - nur für Vermieter -->
-                {% if not renter_filter_id %}
+                <!-- Rechnungsübersicht -->
                 <div class="bills-section">
                     <h3 class="section-title">Rechnungen</h3>
                     {% include 'bill/includes/bills_table.html' with bills=summary.bills total_amount=summary.total_amount %}
                 </div>
-                {% endif %}
 
                 <!-- Kostenverteilung -->
                 {% if summary.cost_center_calculation %}
@@ -517,6 +626,9 @@
                         {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
                         <div class="apartment-item">
                             <div class="apartment-header">
+                                {% if renter_filter_id %}
+                                {{ contrib.consumption_calc_name }} ({{ contrib.period_start }} - {{ contrib.period_end }})
+                                {% else %}
                                 {{ contrib.apartment_name }}
                                 {% if contrib.renter_id %}
                                 - {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
@@ -524,9 +636,10 @@
                                 - Leerstand
                                 {% endif %}
                                 ({{ contrib.period_start }} bis {{ contrib.period_end }})
+                                {% endif %}
                             </div>
                             <div class="apartment-content">
-                                <strong>{{ contrib.consumption_calc_name }}</strong>
+                                {% if not renter_filter_id %}<strong>{{ contrib.consumption_calc_name }}</strong>{% endif %}
                                 {% include 'bill/includes/calculation_steps.html' with contrib=contrib %}
                             </div>
                         </div>
@@ -550,9 +663,11 @@
 
         <!-- Zusammenfassung pro Periode -->
         <div class="cost-center">
+            {% if not renter_filter_id %}
             <div class="cost-center-header" style="background: #4caf50;">
                 Zusammenfassung - {{ period_data.account_period.text }}
             </div>
+            {% endif %}
             <div class="cost-center-content">
                 <div class="consumption-section">
                     {% if not renter_filter_id %}

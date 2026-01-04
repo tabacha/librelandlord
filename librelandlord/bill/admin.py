@@ -409,3 +409,20 @@ class HeatingInfoTemplate(admin.ModelAdmin):
 
 
 admin.site.register(models.HeatingInfoTemplate, HeatingInfoTemplate)
+
+
+class LandlordAdmin(admin.ModelAdmin):
+    list_display = ('name', 'street', 'postal_code', 'city', 'phone', 'email')
+
+    def has_add_permission(self, request):
+        # Nur erlauben, wenn noch kein Eintrag existiert
+        if models.Landlord.objects.exists():
+            return False
+        return super().has_add_permission(request)
+
+    def has_delete_permission(self, request, obj=None):
+        # Löschen verhindern
+        return False
+
+
+admin.site.register(models.Landlord, LandlordAdmin)

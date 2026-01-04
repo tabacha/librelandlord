@@ -74,33 +74,23 @@
         {% for meter_info in step.source_details.meters %}
             {% if not meter_info.end_reading.is_exact or not meter_info.start_reading.is_exact %}
                 {% if forloop.first %}
-                <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; font-size: 0.9em;">
+                <div class="calculated-readings-hint" style="margin-top: 6px; padding: 4px 8px; background: #fff3cd; border-left: 3px solid #ffc107; font-size: 0.75em;">
                     <strong>* Berechnete Zählerstände:</strong>
-                    <ul style="margin: 5px 0; padding-left: 20px;">
                 {% endif %}
 
                 {% if not meter_info.end_reading.is_exact %}
                 {% with footnote_num|add:1 as footnote_num %}
-                <li>
-                    <strong>*{{ footnote_num }}</strong> Interpoliert zwischen {{ meter_info.end_reading.reading_before.meter_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }} am {{ meter_info.end_reading.reading_before.date|date:"d.m.Y" }} und {{ meter_info.end_reading.reading_after.meter_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }} am {{ meter_info.end_reading.reading_after.date|date:"d.m.Y" }} = {{ meter_info.end_reading.days_total }} Tage<br>
-                    (Täglicher Verbrauch: {{ meter_info.end_reading.daily_consumption|floatformat:2 }} {{ step.source_details.meter_place.unit }}/Tag)<br>
-                    Berechnung: {{ meter_info.end_reading.interpolation_formula }} = {{ meter_info.end_reading.calculated_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }}
-                </li>
+                <span style="display: block; margin-left: 10px;">*{{ footnote_num }}: Interpoliert {{ meter_info.end_reading.reading_before.meter_reading|floatformat:0 }}-{{ meter_info.end_reading.reading_after.meter_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }} ({{ meter_info.end_reading.reading_before.date|date:"d.m.Y" }}-{{ meter_info.end_reading.reading_after.date|date:"d.m.Y" }}) → {{ meter_info.end_reading.calculated_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }}</span>
                 {% endwith %}
                 {% endif %}
 
                 {% if not meter_info.start_reading.is_exact %}
                 {% with footnote_num|add:1 as footnote_num %}
-                <li>
-                    <strong>*{{ footnote_num }}</strong> Interpoliert zwischen {{ meter_info.start_reading.reading_before.meter_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }} am {{ meter_info.start_reading.reading_before.date|date:"d.m.Y" }} und {{ meter_info.start_reading.reading_after.meter_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }} am {{ meter_info.start_reading.reading_after.date|date:"d.m.Y" }} = {{ meter_info.start_reading.days_total }} Tage<br>
-                    (Täglicher Verbrauch: {{ meter_info.start_reading.daily_consumption|floatformat:2 }} {{ step.source_details.meter_place.unit }}/Tag)<br>
-                    Berechnung: {{ meter_info.start_reading.interpolation_formula }} = {{ meter_info.start_reading.calculated_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }}
-                </li>
+                <span style="display: block; margin-left: 10px;">*{{ footnote_num }}: Interpoliert {{ meter_info.start_reading.reading_before.meter_reading|floatformat:0 }}-{{ meter_info.start_reading.reading_after.meter_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }} ({{ meter_info.start_reading.reading_before.date|date:"d.m.Y" }}-{{ meter_info.start_reading.reading_after.date|date:"d.m.Y" }}) → {{ meter_info.start_reading.calculated_reading|floatformat:0 }} {{ step.source_details.meter_place.unit }}</span>
                 {% endwith %}
                 {% endif %}
 
                 {% if forloop.last %}
-                    </ul>
                 </div>
                 {% endif %}
             {% endif %}

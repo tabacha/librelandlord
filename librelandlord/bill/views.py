@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import os
 
-from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace
+from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace, Landlord
 from weasyprint import HTML
 from django.conf import settings
 from django.db.models import Q
@@ -720,8 +720,9 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
         else:
             renter_total = decimal.Decimal('0.00')
 
-        # Mietername für gefilterte Ansicht
+        # Mieterdaten für gefilterte Ansicht (inkl. Adresse für Briefkopf)
         renter_filter_name = None
+        renter_address = None
         if renter_id is not None:
             try:
                 renter = Renter.objects.get(id=renter_id)
@@ -729,8 +730,19 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                     renter_filter_name = f"{renter.first_name} {renter.last_name} - {renter.apartment.name}"
                 else:
                     renter_filter_name = f"{renter.first_name} {renter.last_name}"
+
+                # Adresse für Briefkopf
+                renter_address = {
+                    'name': f"{renter.first_name} {renter.last_name}",
+                    'street': renter.alt_street if renter.alt_street else (renter.apartment.street if renter.apartment else ''),
+                    'postal_code': renter.postal_code if renter.postal_code else (renter.apartment.postal_code if renter.apartment else ''),
+                    'city': renter.city if renter.city else (renter.apartment.city if renter.apartment else ''),
+                }
             except Renter.DoesNotExist:
                 renter_filter_name = f"Mieter #{renter_id}"
+
+        # Vermieterdaten laden
+        landlord = Landlord.get_instance()
 
         context = {
             'billing_year': billing_year,
@@ -740,6 +752,8 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             'period_count': len(all_period_calculations),
             'renter_filter_id': renter_id,
             'renter_filter_name': renter_filter_name,
+            'renter_address': renter_address,
+            'landlord': landlord,
             # Gesamttabelle
             'overall_table': overall_table,
             'cost_center_names': cost_center_names,

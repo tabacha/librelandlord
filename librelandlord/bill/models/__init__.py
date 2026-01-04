@@ -12,3 +12,4 @@ from .meter import Meter
 from .meter_place import MeterPlace
 from .meter_reading import MeterReading
 from .renter import Renter
+from .rent_payment import RentPayment

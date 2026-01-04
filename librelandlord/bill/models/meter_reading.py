@@ -166,7 +166,13 @@ class MeterReading(models.Model):
     date = models.DateField(verbose_name=_("Date"))
     time = models.TimeField(verbose_name=_("Time"), null=True, blank=True)
     meter_reading = models.DecimalField(
-        max_digits=15, decimal_places=2, verbose_name=_("Meter Reading"))
+        max_digits=16, decimal_places=3, verbose_name=_("Meter Reading"))
+    auto_reading = models.BooleanField(
+        default=False,
+        verbose_name=_("Automatic Reading"),
+        help_text=_(
+            "Indicates if the reading was automatically obtained (e.g., via M-Bus)")
+    )
 
     # Verwende den benutzerdefinierten Manager
     objects = MeterReadingManager()

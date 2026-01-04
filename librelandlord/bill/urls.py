@@ -30,4 +30,7 @@ urlpatterns = [
     # API für Admin
     path("api/costcenter/<int:cost_center_id>/distribution-type/",
          views.costcenter_distribution_type, name="costcenter_distribution_type"),
+    # API für M-Bus Import
+    path("api/mbus/import/", views.mbus_readings_import,
+         name="mbus_readings_import"),
 ]

@@ -177,6 +177,14 @@ class ApartmentAdmin(admin.ModelAdmin):
 admin.site.register(models.Apartment, ApartmentAdmin)
 
 
+class RentPaymentInline(admin.TabularInline):
+    """Inline für Mietpreise beim Renter"""
+    model = models.RentPayment
+    extra = 1
+    fields = ['start_date', 'end_date', 'cold_rent', 'advance_payment']
+    ordering = ['-start_date']
+
+
 class RenterAdmin(admin.ModelAdmin):
     list_display = ('first_name', 'last_name', 'apartment',
                     'move_in_date', 'move_out_date', 'is_active')
@@ -186,6 +194,7 @@ class RenterAdmin(admin.ModelAdmin):
     autocomplete_fields = ['apartment']
     date_hierarchy = 'move_in_date'
     ordering = ['-move_in_date']
+    inlines = [RentPaymentInline]
 
     def is_active(self, obj):
         """Zeigt an, ob der Mieter aktuell aktiv ist"""

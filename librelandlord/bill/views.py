@@ -547,13 +547,18 @@ def account_period_calculation(request, account_period_id, renter_id=None):
                 summary_dict['cost_center_calculation'] = calc_dict
                 summary_dict['total_amount'] = total_amount
                 summary_dict['sum_euro_anteil'] = sum_euro_anteil
+                # Flag: Hat diese Kostenstelle Beiträge für den gefilterten Mieter?
+                summary_dict['has_renter_contributions'] = len(
+                    new_contribs) > 0
                 # Rundungsdifferenz berechnen
                 rounding_diff = round(float(total_amount) - sum_euro_anteil, 2)
                 if abs(rounding_diff) >= 0.01:
                     summary_dict['rounding_diff'] = rounding_diff
                 else:
                     summary_dict['rounding_diff'] = None
-                cost_center_summaries.append(summary_dict)
+                # Nur hinzufügen wenn nicht nach Mieter gefiltert wird oder Beiträge vorhanden sind
+                if renter_id is None or summary_dict['has_renter_contributions']:
+                    cost_center_summaries.append(summary_dict)
             else:
                 cost_center_summaries.append(summary)
 
@@ -729,29 +734,36 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                     summary_dict['cost_center_calculation'] = calc_dict
                     summary_dict['total_amount'] = total_amount
                     summary_dict['sum_euro_anteil'] = sum_euro_anteil
+                    # Flag: Hat diese Kostenstelle Beiträge für den gefilterten Mieter?
+                    summary_dict['has_renter_contributions'] = len(
+                        new_contribs) > 0
                     rounding_diff = round(
                         float(total_amount) - sum_euro_anteil, 2)
                     if abs(rounding_diff) >= 0.01:
                         summary_dict['rounding_diff'] = rounding_diff
                     else:
                         summary_dict['rounding_diff'] = None
-                    cost_center_summaries.append(summary_dict)
+                    # Nur hinzufügen wenn nicht nach Mieter gefiltert wird oder Beiträge vorhanden sind
+                    if renter_id is None or summary_dict['has_renter_contributions']:
+                        cost_center_summaries.append(summary_dict)
                 else:
                     cost_center_summaries.append(summary)
 
-            period_data = {
-                'account_period': account_period,
-                'calculation': calculation,
-                'cost_center_summaries': cost_center_summaries,
-                'summary': {
-                    'grand_total': calculation.grand_total,
-                    'total_bill_count': calculation.total_bill_count,
-                    'cost_center_count': calculation.cost_center_count
+            # Nur Perioden hinzufügen, die Kostenstellen haben (wichtig bei Mieter-Filter)
+            if cost_center_summaries:
+                period_data = {
+                    'account_period': account_period,
+                    'calculation': calculation,
+                    'cost_center_summaries': cost_center_summaries,
+                    'summary': {
+                        'grand_total': calculation.grand_total,
+                        'total_bill_count': calculation.total_bill_count,
+                        'cost_center_count': calculation.cost_center_count
+                    }
                 }
-            }
-            all_period_calculations.append(period_data)
-            grand_total_all_periods += calculation.grand_total
-            total_bill_count_all_periods += calculation.total_bill_count
+                all_period_calculations.append(period_data)
+                grand_total_all_periods += calculation.grand_total
+                total_bill_count_all_periods += calculation.total_bill_count
 
         # Gesamttabelle vorbereiten: Liste von {renter_info, cost_center_amounts, row_total}
         overall_table = []
@@ -769,12 +781,14 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                 amount = cost_centers.get(cc_id, decimal.Decimal('0.00'))
                 amounts.append(amount)
                 row_total += amount
-            overall_table.append({
-                'renter_id': renter_key,
-                'renter_info': renter_info,
-                'amounts': amounts,
-                'row_total': row_total
-            })
+            # Nur Zeilen mit tatsächlichen Beträgen hinzufügen
+            if row_total > 0:
+                overall_table.append({
+                    'renter_id': renter_key,
+                    'renter_info': renter_info,
+                    'amounts': amounts,
+                    'row_total': row_total
+                })
 
         # Nach Nachname sortieren
         overall_table.sort(key=lambda x: (

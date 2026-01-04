@@ -32,6 +32,8 @@ Variablen:
             <td>
                 {% if contrib.renter_id %}
                 {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+                {% elif contrib.is_special_designation %}
+                <em>{{ contrib.apartment_name }}</em>
                 {% else %}
                 <em>Leerstand</em>
                 {% endif %}
@@ -46,7 +48,7 @@ Variablen:
             </td>
             {% elif distribution_type == 'TIME' %}
             <td class="number-cell calc-cell" style="font-family: monospace; white-space: nowrap;">
-                {{ contrib.final_consumption|floatformat:0 }} Tage / {{ calculation.total_days }} Tage
+                ({{ contrib.final_consumption|floatformat:0 }} Tage / {{ calculation.total_days }} Tage) / {{ calculation.apartment_count }} Wohnungen
             </td>
             {% endif %}
             <td class="consumption-cell">{{ contrib.percentage|floatformat:2 }} %</td>

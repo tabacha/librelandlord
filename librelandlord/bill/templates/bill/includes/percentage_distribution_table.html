@@ -24,8 +24,10 @@
 
                 {% if contrib.renter_id %}
                     {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+                {% elif contrib.is_special_designation %}
+                    <em>{{ contrib.apartment_name }}</em>
                 {% else %}
-                    <em>Leerstand</em>
+                    <em>Leerstand {{ contrib.apartment_name }}</em>
                 {% endif %}
 
             </td>

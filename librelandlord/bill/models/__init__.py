@@ -8,6 +8,7 @@ from .cost_center_contribution import CostCenterContribution
 from .cost_center import CostCenter
 from .heating_info import HeatingInfo
 from .heating_info_template import HeatingInfoTemplate
+from .landlord import Landlord
 from .meter import Meter
 from .meter_place import MeterPlace
 from .meter_reading import MeterReading

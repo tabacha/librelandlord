@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fehler - Jahresabrechnung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f5f5f5;
+        }
+        .error-container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 800px;
+            margin: 0 auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .error-header {
+            color: #d32f2f;
+            border-bottom: 2px solid #d32f2f;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .error-type {
+            background: #ffebee;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .error-message {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .traceback {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #1976d2;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1 class="error-header">Fehler bei der Jahresabrechnung</h1>
+
+        {% if billing_year %}
+        <p><strong>Jahr:</strong> {{ billing_year }}</p>
+        {% endif %}
+
+        <div class="error-type">
+            <strong>Fehlertyp:</strong> {{ error_type }}
+        </div>
+
+        <div class="error-message">
+            <strong>Fehlermeldung:</strong><br>
+            {{ error_message }}
+        </div>
+
+        {% if debug and traceback %}
+        <h3>Stack Trace:</h3>
+        <div class="traceback">{{ traceback }}</div>
+        {% endif %}
+
+        <a href="javascript:history.back()" class="back-link">← Zurück</a>
+    </div>
+</body>
+</html>

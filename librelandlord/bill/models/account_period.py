@@ -19,6 +19,11 @@ class AccountPeriod(models.Model):
         max_length=27, verbose_name=_("Account Period Name"))
     start_date = models.DateField(verbose_name=_("Start Date"))
     end_date = models.DateField(verbose_name=_("End Date"))
+    billing_year = models.PositiveIntegerField(
+        verbose_name=_("Billing Year"),
+        validators=[MinValueValidator(2000), MaxValueValidator(2100)],
+        help_text=_("The billing year for this account period (e.g., 2025)")
+    )
 
     def __str__(self):
         return f"{self.text} {self.start_date} {self.end_date}"

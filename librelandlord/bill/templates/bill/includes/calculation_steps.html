@@ -26,7 +26,7 @@ Kompakte Darstellung:
 {% if contrib.consumption_result.formula_display %}
 <div class="calculation-step">
     {% comment %}Erklärungen über der Formel - auch aus nested calculations{% endcomment %}
-    
+
     {% comment %}Erklärungen aus nested calculations{% endcomment %}
     {% for arg_result in contrib.consumption_result.argument_results %}
         {% if arg_result.source_type == 'nested_calculation' and arg_result.nested_result %}
@@ -46,7 +46,7 @@ Kompakte Darstellung:
             {% endfor %}
         {% endif %}
     {% endfor %}
-    
+
     {% comment %}Erklärungen aus der Hauptberechnung{% endcomment %}
     {% for step in contrib.consumption_result.calculation_steps %}
         {% if step.step_type == 'operation' %}

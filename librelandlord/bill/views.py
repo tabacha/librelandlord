@@ -486,122 +486,6 @@ def heating_info_task(request):
 
 @login_required
 @require_http_methods(["GET"])
-def account_period_calculation(request, account_period_id, renter_id=None):
-    """
-    View der die vollständige Berechnung einer AccountPeriod über ein Template ausgibt.
-
-    Liefert sowohl Rechnungsdaten als auch Verbrauchsberechnungen pro CostCenter
-    über ein Jinja Template.
-
-    URL: /account-period/<id>/calculation/
-    URL: /account-period/<id>/calculation/renter/<renter_id>/
-    Method: GET
-
-    Returns:
-        Gerenderte HTML-Seite mit der AccountPeriodCalculation
-    """
-    try:
-        # AccountPeriod holen
-        account_period = get_object_or_404(AccountPeriod, id=account_period_id)
-
-        # Berechnung durchführen
-        calculation = account_period.calculate_bills_by_cost_center()
-
-        # Euro-Anteil für jede Contribution berechnen und in die Summaries einfügen
-        cost_center_summaries = []
-        for summary in calculation.cost_center_summaries:
-            total_amount = getattr(summary, 'total_amount', None)
-            if not total_amount:
-                total_amount = 0
-            if hasattr(summary, 'cost_center_calculation') and summary.cost_center_calculation:
-                # Optional: Beiträge nach Renter-ID filtern (Anzeige),
-                # aber Prozentwerte und Gesamtverbrauch der CostCenter-Berechnung beibehalten.
-                if renter_id is not None:
-                    # Filtere nach renter_id direkt
-                    filtered_results = [
-                        cr for cr in summary.cost_center_calculation.contribution_results
-                        if cr.renter_id == renter_id
-                    ]
-                else:
-                    filtered_results = list(
-                        summary.cost_center_calculation.contribution_results)
-
-                new_contribs = []
-                sum_euro_anteil = 0
-                for contrib in filtered_results:
-                    # Prozentwert aus der ursprünglichen Gesamtrechnung übernehmen
-                    perc = getattr(contrib, 'percentage', 0.0)
-                    euro_anteil = (perc / 100) * float(total_amount)
-                    contrib_dict = contrib._asdict()
-                    contrib_dict['euro_anteil'] = euro_anteil
-                    new_contribs.append(contrib_dict)
-                    sum_euro_anteil += euro_anteil
-
-                # CostCenterCalculation in Dict-Form nur mit gefilterten Beiträgen aktualisieren
-                calc_dict = summary.cost_center_calculation._asdict()
-                calc_dict['contribution_results'] = new_contribs
-                # WICHTIG: Gesamtverbrauch nicht überschreiben, damit "Gesamtverbrauch" sichtbar bleibt
-
-                summary_dict = summary._asdict() if hasattr(
-                    summary, '_asdict') else dict(summary)
-                summary_dict['cost_center_calculation'] = calc_dict
-                summary_dict['total_amount'] = total_amount
-                summary_dict['sum_euro_anteil'] = sum_euro_anteil
-                # Flag: Hat diese Kostenstelle Beiträge für den gefilterten Mieter?
-                summary_dict['has_renter_contributions'] = len(
-                    new_contribs) > 0
-                # Rundungsdifferenz berechnen
-                rounding_diff = round(float(total_amount) - sum_euro_anteil, 2)
-                if abs(rounding_diff) >= 0.01:
-                    summary_dict['rounding_diff'] = rounding_diff
-                else:
-                    summary_dict['rounding_diff'] = None
-                # Nur hinzufügen wenn nicht nach Mieter gefiltert wird oder Beiträge vorhanden sind
-                if renter_id is None or summary_dict['has_renter_contributions']:
-                    cost_center_summaries.append(summary_dict)
-            else:
-                cost_center_summaries.append(summary)
-
-        context = {
-            'calculation': calculation,
-            'account_period': calculation.account_period,
-            'summary': {
-                'grand_total': calculation.grand_total,
-                'total_bill_count': calculation.total_bill_count,
-                'cost_center_count': calculation.cost_center_count
-            },
-            'cost_center_summaries': cost_center_summaries,
-            'renter_filter_id': renter_id,
-        }
-
-        # Template rendern
-        return render(request, 'account_period_calculation.html', context)
-
-    except Exception as e:
-        # Fehler mit vollem Stack-Trace loggen
-        logger.exception(
-            "Error calculating account period %s: %s",
-            account_period_id,
-            str(e)
-        )
-
-        # Traceback für die Anzeige erfassen
-        import traceback
-        traceback_str = traceback.format_exc()
-
-        # Fehler-Template rendern
-        error_context = {
-            'error_message': str(e),
-            'error_type': type(e).__name__,
-            'account_period_id': account_period_id,
-            'traceback': traceback_str,
-            'debug': settings.DEBUG
-        }
-        return render(request, 'account_period_calculation_error.html', error_context, status=500)
-
-
-@login_required
-@require_http_methods(["GET"])
 def yearly_calculation(request, billing_year: int, renter_id: int = None):
     """
     View der die vollständige Berechnung aller AccountPeriods eines Jahres über ein Template ausgibt.
@@ -794,6 +678,22 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
         overall_table.sort(key=lambda x: (
             x['renter_info']['last_name'], x['renter_info']['first_name']))
 
+        # Bei Mieter-Filterung: Spalten mit 0,00 € ausblenden
+        if renter_id is not None and overall_table:
+            # Finde Spalten mit Werten > 0
+            non_zero_columns = []
+            for i, cc_id in enumerate(sorted_cost_center_ids):
+                has_value = any(row['amounts'][i] > 0 for row in overall_table)
+                if has_value:
+                    non_zero_columns.append(i)
+
+            # Filtere die Spalten
+            filtered_cost_center_ids = [
+                sorted_cost_center_ids[i] for i in non_zero_columns]
+            for row in overall_table:
+                row['amounts'] = [row['amounts'][i] for i in non_zero_columns]
+            sorted_cost_center_ids = filtered_cost_center_ids
+
         # Spaltensummen berechnen
         column_totals = [decimal.Decimal('0.00')
                          for _ in sorted_cost_center_ids]
@@ -807,6 +707,31 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
         cost_center_names = [all_cost_centers[cc_id]
                              for cc_id in sorted_cost_center_ids]
 
+        # Vertikale Tabelle für Mieter-Ansicht vorbereiten
+        vertical_table = []
+        if renter_id is not None and overall_table:
+            row = overall_table[0]  # Bei Mieter-Filter gibt es nur eine Zeile
+            for i, cc_name in enumerate(cost_center_names):
+                vertical_table.append({
+                    'cost_center_name': cc_name,
+                    'amount': row['amounts'][i]
+                })
+            renter_total = row['row_total']
+        else:
+            renter_total = decimal.Decimal('0.00')
+
+        # Mietername für gefilterte Ansicht
+        renter_filter_name = None
+        if renter_id is not None:
+            try:
+                renter = Renter.objects.get(id=renter_id)
+                if renter.apartment:
+                    renter_filter_name = f"{renter.first_name} {renter.last_name} - {renter.apartment.name}"
+                else:
+                    renter_filter_name = f"{renter.first_name} {renter.last_name}"
+            except Renter.DoesNotExist:
+                renter_filter_name = f"Mieter #{renter_id}"
+
         context = {
             'billing_year': billing_year,
             'all_period_calculations': all_period_calculations,
@@ -814,11 +739,15 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             'total_bill_count_all_periods': total_bill_count_all_periods,
             'period_count': len(all_period_calculations),
             'renter_filter_id': renter_id,
+            'renter_filter_name': renter_filter_name,
             # Gesamttabelle
             'overall_table': overall_table,
             'cost_center_names': cost_center_names,
             'column_totals': column_totals,
             'grand_total_overall': grand_total_overall,
+            # Vertikale Tabelle für Mieter-Ansicht
+            'vertical_table': vertical_table,
+            'renter_total': renter_total,
         }
 
         return render(request, 'yearly_calculation.html', context)

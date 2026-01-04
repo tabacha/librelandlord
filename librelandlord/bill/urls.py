@@ -19,10 +19,6 @@ urlpatterns = [
     #     name="calc_consumption_calc"),
 
     path("heating_info_task", views.heating_info_task, name="heating_info_task"),
-    path("account-period/<int:account_period_id>/calculation/",
-         views.account_period_calculation, name="account_period_calculation"),
-    path("account-period/<int:account_period_id>/calculation/renter/<int:renter_id>/",
-         views.account_period_calculation, name="account_period_calculation_renter"),
     path("yearly-calculation/<int:billing_year>/",
          views.yearly_calculation, name="yearly_calculation"),
     path("yearly-calculation/<int:billing_year>/renter/<int:renter_id>/",

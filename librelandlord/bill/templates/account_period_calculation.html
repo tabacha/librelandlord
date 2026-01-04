@@ -429,7 +429,7 @@
                             {{ contrib.apartment_name }}
                             {% if contrib.renter_id %}
                             - {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
-                            {% else %}
+                            {% elif not contrib.is_special_designation %}
                             - Leerstand
                             {% endif %}
                             ({{ contrib.period_start }} bis {{ contrib.period_end }})

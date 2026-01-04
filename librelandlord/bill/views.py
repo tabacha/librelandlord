@@ -596,6 +596,240 @@ def account_period_calculation(request, account_period_id, renter_id=None):
 
 
 @login_required
+@require_http_methods(["GET"])
+def yearly_calculation(request, billing_year: int, renter_id: int = None):
+    """
+    View der die vollständige Berechnung aller AccountPeriods eines Jahres über ein Template ausgibt.
+
+    Liefert sowohl Rechnungsdaten als auch Verbrauchsberechnungen pro CostCenter
+    für alle AccountPeriods des angegebenen Abrechnungsjahres.
+
+    URL: /yearly-calculation/<year>/
+    URL: /yearly-calculation/<year>/renter/<renter_id>/
+    Method: GET
+
+    Returns:
+        Gerenderte HTML-Seite mit allen AccountPeriodCalculations des Jahres
+    """
+    try:
+        # Alle AccountPeriods für das Jahr holen
+        account_periods = AccountPeriod.objects.filter(
+            billing_year=billing_year
+        ).order_by('start_date')
+
+        if not account_periods.exists():
+            error_context = {
+                'error_message': f'Keine Abrechnungsperioden für das Jahr {billing_year} gefunden.',
+                'error_type': 'NotFound',
+                'billing_year': billing_year,
+                'debug': settings.DEBUG
+            }
+            return render(request, 'yearly_calculation_error.html', error_context, status=404)
+
+        # Berechnungen für alle Perioden durchführen
+        all_period_calculations = []
+        grand_total_all_periods = decimal.Decimal('0.00')
+        total_bill_count_all_periods = 0
+
+        # Struktur für die Gesamttabelle: {renter_key: {cost_center_key: euro_anteil}}
+        overall_summary = {}
+        all_renters = {}  # {renter_id: {'first_name': ..., 'last_name': ...}}
+        all_cost_centers = {}  # {cost_center_id: cost_center_text}
+
+        for account_period in account_periods:
+            # Berechnung durchführen
+            calculation = account_period.calculate_bills_by_cost_center()
+
+            # Euro-Anteil für jede Contribution berechnen
+            cost_center_summaries = []
+            for summary in calculation.cost_center_summaries:
+                total_amount = getattr(summary, 'total_amount', None)
+                if not total_amount:
+                    total_amount = 0
+
+                # CostCenter für Gesamttabelle sammeln
+                cost_center = summary.cost_center
+                all_cost_centers[cost_center.id] = cost_center.text
+
+                if hasattr(summary, 'cost_center_calculation') and summary.cost_center_calculation:
+                    # Optional: Beiträge nach Renter-ID filtern
+                    if renter_id is not None:
+                        filtered_results = [
+                            cr for cr in summary.cost_center_calculation.contribution_results
+                            if cr.renter_id == renter_id
+                        ]
+                    else:
+                        filtered_results = list(
+                            summary.cost_center_calculation.contribution_results)
+
+                    new_contribs = []
+                    sum_euro_anteil = 0
+                    for contrib in filtered_results:
+                        perc = getattr(contrib, 'percentage', 0.0)
+                        euro_anteil = (perc / 100) * float(total_amount)
+                        contrib_dict = contrib._asdict()
+                        contrib_dict['euro_anteil'] = euro_anteil
+
+                        # Prüfe ob es eine special_designation gibt
+                        contribution_obj = contrib.contribution
+                        has_special_designation = bool(
+                            contribution_obj and
+                            hasattr(contribution_obj, 'special_designation') and
+                            contribution_obj.special_designation and
+                            contribution_obj.special_designation.strip()
+                        )
+                        contrib_dict['is_special_designation'] = has_special_designation
+
+                        new_contribs.append(contrib_dict)
+                        sum_euro_anteil += euro_anteil
+
+                        # Für Gesamttabelle sammeln
+                        r_id = contrib.renter_id
+                        apartment_name = getattr(contrib, 'apartment_name', '')
+                        if r_id:
+                            renter_key = r_id
+                            all_renters[r_id] = {
+                                'first_name': contrib.renter_first_name,
+                                'last_name': contrib.renter_last_name,
+                                'apartment_name': apartment_name
+                            }
+                        else:
+                            # Verwende apartment_name als Key für separate Summierung
+                            renter_key = f'special_{apartment_name}'
+                            if has_special_designation:
+                                # Special Designation (z.B. Eigentümer)
+                                all_renters[renter_key] = {
+                                    'first_name': apartment_name,
+                                    'last_name': '',
+                                    'apartment_name': '',
+                                    'is_special': True
+                                }
+                            else:
+                                # Leerstand einer Wohnung
+                                all_renters[renter_key] = {
+                                    'first_name': 'Leerstand',
+                                    'last_name': apartment_name,
+                                    'apartment_name': '',
+                                    'is_special': False
+                                }
+
+                        if renter_key not in overall_summary:
+                            overall_summary[renter_key] = {}
+                        if cost_center.id not in overall_summary[renter_key]:
+                            overall_summary[renter_key][cost_center.id] = decimal.Decimal(
+                                '0.00')
+                        overall_summary[renter_key][cost_center.id] += decimal.Decimal(
+                            str(euro_anteil))
+
+                    calc_dict = summary.cost_center_calculation._asdict()
+                    calc_dict['contribution_results'] = new_contribs
+
+                    summary_dict = summary._asdict() if hasattr(
+                        summary, '_asdict') else dict(summary)
+                    summary_dict['cost_center_calculation'] = calc_dict
+                    summary_dict['total_amount'] = total_amount
+                    summary_dict['sum_euro_anteil'] = sum_euro_anteil
+                    rounding_diff = round(
+                        float(total_amount) - sum_euro_anteil, 2)
+                    if abs(rounding_diff) >= 0.01:
+                        summary_dict['rounding_diff'] = rounding_diff
+                    else:
+                        summary_dict['rounding_diff'] = None
+                    cost_center_summaries.append(summary_dict)
+                else:
+                    cost_center_summaries.append(summary)
+
+            period_data = {
+                'account_period': account_period,
+                'calculation': calculation,
+                'cost_center_summaries': cost_center_summaries,
+                'summary': {
+                    'grand_total': calculation.grand_total,
+                    'total_bill_count': calculation.total_bill_count,
+                    'cost_center_count': calculation.cost_center_count
+                }
+            }
+            all_period_calculations.append(period_data)
+            grand_total_all_periods += calculation.grand_total
+            total_bill_count_all_periods += calculation.total_bill_count
+
+        # Gesamttabelle vorbereiten: Liste von {renter_info, cost_center_amounts, row_total}
+        overall_table = []
+        sorted_cost_center_ids = sorted(
+            all_cost_centers.keys(), key=lambda x: all_cost_centers[x])
+
+        for renter_key, cost_centers in overall_summary.items():
+            if renter_id is not None and renter_key != renter_id:
+                continue
+            renter_info = all_renters.get(
+                renter_key, {'first_name': 'Unbekannt', 'last_name': '', 'apartment_name': ''})
+            amounts = []
+            row_total = decimal.Decimal('0.00')
+            for cc_id in sorted_cost_center_ids:
+                amount = cost_centers.get(cc_id, decimal.Decimal('0.00'))
+                amounts.append(amount)
+                row_total += amount
+            overall_table.append({
+                'renter_id': renter_key,
+                'renter_info': renter_info,
+                'amounts': amounts,
+                'row_total': row_total
+            })
+
+        # Nach Nachname sortieren
+        overall_table.sort(key=lambda x: (
+            x['renter_info']['last_name'], x['renter_info']['first_name']))
+
+        # Spaltensummen berechnen
+        column_totals = [decimal.Decimal('0.00')
+                         for _ in sorted_cost_center_ids]
+        grand_total_overall = decimal.Decimal('0.00')
+        for row in overall_table:
+            for i, amount in enumerate(row['amounts']):
+                column_totals[i] += amount
+            grand_total_overall += row['row_total']
+
+        # Cost-Center-Namen als Liste in der richtigen Reihenfolge
+        cost_center_names = [all_cost_centers[cc_id]
+                             for cc_id in sorted_cost_center_ids]
+
+        context = {
+            'billing_year': billing_year,
+            'all_period_calculations': all_period_calculations,
+            'grand_total_all_periods': grand_total_all_periods,
+            'total_bill_count_all_periods': total_bill_count_all_periods,
+            'period_count': len(all_period_calculations),
+            'renter_filter_id': renter_id,
+            # Gesamttabelle
+            'overall_table': overall_table,
+            'cost_center_names': cost_center_names,
+            'column_totals': column_totals,
+            'grand_total_overall': grand_total_overall,
+        }
+
+        return render(request, 'yearly_calculation.html', context)
+
+    except Exception as e:
+        logger.exception(
+            "Error calculating yearly calculation for %s: %s",
+            billing_year,
+            str(e)
+        )
+
+        import traceback
+        traceback_str = traceback.format_exc()
+
+        error_context = {
+            'error_message': str(e),
+            'error_type': type(e).__name__,
+            'billing_year': billing_year,
+            'traceback': traceback_str,
+            'debug': settings.DEBUG
+        }
+        return render(request, 'yearly_calculation_error.html', error_context, status=500)
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def meter_readings_input(request):
     """

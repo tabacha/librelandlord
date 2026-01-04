@@ -34,8 +34,14 @@ def custom_login(request):
 
 @login_required
 def index(request):
-    """Dashboard mit Übersicht und Schnellzugriffen"""
-    # Statistiken sammeln
+    """Redirect zum Admin Dashboard"""
+    from django.shortcuts import redirect
+    return redirect('/admin/')
+
+
+@login_required
+def dashboard_stats_api(request):
+    """API-Endpunkt für Dashboard-Statistiken (JSON)"""
     stats = {
         'apartments': Apartment.objects.count(),
         'active_renters': Renter.objects.filter(move_out_date__isnull=True).count(),
@@ -44,34 +50,35 @@ def index(request):
     }
 
     def get_active_renters_for_year(year):
-        """Holt alle Mieter die im Jahr aktiv waren (eingezogen vor Jahresende, nicht ausgezogen vor Jahresanfang)"""
         year_start = date(year, 1, 1)
         year_end = date(year, 12, 31)
         return Renter.objects.filter(
-            move_in_date__lte=year_end  # Eingezogen vor oder während des Jahres
+            move_in_date__lte=year_end
         ).filter(
-            Q(move_out_date__isnull=True) |  # Noch nicht ausgezogen
-            # Oder ausgezogen nach Jahresanfang
+            Q(move_out_date__isnull=True) |
             Q(move_out_date__gte=year_start)
         ).select_related('apartment').order_by('apartment__number', 'last_name')
 
-    # Die letzten 3 Jahre prüfen, ob Abrechnungsperioden existieren
     current_year = datetime.now().year
     available_years = []
-    for year in range(current_year, current_year - 4, -1):  # Aktuelles Jahr und 3 zurück
+    for year in range(current_year, current_year - 4, -1):
         if AccountPeriod.objects.filter(billing_year=year).exists():
+            renters = get_active_renters_for_year(year)
             available_years.append({
                 'year': year,
-                'renters': list(get_active_renters_for_year(year))
+                'renters': [
+                    {'id': r.id, 'name': f"{r.first_name} {r.last_name}",
+                        'apartment_number': r.apartment.number}
+                    for r in renters
+                ]
             })
         if len(available_years) >= 3:
             break
 
-    context = {
-        'stats': stats,
+    return JsonResponse({
+        **stats,
         'available_years': available_years,
-    }
-    return render(request, 'dashboard.html', context)
+    })
 
 
 def to_datetime(date):

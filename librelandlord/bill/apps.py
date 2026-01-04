@@ -7,6 +7,8 @@ class BillConfig(AppConfig):
 
     def ready(self):
         from django.contrib import admin
-        admin.site.site_header = 'LibreLandlord Admin'
+
+        # Admin Site Konfiguration
+        admin.site.site_header = 'LibreLandlord'
         admin.site.site_title = 'LibreLandlord'
-        admin.site.index_title = 'Verwaltung'
+        admin.site.index_title = 'Dashboard'

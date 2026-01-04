@@ -35,7 +35,7 @@ class CustomLogin(View):
 
 
 urlpatterns = [
-    path('', lambda request: redirect('/bill/')),  # Root redirect
+    path('', lambda request: redirect('/admin/')),  # Root redirect to admin
     path('bill/', include('bill.urls')),
     path('oidc/', include('mozilla_django_oidc.urls')),  # OIDC URLs
 ]

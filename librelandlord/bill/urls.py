@@ -1,4 +1,5 @@
 from django.urls import path, register_converter
+from django.shortcuts import redirect
 
 from . import views
 from librelandlord.convertes import DateConverter
@@ -8,7 +9,7 @@ register_converter(DateConverter, "date")
 app_name = 'bill'
 
 urlpatterns = [
-    path("", views.index, name="index"),
+    path("", lambda request: redirect('/admin/'), name="index"),
     path("login/", views.custom_login, name="login"),
     path("heating_info/<int:id>.html", views.heating_info, name="heating_info"),
     path("heating_info/<int:id>.pdf",
@@ -33,4 +34,7 @@ urlpatterns = [
     # API für M-Bus Import
     path("api/mbus/import/", views.mbus_readings_import,
          name="mbus_readings_import"),
+    # API für Dashboard-Statistiken
+    path("api/dashboard-stats/", views.dashboard_stats_api,
+         name="dashboard_stats_api"),
 ]

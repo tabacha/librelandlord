@@ -1,0 +1,202 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    /* Mehrzeilige Quick-Nav unter Header */
+    .quick-nav {
+        background: #fff;
+        padding: 10px 15px;
+        border-bottom: none;
+    }
+
+    .quick-nav-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    .quick-nav-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .quick-nav-label {
+        color: #666;
+        font-size: 0.8em;
+        font-weight: 600;
+        min-width: 80px;
+    }
+
+    .quick-nav-stat {
+        background: #417690;
+        padding: 5px 12px;
+        border-radius: 15px;
+        text-decoration: none;
+        color: #fff !important;
+        font-size: 0.9em;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.2s;
+    }
+
+    .quick-nav-stat:hover {
+        background: #205067;
+        color: #fff !important;
+    }
+
+    .quick-nav-stat .num {
+        font-weight: bold;
+        background: rgba(255,255,255,0.25);
+        padding: 2px 8px;
+        border-radius: 10px;
+    }
+
+    .quick-nav-btn {
+        padding: 6px 14px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-size: 0.85em;
+        font-weight: 600;
+        color: #fff !important;
+        transition: all 0.2s;
+    }
+
+    .quick-nav-btn.green { background: #27ae60; }
+    .quick-nav-btn.blue { background: #3498db; }
+    .quick-nav-btn.orange { background: #e67e22; }
+    .quick-nav-btn.red { background: #e74c3c; }
+    .quick-nav-btn.purple { background: #9b59b6; }
+
+    .quick-nav-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        filter: brightness(1.1);
+        color: #fff !important;
+    }
+
+    .quick-nav select {
+        padding: 5px 10px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 0.85em;
+        background: #fff;
+    }
+
+    .quick-nav-go-btn {
+        padding: 5px 12px;
+        background: #417690;
+        color: #fff !important;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85em;
+        font-weight: 600;
+    }
+
+    .quick-nav-go-btn:hover {
+        background: #205067;
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Quick-Nav HTML erstellen
+    var quickNavHTML = `
+    <div class="quick-nav" id="quick-nav">
+        <div class="quick-nav-row">
+            <span class="quick-nav-label">📊 Übersicht:</span>
+            <a href="/admin/bill/apartment/" class="quick-nav-stat">🏢 <span class="num" id="stat-apartments">-</span> Wohnungen</a>
+            <a href="/admin/bill/renter/?move_out_date__isnull=True" class="quick-nav-stat">👥 <span class="num" id="stat-renters">-</span> Mieter</a>
+            <a href="/admin/bill/meter/" class="quick-nav-stat">⏱️ <span class="num" id="stat-meters">-</span> Zähler</a>
+            <a href="/admin/bill/costcenter/" class="quick-nav-stat">💰 <span class="num" id="stat-costcenters">-</span> Kostenstellen</a>
+        </div>
+        <div class="quick-nav-row">
+            <span class="quick-nav-label">⚡ Aktionen:</span>
+            <a href="/bill/meter-readings-input/" class="quick-nav-btn green">🔢 Zählerstände erfassen</a>
+            <a href="/bill/heating-info-task/" class="quick-nav-btn red">🔥 Heizinfo anfordern</a>
+            <a href="/admin/bill/bill/" class="quick-nav-btn blue">🧾 Rechnungen</a>
+            <a href="/admin/bill/meterreading/" class="quick-nav-btn purple">📈 Zählerstandsliste</a>
+        </div>
+        <div class="quick-nav-row">
+            <span class="quick-nav-label">📋 Abrechnung:</span>
+            <select id="year-select"><option value="">Jahr wählen...</option></select>
+            <select id="renter-select"><option value="">Alle Mieter / einzeln wählen...</option></select>
+            <button class="quick-nav-go-btn" onclick="goToBill()">→ Berechnen</button>
+        </div>
+    </div>`;
+
+    // Nach dem Header einfügen
+    var header = document.getElementById('header');
+    if (header) {
+        header.insertAdjacentHTML('afterend', quickNavHTML);
+    }
+
+    // Statistiken laden
+    fetch('/bill/api/dashboard-stats/')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('stat-apartments').textContent = data.apartments;
+            document.getElementById('stat-renters').textContent = data.active_renters;
+            document.getElementById('stat-meters').textContent = data.meters;
+            document.getElementById('stat-costcenters').textContent = data.cost_centers;
+
+            var yearSelect = document.getElementById('year-select');
+            data.available_years.forEach(function(y, index) {
+                var opt = document.createElement('option');
+                opt.value = y.year;
+                opt.textContent = y.year;
+                if (index === 0) opt.selected = true;  // Neuestes Jahr vorauswählen
+                yearSelect.appendChild(opt);
+            });
+
+            // Mieter für das vorausgewählte Jahr laden
+            if (data.available_years.length > 0) {
+                var firstYear = data.available_years[0];
+                var renterSelect = document.getElementById('renter-select');
+                if (firstYear.renters) {
+                    firstYear.renters.forEach(function(r) {
+                        var opt = document.createElement('option');
+                        opt.value = r.id;
+                        opt.textContent = r.apartment_number + ' - ' + r.name;
+                        renterSelect.appendChild(opt);
+                    });
+                }
+            }
+
+            yearSelect.addEventListener('change', function() {
+                var renterSelect = document.getElementById('renter-select');
+                renterSelect.innerHTML = '<option value="">Alle Mieter / einzeln wählen...</option>';
+                var selectedYear = data.available_years.find(y => y.year == this.value);
+                if (selectedYear && selectedYear.renters) {
+                    selectedYear.renters.forEach(function(r) {
+                        var opt = document.createElement('option');
+                        opt.value = r.id;
+                        opt.textContent = r.apartment_number + ' - ' + r.name;
+                        renterSelect.appendChild(opt);
+                    });
+                }
+            });
+        })
+        .catch(function() {});
+});
+
+function goToBill() {
+    var year = document.getElementById('year-select').value;
+    var renter = document.getElementById('renter-select').value;
+    if (!year) { alert('Bitte Jahr wählen'); return; }
+    var url = '/bill/yearly-calculation/' + year + '/';
+    if (renter) url += 'renter/' + renter + '/';
+    window.location.href = url;
+}
+</script>
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">🏠 LibreLandlord</a>
+</h1>
+{% endblock %}
+

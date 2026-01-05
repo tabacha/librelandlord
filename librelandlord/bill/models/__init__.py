@@ -1,6 +1,8 @@
 from .account_entry import AccountEntry
 from .account_period import AccountPeriod
 from .apartment import Apartment
+from .bank_account import BankAccount
+from .bank_transaction import BankTransaction
 from .bill import Bill
 from .consumption_calc import ConsumptionCalc, ConsumptionCalcArgument
 from .cost_center_bill_entry import CostCenterBillEntry
@@ -9,8 +11,10 @@ from .cost_center import CostCenter
 from .heating_info import HeatingInfo
 from .heating_info_template import HeatingInfoTemplate
 from .landlord import Landlord
+from .matching_rule import MatchingRule
 from .meter import Meter
 from .meter_place import MeterPlace
 from .meter_reading import MeterReading
 from .renter import Renter
 from .rent_payment import RentPayment
+from .transaction_bill_link import TransactionBillLink

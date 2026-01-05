@@ -19,5 +19,11 @@ class Bill(models.Model):
     account_period = models.ForeignKey(
         'AccountPeriod', on_delete=models.CASCADE, verbose_name=_("Account Period"))
 
+    paperless_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_("Paperless ID"),
+        help_text=_("ID des Dokuments in Paperless-NGX"))
+
     def __str__(self):
         return f"{self.bill_date} {self.text} {self.value}"

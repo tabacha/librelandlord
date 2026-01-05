@@ -2,6 +2,7 @@ from django.contrib import admin
 # Register your models here.
 
 from . import models
+from .admin_csv_import import CSVImportAdminMixin
 
 
 class MeterPlaceAdmin(admin.ModelAdmin):
@@ -206,6 +207,33 @@ class RenterAdmin(admin.ModelAdmin):
 admin.site.register(models.Renter, RenterAdmin)
 
 
+class BillTransactionLinkInline(admin.TabularInline):
+    """Inline für Transaction-Links bei Bill (zeigt verknüpfte Banktransaktionen)"""
+    model = models.TransactionBillLink
+    extra = 0
+    fields = ['transaction_info', 'amount', 'notes']
+    readonly_fields = ['transaction_info']
+    autocomplete_fields = []
+
+    def transaction_info(self, obj):
+        """Zeigt Transaktionsinformationen"""
+        if obj.transaction:
+            from django.utils.html import format_html
+            from django.urls import reverse
+            url = reverse('admin:bill_banktransaction_change',
+                          args=[obj.transaction.pk])
+            formatted_amount = f"{obj.transaction.amount:+.2f}"
+            return format_html(
+                '<a href="{}">{} | {} € | {}</a>',
+                url,
+                obj.transaction.booking_date.strftime('%d.%m.%Y'),
+                formatted_amount,
+                obj.transaction.counterpart_name or 'N/A'
+            )
+        return '-'
+    transaction_info.short_description = 'Transaction'
+
+
 class BillAdmin(admin.ModelAdmin):
     list_display = ('formatted_bill_date', 'text', 'bill_number', 'value',
                     'cost_center', 'account_period', 'formatted_from_date', 'formatted_to_date')
@@ -214,17 +242,57 @@ class BillAdmin(admin.ModelAdmin):
     autocomplete_fields = ['cost_center', 'account_period']
     date_hierarchy = 'bill_date'
     ordering = ['-bill_date']
-    fieldsets = (
-        (None, {
-            'fields': ('text', 'bill_number', 'bill_date', 'value')
-        }),
-        ('Assignment', {
-            'fields': ('cost_center', 'account_period')
-        }),
-        ('Period', {
-            'fields': ('from_date', 'to_date')
-        }),
-    )
+    inlines = [BillTransactionLinkInline]
+
+    def get_fieldsets(self, request, obj=None):
+        import os
+        fieldsets = [
+            (None, {
+                'fields': ('text', 'bill_number', 'bill_date', 'value')
+            }),
+            ('Assignment', {
+                'fields': ('cost_center', 'account_period')
+            }),
+            ('Period', {
+                'fields': ('from_date', 'to_date')
+            }),
+        ]
+        # Paperless-Feld nur anzeigen wenn PAPERLESS_BASE_URL gesetzt ist
+        if os.environ.get('PAPERLESS_BASE_URL'):
+            fieldsets.append(('Paperless', {
+                'fields': ('paperless_id', 'paperless_link', 'paperless_preview'),
+                'classes': ('collapse',)
+            }))
+        return fieldsets
+
+    def get_readonly_fields(self, request, obj=None):
+        import os
+        readonly = list(super().get_readonly_fields(request, obj))
+        if os.environ.get('PAPERLESS_BASE_URL'):
+            readonly.extend(['paperless_link', 'paperless_preview'])
+        return readonly
+
+    def paperless_link(self, obj):
+        """Zeigt Link zu Paperless-NGX Dokument"""
+        import os
+        from django.utils.html import format_html
+        base_url = os.environ.get('PAPERLESS_BASE_URL', '').rstrip('/')
+        if obj.paperless_id and base_url:
+            url = f"{base_url}/documents/{obj.paperless_id}/details"
+            return format_html('<a href="{}" target="_blank">📄 In Paperless öffnen</a>', url)
+        return '-'
+    paperless_link.short_description = 'Paperless Link'
+
+    def paperless_preview(self, obj):
+        """Zeigt Link zur Paperless-NGX PDF Vorschau"""
+        import os
+        from django.utils.html import format_html
+        base_url = os.environ.get('PAPERLESS_BASE_URL', '').rstrip('/')
+        if obj.paperless_id and base_url:
+            url = f"{base_url}/api/documents/{obj.paperless_id}/preview/"
+            return format_html('<a href="{}" target="_blank">👁️ PDF Vorschau</a>', url)
+        return '-'
+    paperless_preview.short_description = 'Vorschau'
 
     def formatted_bill_date(self, obj):
         """Zeigt bill_date im Format DD.MM.YYYY"""
@@ -435,3 +503,282 @@ class LandlordAdmin(admin.ModelAdmin):
 
 
 admin.site.register(models.Landlord, LandlordAdmin)
+
+
+# ============================================================================
+# Bank Transactions & Matching Rules
+# ============================================================================
+
+class BankAccountAdmin(admin.ModelAdmin):
+    list_display = ('name', 'account_type', 'iban_display',
+                    'bank_name', 'is_active')
+    list_filter = ['account_type', 'is_active']
+    search_fields = ['name', 'iban', 'bank_name']
+    ordering = ['account_type', 'name']
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'account_type', 'is_active')
+        }),
+        ('Bank Details', {
+            'fields': ('iban', 'bic', 'bank_name'),
+            'classes': ('collapse',),
+            'description': 'Nur für Bankkonten, nicht für Barkasse.'
+        }),
+        ('Notes', {
+            'fields': ('description',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def iban_display(self, obj):
+        """Zeigt IBAN gekürzt oder Barkasse-Icon"""
+        if obj.is_cash:
+            return "💵 Barkasse"
+        return f"...{obj.iban[-4:]}" if obj.iban else "-"
+    iban_display.short_description = "IBAN"
+
+
+admin.site.register(models.BankAccount, BankAccountAdmin)
+
+
+class MatchingRuleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'priority', 'conditions_preview',
+                    'target_display', 'is_active')
+    list_filter = ['is_active', 'target_transaction_type', 'target_renter']
+    search_fields = ['name', 'match_iban', 'match_counterpart_name',
+                     'match_booking_text', 'notes']
+    autocomplete_fields = ['target_renter']
+    ordering = ['-priority', 'name']
+    actions = ['apply_rule_to_unmatched']
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'priority', 'is_active')
+        }),
+        ('Matching Conditions (AND-verknüpft)', {
+            'fields': ('match_iban', 'match_counterpart_name',
+                       'match_booking_text', 'match_amount_positive'),
+            'description': 'Alle angegebenen Bedingungen müssen zutreffen (AND).'
+        }),
+        ('Target Assignment', {
+            'fields': ('target_renter', 'target_transaction_type'),
+            'description': 'Wenn Renter gesetzt, wird automatisch RENTER als Typ verwendet.'
+        }),
+        ('Notes', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def conditions_preview(self, obj):
+        """Zeigt eine Vorschau der Bedingungen"""
+        conditions = []
+        if obj.match_iban:
+            conditions.append(f"IBAN: ...{obj.match_iban[-4:]}")
+        if obj.match_counterpart_name:
+            conditions.append(f"Name: {obj.match_counterpart_name[:20]}")
+        if obj.match_booking_text:
+            conditions.append(f"Text: {obj.match_booking_text[:20]}")
+        if obj.match_amount_positive is not None:
+            conditions.append("+" if obj.match_amount_positive else "-")
+        return " & ".join(conditions) if conditions else "-"
+    conditions_preview.short_description = "Conditions"
+
+    def target_display(self, obj):
+        """Zeigt das Ziel der Regel"""
+        if obj.target_renter:
+            return f"🏠 {obj.target_renter.last_name}"
+        return obj.get_target_transaction_type_display() if obj.target_transaction_type else "-"
+    target_display.short_description = "Target"
+
+    def apply_rule_to_unmatched(self, request, queryset):
+        """
+        Wendet die ausgewählten Regeln auf alle Transaktionen an,
+        die noch den Typ 'Sonstige' (OTHER) haben.
+        """
+        # Hole alle nicht zugeordneten Transaktionen
+        unmatched_transactions = models.BankTransaction.objects.filter(
+            transaction_type=models.BankTransaction.TransactionType.OTHER
+        )
+
+        total_matched = 0
+        for rule in queryset.filter(is_active=True):
+            matched_count = 0
+            for transaction in unmatched_transactions:
+                # Prüfe ob die Regel matcht mit den korrekten Parametern
+                if rule.matches(
+                    iban=transaction.counterpart_iban or '',
+                    counterpart_name=transaction.counterpart_name or '',
+                    booking_text=transaction.booking_text or '',
+                    amount=float(transaction.amount)
+                ):
+                    # Wende die Regel an
+                    if rule.target_renter:
+                        transaction.renter = rule.target_renter
+                        transaction.transaction_type = models.BankTransaction.TransactionType.RENTER
+                    elif rule.target_transaction_type:
+                        transaction.transaction_type = rule.target_transaction_type
+
+                    transaction.is_matched = True
+                    transaction.matched_by_rule = rule
+                    transaction.save()
+                    matched_count += 1
+
+            if matched_count > 0:
+                self.message_user(
+                    request,
+                    f"✅ Regel '{rule.name}': {matched_count} Transaktionen zugeordnet",
+                    level='SUCCESS'
+                )
+                total_matched += matched_count
+
+        if total_matched == 0:
+            self.message_user(
+                request,
+                "ℹ️ Keine passenden Transaktionen gefunden (nur 'Sonstige' werden geprüft).",
+                level='WARNING'
+            )
+        else:
+            self.message_user(
+                request,
+                f"🎯 Insgesamt {total_matched} Transaktionen zugeordnet.",
+                level='SUCCESS'
+            )
+
+    apply_rule_to_unmatched.short_description = "Regel auf 'Sonstige' Transaktionen anwenden"
+
+
+admin.site.register(models.MatchingRule, MatchingRuleAdmin)
+
+
+class TransactionBillLinkInline(admin.TabularInline):
+    """Inline für Bill-Links bei BankTransaction"""
+    model = models.TransactionBillLink
+    extra = 0
+    fields = ['bill', 'amount', 'notes']
+    autocomplete_fields = ['bill']
+
+
+class BankTransactionAdmin(CSVImportAdminMixin, admin.ModelAdmin):
+    list_display = ('formatted_date', 'amount_colored', 'counterpart_name_short',
+                    'transaction_type', 'renter', 'is_matched', 'bank_account')
+    list_filter = ['transaction_type', 'is_matched', 'bank_account',
+                   'booking_date', 'renter']
+    search_fields = ['counterpart_name',
+                     'counterpart_iban', 'booking_text', 'notes']
+    autocomplete_fields = ['bank_account', 'renter', 'matched_by_rule']
+    date_hierarchy = 'booking_date'
+    ordering = ['-booking_date', '-created_at']
+    readonly_fields = ['import_hash', 'created_at', 'updated_at']
+    inlines = [TransactionBillLinkInline]
+    list_per_page = 50
+    actions = ['auto_match_action',
+               'mark_as_renter_transaction', 'mark_as_ignore']
+    change_list_template = 'admin/bill/banktransaction/change_list.html'
+
+    fieldsets = (
+        ('Transaction Data', {
+            'fields': ('bank_account', 'booking_date', 'value_date', 'amount')
+        }),
+        ('Counterpart', {
+            'fields': ('counterpart_name', 'counterpart_iban', 'booking_text')
+        }),
+        ('Assignment', {
+            'fields': ('transaction_type', 'renter', 'is_matched', 'matched_by_rule')
+        }),
+        ('Notes', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('import_hash', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def formatted_date(self, obj):
+        """Zeigt Buchungsdatum im Format DD.MM.YYYY"""
+        return obj.booking_date.strftime('%d.%m.%Y')
+    formatted_date.short_description = 'Date'
+    formatted_date.admin_order_field = 'booking_date'
+
+    def amount_colored(self, obj):
+        """Zeigt Betrag farbig (grün für Eingang, rot für Ausgang)"""
+        from django.utils.html import format_html
+        color = 'green' if obj.amount > 0 else 'red'
+        formatted_amount = f"{obj.amount:+.2f}"
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{} €</span>',
+            color, formatted_amount
+        )
+    amount_colored.short_description = 'Amount'
+    amount_colored.admin_order_field = 'amount'
+
+    def counterpart_name_short(self, obj):
+        """Zeigt gekürzten Counterpart-Namen"""
+        if obj.counterpart_name:
+            return obj.counterpart_name[:40] + ('...' if len(obj.counterpart_name) > 40 else '')
+        return '-'
+    counterpart_name_short.short_description = 'Counterpart'
+
+    def auto_match_action(self, request, queryset):
+        """Admin Action: Automatisches Matching durchführen"""
+        matched = 0
+        for obj in queryset.filter(is_matched=False):
+            if obj.auto_match():
+                obj.save()
+                matched += 1
+        self.message_user(
+            request, f"{matched} Transaktionen erfolgreich zugeordnet.")
+    auto_match_action.short_description = "Auto-Match durchführen"
+
+    def mark_as_renter_transaction(self, request, queryset):
+        """Admin Action: Als Mietertransaktion markieren"""
+        count = queryset.update(
+            transaction_type=models.BankTransaction.TransactionType.RENTER,
+            is_matched=True
+        )
+        self.message_user(
+            request, f"{count} Transaktionen als Mietertransaktion markiert.")
+    mark_as_renter_transaction.short_description = "Als Mietertransaktion markieren"
+
+    def mark_as_ignore(self, request, queryset):
+        """Admin Action: Als ignoriert markieren"""
+        count = queryset.update(
+            transaction_type=models.BankTransaction.TransactionType.IGNORE,
+            is_matched=True
+        )
+        self.message_user(
+            request, f"{count} Transaktionen als ignoriert markiert.")
+    mark_as_ignore.short_description = "Ignorieren"
+
+
+admin.site.register(models.BankTransaction, BankTransactionAdmin)
+
+
+class TransactionBillLinkAdmin(admin.ModelAdmin):
+    list_display = ('transaction_date', 'transaction_amount', 'bill',
+                    'amount', 'notes')
+    list_filter = ['transaction__booking_date', 'bill__cost_center']
+    search_fields = ['bill__text', 'bill__bill_number',
+                     'transaction__counterpart_name', 'notes']
+    autocomplete_fields = ['transaction', 'bill']
+    ordering = ['-transaction__booking_date']
+
+    def transaction_date(self, obj):
+        """Zeigt Transaktionsdatum"""
+        return obj.transaction.booking_date.strftime('%d.%m.%Y')
+    transaction_date.short_description = 'Transaction Date'
+    transaction_date.admin_order_field = 'transaction__booking_date'
+
+    def transaction_amount(self, obj):
+        """Zeigt Transaktionsbetrag"""
+        from django.utils.html import format_html
+        formatted_amount = f"{obj.transaction.amount:.2f}"
+        return format_html(
+            '<span style="color: red;">{} €</span>',
+            formatted_amount
+        )
+    transaction_amount.short_description = 'Transaction Total'
+
+
+admin.site.register(models.TransactionBillLink, TransactionBillLinkAdmin)

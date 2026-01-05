@@ -1,0 +1,95 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block content %}
+<h1>DKB CSV Import</h1>
+
+<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+    <h3>📄 DKB CSV Format</h3>
+    <p>Diese Funktion importiert Umsatzlisten im DKB CSV-Format. Das CSV muss folgendes Format haben:</p>
+    <ul>
+        <li>Zeile 1: Kontoname und IBAN</li>
+        <li>Zeile 2-4: Metadaten (Zeitraum, Kontostand)</li>
+        <li>Ab Zeile 5: Transaktionsdaten</li>
+    </ul>
+    <p>Die IBAN wird automatisch erkannt und mit einem bestehenden BankAccount verknüpft.</p>
+</div>
+
+{% if available_accounts %}
+<div style="margin-bottom: 20px; padding: 15px; background-color: #e7f3fe; border-radius: 5px;">
+    <h4>🏦 Verfügbare Bankkonten:</h4>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background-color: #ddd;">
+                <th style="padding: 8px; text-align: left;">Name</th>
+                <th style="padding: 8px; text-align: left;">IBAN</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for acc in available_accounts %}
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;">{{ acc.name }}</td>
+                <td style="padding: 8px; font-family: monospace;">{{ acc.iban }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div style="margin-bottom: 20px; padding: 15px; background-color: #fff3cd; border-radius: 5px;">
+    <h4>⚠️ Kein Bankkonto vorhanden</h4>
+    <p>Bitte zuerst ein <a href="{% url 'admin:bill_bankaccount_add' %}">Bankkonto anlegen</a>, bevor Sie Transaktionen importieren.</p>
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" style="max-width: 600px;">
+    {% csrf_token %}
+
+    <fieldset class="module aligned">
+        <div class="form-row">
+            <div>
+                <label for="id_csv_file"><strong>{{ form.csv_file.label }}:</strong></label>
+                {{ form.csv_file }}
+                {% if form.csv_file.help_text %}
+                <p class="help">{{ form.csv_file.help_text }}</p>
+                {% endif %}
+                {% if form.csv_file.errors %}
+                <ul class="errorlist">
+                    {% for error in form.csv_file.errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-row" style="margin-top: 15px;">
+            <div>
+                <label for="id_bank_account"><strong>{{ form.bank_account.label }}:</strong></label>
+                {{ form.bank_account }}
+                {% if form.bank_account.help_text %}
+                <p class="help">{{ form.bank_account.help_text }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-row" style="margin-top: 15px;">
+            <div>
+                <label for="id_auto_match">
+                    {{ form.auto_match }}
+                    <strong>{{ form.auto_match.label }}</strong>
+                </label>
+                {% if form.auto_match.help_text %}
+                <p class="help">{{ form.auto_match.help_text }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </fieldset>
+
+    <div class="submit-row" style="margin-top: 20px;">
+        <input type="submit" value="Import starten" class="default" style="padding: 10px 20px; font-size: 14px;">
+        <a href="{% url 'admin:bill_banktransaction_changelist' %}" class="button" style="padding: 10px 20px; margin-left: 10px; text-decoration: none;">Abbrechen</a>
+    </div>
+</form>
+
+{% endblock %}

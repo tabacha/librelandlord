@@ -854,6 +854,38 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                         'period_end': period_end
                     })
 
+            # Perioden mit gleicher Kaltmiete zusammenfassen
+            grouped_details = {}
+            for detail in cold_rent_details:
+                rent_key = detail['monthly_rent']
+                if rent_key not in grouped_details:
+                    grouped_details[rent_key] = {
+                        'months': decimal.Decimal('0'),
+                        'monthly_rent': detail['monthly_rent'],
+                        'amount': decimal.Decimal('0'),
+                        'period_start': detail['period_start'],
+                        'period_end': detail['period_end']
+                    }
+                grouped_details[rent_key]['months'] += decimal.Decimal(str(detail['months']))
+                grouped_details[rent_key]['amount'] += decimal.Decimal(str(detail['amount']))
+                # Erweitere den Zeitraum
+                if detail['period_start'] < grouped_details[rent_key]['period_start']:
+                    grouped_details[rent_key]['period_start'] = detail['period_start']
+                if detail['period_end'] > grouped_details[rent_key]['period_end']:
+                    grouped_details[rent_key]['period_end'] = detail['period_end']
+
+            # Zurück in Liste umwandeln und runden
+            cold_rent_details = [
+                {
+                    'months': round(v['months'], 2),
+                    'monthly_rent': v['monthly_rent'],
+                    'amount': round(v['amount'], 2),
+                    'period_start': v['period_start'],
+                    'period_end': v['period_end']
+                }
+                for v in sorted(grouped_details.values(), key=lambda x: x['monthly_rent'])
+            ]
+
             # Nebenkostenvorauszahlung berechnen
             advance_payment_total = total_payments - cold_rent_total
 

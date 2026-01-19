@@ -660,8 +660,8 @@ class TransactionBillLinkInline(admin.TabularInline):
 
 class BankTransactionAdmin(CSVImportAdminMixin, admin.ModelAdmin):
     list_display = ('formatted_date', 'amount_colored', 'counterpart_name_short',
-                    'transaction_type', 'renter', 'is_matched', 'bank_account')
-    list_filter = ['transaction_type', 'is_matched', 'bank_account',
+                    'transaction_type', 'renter', 'accounting_year', 'is_matched', 'bank_account')
+    list_filter = ['transaction_type', 'is_matched', 'accounting_year', 'bank_account',
                    'booking_date', 'renter']
     search_fields = ['counterpart_name',
                      'counterpart_iban', 'booking_text', 'notes']
@@ -677,7 +677,7 @@ class BankTransactionAdmin(CSVImportAdminMixin, admin.ModelAdmin):
 
     fieldsets = (
         ('Transaction Data', {
-            'fields': ('bank_account', 'booking_date', 'value_date', 'amount')
+            'fields': ('bank_account', 'booking_date', 'value_date', 'amount', 'accounting_year')
         }),
         ('Counterpart', {
             'fields': ('counterpart_name', 'counterpart_iban', 'booking_text')

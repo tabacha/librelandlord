@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import os
 
-from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace, Landlord, Apartment, CostCenter
+from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace, Landlord, Apartment, CostCenter, BankTransaction, RentPayment
 from weasyprint import HTML
 from django.conf import settings
 from django.db.models import Q
@@ -778,6 +778,137 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             except Renter.DoesNotExist:
                 renter_filter_name = f"Mieter #{renter_id}"
 
+        # Hilfsfunktion: Zahlungsdaten für einen Mieter berechnen
+        def calculate_rent_payments_for_renter(renter, billing_year):
+            year_start = date(billing_year, 1, 1)
+            year_end = date(billing_year, 12, 31)
+
+            # Banktransaktionen des Mieters für das Abrechnungsjahr
+            transactions = BankTransaction.objects.filter(
+                renter=renter,
+                accounting_year=billing_year,
+                transaction_type=BankTransaction.TransactionType.RENTER
+            ).order_by('value_date')
+
+            transaction_list = []
+            total_payments = decimal.Decimal('0.00')
+            for trans in transactions:
+                transaction_list.append({
+                    'date': trans.value_date,
+                    'booking_text': trans.booking_text[:50] if trans.booking_text else '',
+                    'amount': trans.amount
+                })
+                total_payments += trans.amount
+
+            # Hole alle RentPayments die das Jahr betreffen
+            rent_periods = RentPayment.objects.filter(
+                renter=renter,
+                start_date__lte=year_end
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=year_start)
+            ).order_by('start_date')
+
+            cold_rent_total = decimal.Decimal('0.00')
+            cold_rent_details = []
+
+            for rent in rent_periods:
+                # Bestimme den effektiven Zeitraum innerhalb des Jahres
+                period_start = max(rent.start_date, year_start)
+                period_end = min(rent.end_date, year_end) if rent.end_date else year_end
+
+                # Berücksichtige auch Einzug/Auszug des Mieters
+                if renter.move_in_date:
+                    period_start = max(period_start, renter.move_in_date)
+                if renter.move_out_date:
+                    period_end = min(period_end, renter.move_out_date)
+
+                if period_start <= period_end:
+                    # Anzahl der Monate berechnen (anteilig)
+                    months = decimal.Decimal('0')
+                    current = period_start
+                    while current <= period_end:
+                        # Tage in diesem Monat
+                        if current.month == 12:
+                            next_month = date(current.year + 1, 1, 1)
+                        else:
+                            next_month = date(current.year, current.month + 1, 1)
+                        month_end = next_month - timedelta(days=1)
+
+                        # Effektiver Zeitraum in diesem Monat
+                        eff_start = max(current, period_start)
+                        eff_end = min(month_end, period_end)
+
+                        days_in_month = (month_end - date(current.year, current.month, 1)).days + 1
+                        days_counted = (eff_end - eff_start).days + 1
+
+                        months += decimal.Decimal(days_counted) / decimal.Decimal(days_in_month)
+                        current = next_month
+
+                    amount = months * rent.cold_rent
+                    cold_rent_total += amount
+                    cold_rent_details.append({
+                        'months': round(months, 2),
+                        'monthly_rent': rent.cold_rent,
+                        'amount': round(amount, 2),
+                        'period_start': period_start,
+                        'period_end': period_end
+                    })
+
+            # Nebenkostenvorauszahlung berechnen
+            advance_payment_total = total_payments - cold_rent_total
+
+            return {
+                'renter_id': renter.id,
+                'renter_name': f"{renter.first_name} {renter.last_name}",
+                'apartment_name': renter.apartment.name if renter.apartment else '',
+                'transactions': transaction_list,
+                'total_payments': total_payments,
+                'cold_rent_total': round(cold_rent_total, 2),
+                'cold_rent_details': cold_rent_details,
+                'advance_payment_total': round(advance_payment_total, 2),
+            }
+
+        # Mietzahlungen und Kaltmiete berechnen
+        rent_payments_data = None
+        all_renters_payments = []
+
+        if renter_id is not None:
+            # Einzelner Mieter
+            try:
+                renter = Renter.objects.get(id=renter_id)
+                rent_payments_data = calculate_rent_payments_for_renter(renter, billing_year)
+                # Tatsächliche Nebenkosten hinzufügen (aus renter_total)
+                rent_payments_data['actual_costs'] = renter_total
+                # Ergebnis berechnen: Vorauszahlung - tatsächliche Kosten
+                # Positiv = Guthaben für Mieter, Negativ = Nachzahlung
+                rent_payments_data['balance'] = rent_payments_data['advance_payment_total'] - renter_total
+            except Renter.DoesNotExist:
+                pass
+        else:
+            # Alle Mieter die im Jahr aktiv waren
+            year_start = date(billing_year, 1, 1)
+            year_end = date(billing_year, 12, 31)
+
+            active_renters = Renter.objects.filter(
+                move_in_date__lte=year_end
+            ).filter(
+                Q(move_out_date__isnull=True) | Q(move_out_date__gte=year_start)
+            ).exclude(
+                is_owner_occupied=True
+            ).select_related('apartment').order_by('apartment__number', 'last_name')
+
+            for renter in active_renters:
+                renter_data = calculate_rent_payments_for_renter(renter, billing_year)
+                # Nur hinzufügen wenn es Zahlungen oder Kaltmiete gibt
+                if renter_data['transactions'] or renter_data['cold_rent_details']:
+                    # Tatsächliche Nebenkosten aus overall_summary holen
+                    actual_costs = overall_summary.get(renter.id, {})
+                    total_costs = sum(actual_costs.values()) if actual_costs else decimal.Decimal('0.00')
+                    renter_data['actual_costs'] = total_costs
+                    # Ergebnis berechnen
+                    renter_data['balance'] = renter_data['advance_payment_total'] - total_costs
+                    all_renters_payments.append(renter_data)
+
         # Vermieterdaten laden
         landlord = Landlord.get_instance()
 
@@ -799,6 +930,9 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             # Vertikale Tabelle für Mieter-Ansicht
             'vertical_table': vertical_table,
             'renter_total': renter_total,
+            # Mietzahlungen und Kaltmiete
+            'rent_payments_data': rent_payments_data,
+            'all_renters_payments': all_renters_payments,
         }
 
         return render(request, 'yearly_calculation.html', context)

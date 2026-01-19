@@ -119,6 +119,10 @@ class BankTransaction(models.Model):
         null=True,
         verbose_name=_("Notes"))
 
+    accounting_year = models.PositiveSmallIntegerField(
+        verbose_name=_("Accounting Year"),
+        help_text=_("Für welches Abrechnungsjahr ist diese Transaktion relevant? Default: Jahr des Wertstellungsdatums"))
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -132,6 +136,7 @@ class BankTransaction(models.Model):
             models.Index(fields=['renter']),
             models.Index(fields=['is_matched']),
             models.Index(fields=['transaction_type']),
+            models.Index(fields=['accounting_year']),
         ]
 
     def __str__(self):
@@ -144,6 +149,9 @@ class BankTransaction(models.Model):
                 ' ', '').upper()
         if not self.import_hash and not self.bank_account.is_cash:
             self.import_hash = self._generate_import_hash()
+        # Default accounting_year from value_date if not set
+        if self.accounting_year is None and self.value_date:
+            self.accounting_year = self.value_date.year
         super().save(*args, **kwargs)
 
     def _generate_import_hash(self) -> str:

@@ -771,6 +771,202 @@
             {% endif %}
         </div>
     </div>
+
+    {% if renter_filter_id and rent_payments_data %}
+    <!-- Mietzahlungen und Nebenkostenberechnung - Einzelner Mieter -->
+    <div class="overall-summary" style="margin-top: 30px; border-color: #2196f3;">
+        <div class="overall-summary-header" style="background: #2196f3;">
+            Ihre Zahlungen {{ billing_year }}
+        </div>
+        <div class="overall-summary-content">
+            {% if rent_payments_data.transactions %}
+            <table class="overall-table">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Datum</th>
+                        <th style="text-align: left;">Verwendungszweck</th>
+                        <th style="text-align: right;">Betrag</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trans in rent_payments_data.transactions %}
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">{{ trans.date|date:"d.m.Y" }}</td>
+                        <td style="text-align: left; font-weight: normal;">{{ trans.booking_text }}</td>
+                        <td style="text-align: right;">{{ trans.amount|floatformat:2 }} €</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" style="text-align: left;"><strong>Summe Ihrer Zahlungen</strong></td>
+                        <td style="text-align: right; font-weight: bold;">{{ rent_payments_data.total_payments|floatformat:2 }} €</td>
+                    </tr>
+                </tfoot>
+            </table>
+            {% else %}
+            <div class="no-data">Keine Zahlungen für dieses Jahr erfasst.</div>
+            {% endif %}
+
+            <!-- Kaltmiete Abzug -->
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Abzug Kaltmiete</h4>
+            <table class="overall-table">
+                <tbody>
+                    {% for detail in rent_payments_data.cold_rent_details %}
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">
+                            {{ detail.months|floatformat:2 }} Monate à {{ detail.monthly_rent|floatformat:2 }} €
+                            <small style="color: #666;">({{ detail.period_start|date:"d.m.Y" }} - {{ detail.period_end|date:"d.m.Y" }})</small>
+                        </td>
+                        <td style="text-align: right;">- {{ detail.amount|floatformat:2 }} €</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" class="no-data">Keine Kaltmiete hinterlegt.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td style="text-align: left;"><strong>Summe Kaltmiete</strong></td>
+                        <td style="text-align: right; font-weight: bold;">- {{ rent_payments_data.cold_rent_total|floatformat:2 }} €</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- Nebenkostenvorauszahlung und Abrechnung -->
+            <table class="overall-table" style="margin-top: 20px;">
+                <tbody>
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">Ihre Nebenkostenvorauszahlung {{ billing_year }}</td>
+                        <td style="text-align: right;">{{ rent_payments_data.advance_payment_total|floatformat:2 }} €</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">Abzüglich tatsächliche Nebenkosten {{ billing_year }}</td>
+                        <td style="text-align: right;">- {{ rent_payments_data.actual_costs|floatformat:2 }} €</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td style="text-align: left;">
+                            <strong>
+                                {% if rent_payments_data.balance >= 0 %}
+                                = Ihr Guthaben
+                                {% else %}
+                                = Ihre Nachzahlung
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td class="grand-total" style="text-align: right; {% if rent_payments_data.balance >= 0 %}background: #4caf50;{% else %}background: #f44336;{% endif %}">
+                            {% if rent_payments_data.balance >= 0 %}
+                            {{ rent_payments_data.balance|floatformat:2 }} €
+                            {% else %}
+                            {{ rent_payments_data.balance|floatformat:2 }} €
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    {% elif all_renters_payments %}
+    <!-- Mietzahlungen und Nebenkostenberechnung - Alle Mieter -->
+    {% for renter_data in all_renters_payments %}
+    <div class="overall-summary" style="margin-top: 30px; border-color: #2196f3; page-break-before: always;">
+        <div class="overall-summary-header" style="background: #2196f3;">
+            Zahlungen {{ billing_year }} - {{ renter_data.renter_name }}
+            {% if renter_data.apartment_name %}<small style="opacity: 0.8;">({{ renter_data.apartment_name }})</small>{% endif %}
+        </div>
+        <div class="overall-summary-content">
+            {% if renter_data.transactions %}
+            <table class="overall-table">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Datum</th>
+                        <th style="text-align: left;">Verwendungszweck</th>
+                        <th style="text-align: right;">Betrag</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trans in renter_data.transactions %}
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">{{ trans.date|date:"d.m.Y" }}</td>
+                        <td style="text-align: left; font-weight: normal;">{{ trans.booking_text }}</td>
+                        <td style="text-align: right;">{{ trans.amount|floatformat:2 }} €</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" style="text-align: left;"><strong>Summe Zahlungen</strong></td>
+                        <td style="text-align: right; font-weight: bold;">{{ renter_data.total_payments|floatformat:2 }} €</td>
+                    </tr>
+                </tfoot>
+            </table>
+            {% else %}
+            <div class="no-data">Keine Zahlungen für dieses Jahr erfasst.</div>
+            {% endif %}
+
+            <!-- Kaltmiete Abzug -->
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Abzug Kaltmiete</h4>
+            <table class="overall-table">
+                <tbody>
+                    {% for detail in renter_data.cold_rent_details %}
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">
+                            {{ detail.months|floatformat:2 }} Monate à {{ detail.monthly_rent|floatformat:2 }} €
+                            <small style="color: #666;">({{ detail.period_start|date:"d.m.Y" }} - {{ detail.period_end|date:"d.m.Y" }})</small>
+                        </td>
+                        <td style="text-align: right;">- {{ detail.amount|floatformat:2 }} €</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" class="no-data">Keine Kaltmiete hinterlegt.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td style="text-align: left;"><strong>Summe Kaltmiete</strong></td>
+                        <td style="text-align: right; font-weight: bold;">- {{ renter_data.cold_rent_total|floatformat:2 }} €</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- Nebenkostenvorauszahlung und Abrechnung -->
+            <table class="overall-table" style="margin-top: 20px;">
+                <tbody>
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">Nebenkostenvorauszahlung {{ billing_year }}</td>
+                        <td style="text-align: right;">{{ renter_data.advance_payment_total|floatformat:2 }} €</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">Abzüglich tatsächliche Nebenkosten {{ billing_year }}</td>
+                        <td style="text-align: right;">- {{ renter_data.actual_costs|floatformat:2 }} €</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td style="text-align: left;">
+                            <strong>
+                                {% if renter_data.balance >= 0 %}
+                                = Guthaben
+                                {% else %}
+                                = Nachzahlung
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td class="grand-total" style="text-align: right; {% if renter_data.balance >= 0 %}background: #4caf50;{% else %}background: #f44336;{% endif %}">
+                            {{ renter_data.balance|floatformat:2 }} €
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
 </body>
 
 </html>

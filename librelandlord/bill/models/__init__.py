@@ -18,3 +18,4 @@ from .meter_reading import MeterReading
 from .renter import Renter
 from .rent_payment import RentPayment
 from .transaction_bill_link import TransactionBillLink
+from .yearly_adjustment import YearlyAdjustment

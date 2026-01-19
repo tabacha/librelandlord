@@ -782,3 +782,26 @@ class TransactionBillLinkAdmin(admin.ModelAdmin):
 
 
 admin.site.register(models.TransactionBillLink, TransactionBillLinkAdmin)
+
+
+class YearlyAdjustmentAdmin(admin.ModelAdmin):
+    list_display = ('billing_year', 'renter', 'description', 'amount_colored')
+    list_filter = ['billing_year', 'renter']
+    search_fields = ['description', 'renter__first_name', 'renter__last_name']
+    autocomplete_fields = ['renter']
+    ordering = ['-billing_year', 'renter__last_name']
+
+    def amount_colored(self, obj):
+        """Zeigt Betrag farbig an (grün=Gutschrift, rot=Abzug)"""
+        from django.utils.html import format_html
+        color = 'green' if obj.amount >= 0 else 'red'
+        sign = '+' if obj.amount >= 0 else ''
+        return format_html(
+            '<span style="color: {};">{}{:.2f} €</span>',
+            color, sign, obj.amount
+        )
+    amount_colored.short_description = 'Betrag'
+    amount_colored.admin_order_field = 'amount'
+
+
+admin.site.register(models.YearlyAdjustment, YearlyAdjustmentAdmin)

@@ -816,11 +816,11 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                 period_start = max(rent.start_date, year_start)
                 period_end = min(rent.end_date, year_end) if rent.end_date else year_end
 
-                # Berücksichtige Einzugsdatum des Mieters
-                # Hinweis: Auszugsdatum begrenzt nur Nebenkosten, nicht Kaltmiete!
-                # Kaltmiete läuft bis zum end_date der RentPayment-Periode.
+                # Berücksichtige auch Einzug/Auszug des Mieters
                 if renter.move_in_date:
                     period_start = max(period_start, renter.move_in_date)
+                if renter.move_out_date:
+                    period_end = min(period_end, renter.move_out_date)
 
                 if period_start <= period_end:
                     # Anzahl der Monate berechnen (anteilig)

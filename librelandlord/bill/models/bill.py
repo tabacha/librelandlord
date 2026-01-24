@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Bill(models.Model):
-    text = models.CharField(max_length=40, verbose_name=_("Booking Text"))
+    text = models.CharField(max_length=60, verbose_name=_("Booking Text"))
     bill_date = models.DateField(verbose_name=_("Date"))
     bill_number = models.CharField(
         max_length=20, verbose_name=_("Bill number"))

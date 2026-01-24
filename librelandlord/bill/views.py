@@ -596,6 +596,23 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                         contrib_dict = contrib._asdict()
                         contrib_dict['euro_anteil'] = euro_anteil
 
+                        # HEATING_MIXED: Berechne separate Euro-Anteile für Fläche und Verbrauch
+                        if cost_center.distribution_type == 'HEATING_MIXED':
+                            area_pct = float(cost_center.area_percentage)
+                            consumption_pct = float(cost_center.consumption_percentage)
+                            area_percentage_value = getattr(contrib, 'area_percentage_value', 0.0)
+                            consumption_percentage_value = getattr(contrib, 'consumption_percentage_value', 0.0)
+
+                            # Betrag nach Fläche und Verbrauch
+                            area_amount = float(total_amount) * area_pct / 100
+                            consumption_amount = float(total_amount) * consumption_pct / 100
+
+                            # Euro-Anteil für Fläche und Verbrauch
+                            contrib_dict['area_euro'] = area_amount * area_percentage_value / 100
+                            contrib_dict['consumption_euro'] = consumption_amount * consumption_percentage_value / 100
+                            contrib_dict['area_amount_total'] = area_amount
+                            contrib_dict['consumption_amount_total'] = consumption_amount
+
                         # Prüfe ob es eine special_designation gibt
                         contribution_obj = contrib.contribution
                         has_special_designation = bool(
@@ -672,10 +689,27 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
 
             # Nur Perioden hinzufügen, die Kostenstellen haben (wichtig bei Mieter-Filter)
             if cost_center_summaries:
+                # Prüfe ob es nicht-HEATING_MIXED Kostenstellen gibt
+                has_non_heating_mixed = any(
+                    s.get('cost_center', {}).distribution_type != 'HEATING_MIXED'
+                    if hasattr(s.get('cost_center', {}), 'distribution_type')
+                    else s.get('cost_center', {}).get('distribution_type') != 'HEATING_MIXED'
+                    for s in cost_center_summaries
+                    if s.get('cost_center_calculation')
+                )
+                has_consumption = any(
+                    s.get('cost_center', {}).distribution_type == 'CONSUMPTION'
+                    if hasattr(s.get('cost_center', {}), 'distribution_type')
+                    else s.get('cost_center', {}).get('distribution_type') == 'CONSUMPTION'
+                    for s in cost_center_summaries
+                    if s.get('cost_center_calculation')
+                )
                 period_data = {
                     'account_period': account_period,
                     'calculation': calculation,
                     'cost_center_summaries': cost_center_summaries,
+                    'has_non_heating_mixed': has_non_heating_mixed,
+                    'has_consumption': has_consumption,
                     'summary': {
                         'grand_total': calculation.grand_total,
                         'total_bill_count': calculation.total_bill_count,

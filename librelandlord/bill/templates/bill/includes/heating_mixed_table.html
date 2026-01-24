@@ -8,70 +8,83 @@ Zeigt die gewichtete Kombination aus Flächen- und Verbrauchsanteil:
 Variablen:
 - calculation: CostCenterCalculation Objekt
 - cost_center: CostCenter Objekt (für Prozentsätze)
+- total_amount: Gesamtrechnungsbetrag
 - renter_filter_id: Optional - Filter auf bestimmten Mieter
 {% endcomment %}
 
 {% load i18n %}
 
-<table class="meter-readings-table">
-    <thead>
+{% for contrib in calculation.contribution_results %}
+{% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
+<div class="heating-mixed-calculation" style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px;">
+    {% if not renter_filter_id %}
+    <div style="font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">
+        {{ contrib.apartment_name }} -
+        {% if contrib.renter_id %}
+        {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+        {% elif contrib.is_special_designation %}
+        <em>{{ contrib.apartment_name }}</em>
+        {% else %}
+        <em>Leerstand</em>
+        {% endif %}
+        <small style="font-weight: normal; color: #666;">({{ contrib.period_start|date:"d.m.Y" }} - {{ contrib.period_end|date:"d.m.Y" }})</small>
+    </div>
+    {% endif %}
+
+    <table style="width: 100%; border-collapse: collapse;">
         <tr>
-            <th>Wohnung</th>
-            <th>Mieter</th>
-            <th>Zeitraum</th>
-            <th class="number-cell">Fläche</th>
-            <th class="number-cell">Flächen-Anteil ({{ cost_center.area_percentage|floatformat:0 }}%)</th>
-            <th class="number-cell">Verbrauch</th>
-            <th class="number-cell">Verbrauchs-Anteil ({{ cost_center.consumption_percentage|floatformat:0 }}%)</th>
-            <th class="consumption-cell">Gesamt</th>
+            <td style="padding: 4px 0;">Rechnungsbetrag</td>
+            <td style="text-align: right; font-weight: bold;">{{ total_amount|floatformat:2 }} €</td>
         </tr>
-    </thead>
-    <tbody>
-        {% for contrib in calculation.contribution_results %}
-        {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
+        <tr style="height: 10px;"><td colspan="2"></td></tr>
+
+        <tr style="background: #e8f4e8;">
+            <td style="padding: 4px 0;">Davon nach m² {{ cost_center.area_percentage|floatformat:0 }} %</td>
+            <td style="text-align: right;">= {{ contrib.area_amount_total|floatformat:2 }} €</td>
+        </tr>
         <tr>
-            <td>{{ contrib.apartment_name }}</td>
-            <td>
-                {% if contrib.renter_id %}
-                {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
-                {% elif contrib.is_special_designation %}
-                <em>{{ contrib.apartment_name }}</em>
-                {% else %}
-                <em>Leerstand</em>
-                {% endif %}
-            </td>
-            <td>{{ contrib.period_start|date:"d.m.Y" }} - {{ contrib.period_end|date:"d.m.Y" }}</td>
-            <td class="number-cell">
+            <td style="padding: 4px 0; padding-left: 20px;">
+                Ihr Anteil am Gesamt-m²:
                 {% with step=contrib.consumption_result.calculation_steps.0 %}
-                {{ step.operand1|floatformat:2 }} m²
+                {{ step.operand1|floatformat:2 }} m² von {{ calculation.total_area|floatformat:2 }} m²
                 {% endwith %}
             </td>
-            <td class="number-cell calc-cell" style="font-family: monospace;">
-                {{ contrib.area_percentage_value|floatformat:2 }} %
-            </td>
-            <td class="number-cell">
-                {{ contrib.consumption_share|floatformat:2 }} {{ calculation.total_consumption_unit }}
-            </td>
-            <td class="number-cell calc-cell" style="font-family: monospace;">
-                {{ contrib.consumption_percentage_value|floatformat:2 }} %
-            </td>
-            <td class="consumption-cell">{{ contrib.percentage|floatformat:2 }} %</td>
+            <td style="text-align: right;">= {{ contrib.area_percentage_value|floatformat:2 }} %</td>
         </tr>
-        {% endif %}
-        {% endfor %}
-    </tbody>
-    <tfoot>
-        <tr style="font-weight: bold; background-color: #f0f0f0;">
-            <td colspan="7" style="text-align: right;">Gesamt:</td>
-            <td class="consumption-cell">100,00 %</td>
+        <tr style="background: #e8f4e8;">
+            <td style="padding: 4px 0; padding-left: 20px;">{{ contrib.area_amount_total|floatformat:2 }} € × {{ contrib.area_percentage_value|floatformat:2 }} %</td>
+            <td style="text-align: right; font-weight: bold;">= {{ contrib.area_euro|floatformat:2 }} €</td>
         </tr>
-    </tfoot>
-</table>
+        <tr style="height: 10px;"><td colspan="2"></td></tr>
+
+        <tr style="background: #e8f0f8;">
+            <td style="padding: 4px 0;">Rest nach Verbrauch {{ cost_center.consumption_percentage|floatformat:0 }} %</td>
+            <td style="text-align: right;">= {{ contrib.consumption_amount_total|floatformat:2 }} €</td>
+        </tr>
+        <tr>
+            <td style="padding: 4px 0; padding-left: 20px;">
+                Ihr Anteil am Gesamtverbrauch:
+                {{ contrib.consumption_share|floatformat:2 }} {{ calculation.total_consumption_unit }} von {{ calculation.total_consumption|floatformat:2 }} {{ calculation.total_consumption_unit }}
+            </td>
+            <td style="text-align: right;">= {{ contrib.consumption_percentage_value|floatformat:2 }} %</td>
+        </tr>
+        <tr style="background: #e8f0f8;">
+            <td style="padding: 4px 0; padding-left: 20px;">{{ contrib.consumption_amount_total|floatformat:2 }} € × {{ contrib.consumption_percentage_value|floatformat:2 }} %</td>
+            <td style="text-align: right; font-weight: bold;">= {{ contrib.consumption_euro|floatformat:2 }} €</td>
+        </tr>
+        <tr style="height: 10px;"><td colspan="2"></td></tr>
+
+        <tr style="border-top: 2px solid #333; font-weight: bold; font-size: 1.1em;">
+            <td style="padding: 8px 0;">Gesamtheizkosten</td>
+            <td style="text-align: right;">= {{ contrib.euro_anteil|floatformat:2 }} €</td>
+        </tr>
+    </table>
+</div>
+{% endif %}
+{% endfor %}
 
 <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
     <strong>Verteilung nach Heizkostenverordnung:</strong>
     {{ cost_center.area_percentage|floatformat:0 }}% der Kosten werden nach Wohnfläche verteilt,
     {{ cost_center.consumption_percentage|floatformat:0 }}% nach dem tatsächlichen Verbrauch (Wärmemengenzähler).
-    <br>
-    <em>Formel: Gesamtanteil = (Flächen-Anteil × {{ cost_center.area_percentage|floatformat:0 }}%) + (Verbrauchs-Anteil × {{ cost_center.consumption_percentage|floatformat:0 }}%)</em>
 </p>

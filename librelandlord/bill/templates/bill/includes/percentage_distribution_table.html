@@ -1,61 +1,64 @@
-{% comment %}Verbrauchsverteilung in Prozent Tabelle (mit optionalem Renter-Filter){% endcomment %}
-{% if cost_center_summaries %}
-<table class="meter-readings-table">
-    <thead>
-        <tr>
-            {% if not renter_filter_id %}<th>Mieter</th>
-            <th>Zeitraum</th>{% endif %}
-            <th>Verbrauchsberechnung</th>
-            <th>Verbrauch</th>
-            <th></th>
-            <th>Gesamtverbrauch</th>
-            <th></th>
-            <th>Ergebnis</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for summary in cost_center_summaries %}
-        {% if summary.cost_center_calculation and summary.cost_center.distribution_type == 'CONSUMPTION' %}
-        {% for contrib in summary.cost_center_calculation.contribution_results %}
-        {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
-        <tr>
-            {% if not renter_filter_id %}
-            <td>
+{% comment %}
+Verbrauchsverteilung in Prozent Tabelle (mit optionalem Renter-Filter)
+Zeigt nur Kostenstellen mit distribution_type == 'CONSUMPTION'.
+{% endcomment %}
 
-                {% if contrib.renter_id %}
-                    {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
-                {% elif contrib.is_special_designation %}
-                    <em>{{ contrib.apartment_name }}</em>
-                {% else %}
-                    <em>Leerstand {{ contrib.apartment_name }}</em>
+<div class="section-group">
+    <h3 class="section-title" style="margin-top: 30px;">Verbrauchsverteilung in Prozent</h3>
+    <table class="meter-readings-table">
+        <thead>
+            <tr>
+                {% if not renter_filter_id %}<th>Mieter</th>
+                <th>Zeitraum</th>{% endif %}
+                <th>Verbrauchsberechnung</th>
+                <th>Verbrauch</th>
+                <th></th>
+                <th>Gesamtverbrauch</th>
+                <th></th>
+                <th>Ergebnis</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for summary in cost_center_summaries %}
+            {% if summary.cost_center_calculation and summary.cost_center.distribution_type == 'CONSUMPTION' %}
+            {% for contrib in summary.cost_center_calculation.contribution_results %}
+            {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
+            <tr>
+                {% if not renter_filter_id %}
+                <td>
+                    {% if contrib.renter_id %}
+                        {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+                    {% elif contrib.is_special_designation %}
+                        <em>{{ contrib.apartment_name }}</em>
+                    {% else %}
+                        <em>Leerstand {{ contrib.apartment_name }}</em>
+                    {% endif %}
+                </td>
+                <td><small>{{ contrib.period_start|date:"d.m.Y" }} - {{ contrib.period_end|date:"d.m.Y" }}</small></td>
                 {% endif %}
-
-            </td>
-            <td><small>{{ contrib.period_start|date:"d.m.Y" }} - {{ contrib.period_end|date:"d.m.Y" }}</small></td>
+                <td>{{ contrib.consumption_calc_name }}</td>
+                <td class="consumption-cell">
+                    {{ contrib.final_consumption|floatformat:1 }}
+                    {{ summary.cost_center_calculation.total_consumption_unit }}
+                </td>
+                <td style="text-align: center;">÷</td>
+                <td class="consumption-cell">
+                    {{ summary.cost_center_calculation.total_consumption|floatformat:1 }}
+                    {{ summary.cost_center_calculation.total_consumption_unit }}
+                </td>
+                <td style="text-align: center;">=</td>
+                <td class="consumption-cell"><strong>{{ contrib.percentage|floatformat:2 }} %</strong></td>
+            </tr>
             {% endif %}
-            <td>{{ contrib.consumption_calc_name }}</td>
-            <td class="consumption-cell">
-                {{ contrib.final_consumption|floatformat:1 }}
-                {{ summary.cost_center_calculation.total_consumption_unit }}
-            </td>
-            <td style="text-align: center;">÷</td>
-            <td class="consumption-cell">
-                {{ summary.cost_center_calculation.total_consumption|floatformat:1 }}
-                {{ summary.cost_center_calculation.total_consumption_unit }}
-            </td>
-            <td style="text-align: center;">=</td>
-            <td class="consumption-cell"><strong>{{ contrib.percentage|floatformat:2 }} %</strong></td>
-        </tr>
-        {% endif %}
-        {% endfor %}
-        {% endif %}
-        {% endfor %}
-        {% if not renter_filter_id %}
-        <tr style="border-top:2px solid #333; background:#f8f9fa;">
-            <td colspan="7" style="text-align:right; font-weight:bold;">Summe</td>
-            <td class="consumption-cell"><strong>100 %</strong></td>
-        </tr>
-        {% endif %}
-    </tbody>
-</table>
-{% endif %}
+            {% endfor %}
+            {% endif %}
+            {% endfor %}
+            {% if not renter_filter_id %}
+            <tr style="border-top:2px solid #333; background:#f8f9fa;">
+                <td colspan="7" style="text-align:right; font-weight:bold;">Summe</td>
+                <td class="consumption-cell"><strong>100 %</strong></td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

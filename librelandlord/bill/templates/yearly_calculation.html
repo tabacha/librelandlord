@@ -845,6 +845,12 @@
                         <td style="text-align: left; font-weight: normal;">Abzüglich tatsächliche Nebenkosten {{ billing_year }}</td>
                         <td style="text-align: right;">- {{ rent_payments_data.actual_costs|floatformat:2 }} €</td>
                     </tr>
+                    {% for adj in rent_payments_data.adjustments %}
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">{{ adj.description }}</td>
+                        <td style="text-align: right;">{% if adj.amount >= 0 %}+{% endif %}{{ adj.amount|floatformat:2 }} €</td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr>
@@ -858,11 +864,7 @@
                             </strong>
                         </td>
                         <td class="grand-total" style="text-align: right; {% if rent_payments_data.balance >= 0 %}background: #4caf50;{% else %}background: #f44336;{% endif %}">
-                            {% if rent_payments_data.balance >= 0 %}
                             {{ rent_payments_data.balance|floatformat:2 }} €
-                            {% else %}
-                            {{ rent_payments_data.balance|floatformat:2 }} €
-                            {% endif %}
                         </td>
                     </tr>
                 </tfoot>
@@ -945,6 +947,12 @@
                         <td style="text-align: left; font-weight: normal;">Abzüglich tatsächliche Nebenkosten {{ billing_year }}</td>
                         <td style="text-align: right;">- {{ renter_data.actual_costs|floatformat:2 }} €</td>
                     </tr>
+                    {% for adj in renter_data.adjustments %}
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">{{ adj.description }}</td>
+                        <td style="text-align: right;">{% if adj.amount >= 0 %}+{% endif %}{{ adj.amount|floatformat:2 }} €</td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr>

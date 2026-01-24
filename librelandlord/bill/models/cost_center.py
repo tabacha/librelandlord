@@ -34,6 +34,14 @@ class CostCenter(models.Model):
         help_text=_(
             "CONSUMPTION: by meter, TIME: by days, AREA: by m², DIRECT: bill goes to renter in bill period")
     )
+    main_meter_place = models.ForeignKey(
+        'MeterPlace',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_("Main Meter"),
+        help_text=_("Main meter for consumption-based distribution (used for mid-year tenant changes)")
+    )
 
     def __str__(self):
         return f"{self.text}"

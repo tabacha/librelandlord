@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import os
 
-from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace, Landlord, Apartment, CostCenter, BankTransaction, RentPayment
+from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace, Landlord, Apartment, CostCenter, BankTransaction, RentPayment, YearlyAdjustment
 from weasyprint import HTML
 from django.conf import settings
 from django.db.models import Q
@@ -889,6 +889,21 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             # Nebenkostenvorauszahlung berechnen
             advance_payment_total = total_payments - cold_rent_total
 
+            # Zusätzliche Posten (YearlyAdjustments) laden
+            adjustments = YearlyAdjustment.objects.filter(
+                renter=renter,
+                billing_year=billing_year
+            ).order_by('description')
+
+            adjustment_list = []
+            adjustments_total = decimal.Decimal('0.00')
+            for adj in adjustments:
+                adjustment_list.append({
+                    'description': adj.description,
+                    'amount': adj.amount
+                })
+                adjustments_total += adj.amount
+
             return {
                 'renter_id': renter.id,
                 'renter_name': f"{renter.first_name} {renter.last_name}",
@@ -898,6 +913,8 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                 'cold_rent_total': round(cold_rent_total, 2),
                 'cold_rent_details': cold_rent_details,
                 'advance_payment_total': round(advance_payment_total, 2),
+                'adjustments': adjustment_list,
+                'adjustments_total': round(adjustments_total, 2),
             }
 
         # Mietzahlungen und Kaltmiete berechnen
@@ -911,9 +928,13 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                 rent_payments_data = calculate_rent_payments_for_renter(renter, billing_year)
                 # Tatsächliche Nebenkosten hinzufügen (aus renter_total)
                 rent_payments_data['actual_costs'] = renter_total
-                # Ergebnis berechnen: Vorauszahlung - tatsächliche Kosten
+                # Ergebnis berechnen: Vorauszahlung - tatsächliche Kosten + Anpassungen
                 # Positiv = Guthaben für Mieter, Negativ = Nachzahlung
-                rent_payments_data['balance'] = rent_payments_data['advance_payment_total'] - renter_total
+                rent_payments_data['balance'] = (
+                    rent_payments_data['advance_payment_total']
+                    - renter_total
+                    + rent_payments_data['adjustments_total']
+                )
             except Renter.DoesNotExist:
                 pass
         else:
@@ -937,8 +958,12 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                     actual_costs = overall_summary.get(renter.id, {})
                     total_costs = sum(actual_costs.values()) if actual_costs else decimal.Decimal('0.00')
                     renter_data['actual_costs'] = total_costs
-                    # Ergebnis berechnen
-                    renter_data['balance'] = renter_data['advance_payment_total'] - total_costs
+                    # Ergebnis berechnen inkl. Anpassungen
+                    renter_data['balance'] = (
+                        renter_data['advance_payment_total']
+                        - total_costs
+                        + renter_data['adjustments_total']
+                    )
                     all_renters_payments.append(renter_data)
 
         # Vermieterdaten laden

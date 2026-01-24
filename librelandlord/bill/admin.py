@@ -344,7 +344,8 @@ class CostCenterContributionInline(admin.TabularInline):
 
 
 class CostCenterAdmin(admin.ModelAdmin):
-    list_display = ('text', 'distribution_type', 'is_oiltank', 'main_meter_place')
+    list_display = ('text', 'distribution_type',
+                    'is_oiltank', 'main_meter_place')
     list_filter = ['is_oiltank', 'distribution_type']
     search_fields = ['text']
     ordering = ['text']
@@ -797,9 +798,10 @@ class YearlyAdjustmentAdmin(admin.ModelAdmin):
         from django.utils.html import format_html
         color = 'green' if obj.amount >= 0 else 'red'
         sign = '+' if obj.amount >= 0 else ''
+        formated_amount = f"{obj.amount:.2f}"
         return format_html(
-            '<span style="color: {};">{}{:.2f} €</span>',
-            color, sign, obj.amount
+            '<span style="color: {};">{}{} €</span>',
+            color, sign, formated_amount
         )
     amount_colored.short_description = 'Betrag'
     amount_colored.admin_order_field = 'amount'

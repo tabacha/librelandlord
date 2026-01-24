@@ -1,0 +1,77 @@
+{% comment %}
+Tabellarische Darstellung für HEATING_MIXED (Heizkostenabrechnung nach HeizkostenV).
+
+Zeigt die gewichtete Kombination aus Flächen- und Verbrauchsanteil:
+- area_percentage (default 30%) nach Wohnfläche
+- consumption_percentage (default 70%) nach Verbrauch
+
+Variablen:
+- calculation: CostCenterCalculation Objekt
+- cost_center: CostCenter Objekt (für Prozentsätze)
+- renter_filter_id: Optional - Filter auf bestimmten Mieter
+{% endcomment %}
+
+{% load i18n %}
+
+<table class="meter-readings-table">
+    <thead>
+        <tr>
+            <th>Wohnung</th>
+            <th>Mieter</th>
+            <th>Zeitraum</th>
+            <th class="number-cell">Fläche</th>
+            <th class="number-cell">Flächen-Anteil ({{ cost_center.area_percentage|floatformat:0 }}%)</th>
+            <th class="number-cell">Verbrauch</th>
+            <th class="number-cell">Verbrauchs-Anteil ({{ cost_center.consumption_percentage|floatformat:0 }}%)</th>
+            <th class="consumption-cell">Gesamt</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for contrib in calculation.contribution_results %}
+        {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
+        <tr>
+            <td>{{ contrib.apartment_name }}</td>
+            <td>
+                {% if contrib.renter_id %}
+                {{ contrib.renter_first_name }} {{ contrib.renter_last_name }}
+                {% elif contrib.is_special_designation %}
+                <em>{{ contrib.apartment_name }}</em>
+                {% else %}
+                <em>Leerstand</em>
+                {% endif %}
+            </td>
+            <td>{{ contrib.period_start|date:"d.m.Y" }} - {{ contrib.period_end|date:"d.m.Y" }}</td>
+            <td class="number-cell">
+                {% with step=contrib.consumption_result.calculation_steps.0 %}
+                {{ step.operand1|floatformat:2 }} m²
+                {% endwith %}
+            </td>
+            <td class="number-cell calc-cell" style="font-family: monospace;">
+                {{ contrib.area_percentage_value|floatformat:2 }} %
+            </td>
+            <td class="number-cell">
+                {{ contrib.consumption_share|floatformat:2 }} {{ calculation.total_consumption_unit }}
+            </td>
+            <td class="number-cell calc-cell" style="font-family: monospace;">
+                {{ contrib.consumption_percentage_value|floatformat:2 }} %
+            </td>
+            <td class="consumption-cell">{{ contrib.percentage|floatformat:2 }} %</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr style="font-weight: bold; background-color: #f0f0f0;">
+            <td colspan="7" style="text-align: right;">Gesamt:</td>
+            <td class="consumption-cell">100,00 %</td>
+        </tr>
+    </tfoot>
+</table>
+
+<p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+    <strong>Verteilung nach Heizkostenverordnung:</strong>
+    {{ cost_center.area_percentage|floatformat:0 }}% der Kosten werden nach Wohnfläche verteilt,
+    {{ cost_center.consumption_percentage|floatformat:0 }}% nach dem tatsächlichen Verbrauch (Wärmemengenzähler).
+    <br>
+    <em>Formel: Gesamtanteil = (Flächen-Anteil × {{ cost_center.area_percentage|floatformat:0 }}%) + (Verbrauchs-Anteil × {{ cost_center.consumption_percentage|floatformat:0 }}%)</em>
+</p>

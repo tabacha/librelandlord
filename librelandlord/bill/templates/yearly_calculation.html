@@ -808,41 +808,25 @@
             <div class="no-data">Keine Zahlungen für dieses Jahr erfasst.</div>
             {% endif %}
 
-            <!-- Kaltmiete Abzug -->
-            <h4 style="margin-top: 20px; margin-bottom: 10px;">Abzug Kaltmiete</h4>
+            <!-- Berechnungsübersicht -->
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Berechnung</h4>
             <table class="overall-table">
                 <tbody>
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">Ihre Zahlungen laut Kontoauszug</td>
+                        <td style="text-align: right;">{{ rent_payments_data.total_payments|floatformat:2 }} €</td>
+                    </tr>
                     {% for detail in rent_payments_data.cold_rent_details %}
                     <tr>
                         <td style="text-align: left; font-weight: normal;">
-                            {{ detail.months|floatformat:2 }} Monate à {{ detail.monthly_rent|floatformat:2 }} €
+                            Kaltmiete {{ detail.months|floatformat:2 }} Monate à {{ detail.monthly_rent|floatformat:2 }} €
                             <small style="color: #666;">({{ detail.period_start|date:"d.m.Y" }} - {{ detail.period_end|date:"d.m.Y" }})</small>
                         </td>
                         <td style="text-align: right;">- {{ detail.amount|floatformat:2 }} €</td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="2" class="no-data">Keine Kaltmiete hinterlegt.</td>
-                    </tr>
                     {% endfor %}
-                </tbody>
-                <tfoot>
                     <tr>
-                        <td style="text-align: left;"><strong>Summe Kaltmiete</strong></td>
-                        <td style="text-align: right; font-weight: bold;">- {{ rent_payments_data.cold_rent_total|floatformat:2 }} €</td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            <!-- Nebenkostenvorauszahlung und Abrechnung -->
-            <table class="overall-table" style="margin-top: 20px;">
-                <tbody>
-                    <tr>
-                        <td style="text-align: left; font-weight: normal;">Ihre Nebenkostenvorauszahlung {{ billing_year }}</td>
-                        <td style="text-align: right;">{{ rent_payments_data.advance_payment_total|floatformat:2 }} €</td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: left; font-weight: normal;">Abzüglich tatsächliche Nebenkosten {{ billing_year }}</td>
+                        <td style="text-align: left; font-weight: normal;">Tatsächliche Nebenkosten {{ billing_year }}</td>
                         <td style="text-align: right;">- {{ rent_payments_data.actual_costs|floatformat:2 }} €</td>
                     </tr>
                     {% for adj in rent_payments_data.adjustments %}
@@ -857,9 +841,9 @@
                         <td style="text-align: left;">
                             <strong>
                                 {% if rent_payments_data.balance >= 0 %}
-                                = Ihr Guthaben
+                                Ihr Guthaben
                                 {% else %}
-                                = Ihre Nachzahlung
+                                Ihre Nachzahlung
                                 {% endif %}
                             </strong>
                         </td>
@@ -910,41 +894,25 @@
             <div class="no-data">Keine Zahlungen für dieses Jahr erfasst.</div>
             {% endif %}
 
-            <!-- Kaltmiete Abzug -->
-            <h4 style="margin-top: 20px; margin-bottom: 10px;">Abzug Kaltmiete</h4>
+            <!-- Berechnungsübersicht -->
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Berechnung</h4>
             <table class="overall-table">
                 <tbody>
+                    <tr>
+                        <td style="text-align: left; font-weight: normal;">Zahlungen laut Kontoauszug</td>
+                        <td style="text-align: right;">{{ renter_data.total_payments|floatformat:2 }} €</td>
+                    </tr>
                     {% for detail in renter_data.cold_rent_details %}
                     <tr>
                         <td style="text-align: left; font-weight: normal;">
-                            {{ detail.months|floatformat:2 }} Monate à {{ detail.monthly_rent|floatformat:2 }} €
+                            Kaltmiete {{ detail.months|floatformat:2 }} Monate à {{ detail.monthly_rent|floatformat:2 }} €
                             <small style="color: #666;">({{ detail.period_start|date:"d.m.Y" }} - {{ detail.period_end|date:"d.m.Y" }})</small>
                         </td>
                         <td style="text-align: right;">- {{ detail.amount|floatformat:2 }} €</td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="2" class="no-data">Keine Kaltmiete hinterlegt.</td>
-                    </tr>
                     {% endfor %}
-                </tbody>
-                <tfoot>
                     <tr>
-                        <td style="text-align: left;"><strong>Summe Kaltmiete</strong></td>
-                        <td style="text-align: right; font-weight: bold;">- {{ renter_data.cold_rent_total|floatformat:2 }} €</td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            <!-- Nebenkostenvorauszahlung und Abrechnung -->
-            <table class="overall-table" style="margin-top: 20px;">
-                <tbody>
-                    <tr>
-                        <td style="text-align: left; font-weight: normal;">Nebenkostenvorauszahlung {{ billing_year }}</td>
-                        <td style="text-align: right;">{{ renter_data.advance_payment_total|floatformat:2 }} €</td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: left; font-weight: normal;">Abzüglich tatsächliche Nebenkosten {{ billing_year }}</td>
+                        <td style="text-align: left; font-weight: normal;">Tatsächliche Nebenkosten {{ billing_year }}</td>
                         <td style="text-align: right;">- {{ renter_data.actual_costs|floatformat:2 }} €</td>
                     </tr>
                     {% for adj in renter_data.adjustments %}
@@ -959,9 +927,9 @@
                         <td style="text-align: left;">
                             <strong>
                                 {% if renter_data.balance >= 0 %}
-                                = Guthaben
+                                Guthaben
                                 {% else %}
-                                = Nachzahlung
+                                Nachzahlung
                                 {% endif %}
                             </strong>
                         </td>

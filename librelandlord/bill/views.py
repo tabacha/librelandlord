@@ -596,6 +596,23 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                         contrib_dict = contrib._asdict()
                         contrib_dict['euro_anteil'] = euro_anteil
 
+                        # HEATING_MIXED: Berechne separate Euro-Anteile für Fläche und Verbrauch
+                        if cost_center.distribution_type == 'HEATING_MIXED':
+                            area_pct = float(cost_center.area_percentage)
+                            consumption_pct = float(cost_center.consumption_percentage)
+                            area_percentage_value = getattr(contrib, 'area_percentage_value', 0.0)
+                            consumption_percentage_value = getattr(contrib, 'consumption_percentage_value', 0.0)
+
+                            # Betrag nach Fläche und Verbrauch
+                            area_amount = float(total_amount) * area_pct / 100
+                            consumption_amount = float(total_amount) * consumption_pct / 100
+
+                            # Euro-Anteil für Fläche und Verbrauch
+                            contrib_dict['area_euro'] = area_amount * area_percentage_value / 100
+                            contrib_dict['consumption_euro'] = consumption_amount * consumption_percentage_value / 100
+                            contrib_dict['area_amount_total'] = area_amount
+                            contrib_dict['consumption_amount_total'] = consumption_amount
+
                         # Prüfe ob es eine special_designation gibt
                         contribution_obj = contrib.contribution
                         has_special_designation = bool(
@@ -672,10 +689,27 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
 
             # Nur Perioden hinzufügen, die Kostenstellen haben (wichtig bei Mieter-Filter)
             if cost_center_summaries:
+                # Prüfe ob es nicht-HEATING_MIXED Kostenstellen gibt
+                has_non_heating_mixed = any(
+                    s.get('cost_center', {}).distribution_type != 'HEATING_MIXED'
+                    if hasattr(s.get('cost_center', {}), 'distribution_type')
+                    else s.get('cost_center', {}).get('distribution_type') != 'HEATING_MIXED'
+                    for s in cost_center_summaries
+                    if s.get('cost_center_calculation')
+                )
+                has_consumption = any(
+                    s.get('cost_center', {}).distribution_type == 'CONSUMPTION'
+                    if hasattr(s.get('cost_center', {}), 'distribution_type')
+                    else s.get('cost_center', {}).get('distribution_type') == 'CONSUMPTION'
+                    for s in cost_center_summaries
+                    if s.get('cost_center_calculation')
+                )
                 period_data = {
                     'account_period': account_period,
                     'calculation': calculation,
                     'cost_center_summaries': cost_center_summaries,
+                    'has_non_heating_mixed': has_non_heating_mixed,
+                    'has_consumption': has_consumption,
                     'summary': {
                         'grand_total': calculation.grand_total,
                         'total_bill_count': calculation.total_bill_count,
@@ -744,16 +778,85 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
         cost_center_names = [all_cost_centers[cc_id]
                              for cc_id in sorted_cost_center_ids]
 
-        # Vertikale Tabelle für Mieter-Ansicht vorbereiten
+        # Vertikale Tabelle für Mieter-Ansicht vorbereiten (erweitert für CONSUMPTION)
         vertical_table = []
-        if renter_id is not None and overall_table:
-            row = overall_table[0]  # Bei Mieter-Filter gibt es nur eine Zeile
-            for i, cc_name in enumerate(cost_center_names):
-                vertical_table.append({
-                    'cost_center_name': cc_name,
-                    'amount': row['amounts'][i]
-                })
-            renter_total = row['row_total']
+        if renter_id is not None:
+            # Sammle alle Einträge aus den Perioden-Berechnungen
+            for period_data in all_period_calculations:
+                for summary in period_data['cost_center_summaries']:
+                    cost_center = summary.get('cost_center') if isinstance(summary, dict) else summary.cost_center
+                    calc = summary.get('cost_center_calculation') if isinstance(summary, dict) else getattr(summary, 'cost_center_calculation', None)
+                    total_amount = summary.get('total_amount', 0) if isinstance(summary, dict) else getattr(summary, 'total_amount', 0)
+
+                    if not calc:
+                        continue
+
+                    distribution_type = cost_center.distribution_type if hasattr(cost_center, 'distribution_type') else cost_center.get('distribution_type')
+
+                    # Hole die contribution_results
+                    contribs = calc.get('contribution_results', []) if isinstance(calc, dict) else calc.contribution_results
+
+                    if distribution_type == 'CONSUMPTION':
+                        # Bei CONSUMPTION: Jeden Zähler einzeln aufführen
+                        for contrib in contribs:
+                            if isinstance(contrib, dict):
+                                contrib_renter_id = contrib.get('renter_id')
+                                calc_name = contrib.get('consumption_calc_name', '')
+                                percentage = contrib.get('percentage', 0)
+                                euro_anteil = contrib.get('euro_anteil', 0)
+                            else:
+                                contrib_renter_id = contrib.renter_id
+                                calc_name = contrib.consumption_calc_name
+                                percentage = contrib.percentage
+                                euro_anteil = getattr(contrib, 'euro_anteil', 0)
+
+                            if contrib_renter_id == renter_id:
+                                vertical_table.append({
+                                    'cost_center_name': calc_name,
+                                    'amount': euro_anteil,
+                                    'show_calculation': True,
+                                    'total_amount': float(total_amount),
+                                    'percentage': percentage,
+                                })
+                    elif distribution_type in ('TIME', 'AREA'):
+                        # Bei TIME/AREA: Summe mit Berechnung anzeigen
+                        renter_contribs = [
+                            c for c in contribs
+                            if (c.get('renter_id') if isinstance(c, dict) else c.renter_id) == renter_id
+                        ]
+                        sum_euro = sum(
+                            (c.get('euro_anteil', 0) if isinstance(c, dict) else getattr(c, 'euro_anteil', 0))
+                            for c in renter_contribs
+                        )
+                        sum_percentage = sum(
+                            (c.get('percentage', 0) if isinstance(c, dict) else getattr(c, 'percentage', 0))
+                            for c in renter_contribs
+                        )
+                        if sum_euro > 0:
+                            cc_name = cost_center.text if hasattr(cost_center, 'text') else cost_center.get('text', '')
+                            vertical_table.append({
+                                'cost_center_name': cc_name,
+                                'amount': sum_euro,
+                                'show_calculation': True,
+                                'total_amount': float(total_amount),
+                                'percentage': sum_percentage,
+                            })
+                    else:
+                        # Bei HEATING_MIXED und DIRECT: Nur Summe ohne Berechnung
+                        sum_euro = sum(
+                            (c.get('euro_anteil', 0) if isinstance(c, dict) else getattr(c, 'euro_anteil', 0))
+                            for c in contribs
+                            if (c.get('renter_id') if isinstance(c, dict) else c.renter_id) == renter_id
+                        )
+                        if sum_euro > 0:
+                            cc_name = cost_center.text if hasattr(cost_center, 'text') else cost_center.get('text', '')
+                            vertical_table.append({
+                                'cost_center_name': cc_name,
+                                'amount': sum_euro,
+                                'show_calculation': False,
+                            })
+
+            renter_total = decimal.Decimal(str(sum(item['amount'] for item in vertical_table)))
         else:
             renter_total = decimal.Decimal('0.00')
 

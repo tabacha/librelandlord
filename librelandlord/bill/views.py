@@ -819,28 +819,29 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                                     'percentage': percentage,
                                 })
                     elif distribution_type in ('TIME', 'AREA'):
-                        # Bei TIME/AREA: Summe mit Berechnung anzeigen
+                        # Bei TIME/AREA: Einzelne Bills mit anteiliger Berechnung aufführen
                         renter_contribs = [
                             c for c in contribs
                             if (c.get('renter_id') if isinstance(c, dict) else c.renter_id) == renter_id
                         ]
-                        sum_euro = sum(
-                            (c.get('euro_anteil', 0) if isinstance(c, dict) else getattr(c, 'euro_anteil', 0))
-                            for c in renter_contribs
-                        )
-                        sum_percentage = sum(
-                            (c.get('percentage', 0) if isinstance(c, dict) else getattr(c, 'percentage', 0))
-                            for c in renter_contribs
-                        )
-                        if sum_euro > 0:
-                            cc_name = cost_center.text if hasattr(cost_center, 'text') else cost_center.get('text', '')
-                            vertical_table.append({
-                                'cost_center_name': cc_name,
-                                'amount': sum_euro,
-                                'show_calculation': True,
-                                'total_amount': float(total_amount),
-                                'percentage': sum_percentage,
-                            })
+                        if renter_contribs:
+                            # Prozentsatz des Mieters berechnen
+                            sum_percentage = sum(
+                                (c.get('percentage', 0) if isinstance(c, dict) else getattr(c, 'percentage', 0))
+                                for c in renter_contribs
+                            )
+                            # Bills aus der Summary holen und anteilig berechnen
+                            bills = summary.get('bills', []) if isinstance(summary, dict) else getattr(summary, 'bills', [])
+                            for bill in bills:
+                                bill_anteil = float(bill.value) * sum_percentage / 100
+                                if bill_anteil > 0:
+                                    vertical_table.append({
+                                        'cost_center_name': bill.text,
+                                        'amount': bill_anteil,
+                                        'show_calculation': True,
+                                        'total_amount': float(bill.value),
+                                        'percentage': sum_percentage,
+                                    })
                     elif distribution_type == 'DIRECT':
                         # Bei DIRECT: Einzelne Bills aufführen
                         renter_contribs = [

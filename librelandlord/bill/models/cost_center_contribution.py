@@ -74,6 +74,14 @@ class CostCenterContribution(models.Model):
                     raise ValidationError(
                         _("Direct distribution requires an apartment"))
 
+            if self.cost_center.distribution_type == CostCenter.DistributionType.HEATING_MIXED:
+                if not self.apartment:
+                    raise ValidationError(
+                        _("HEATING_MIXED requires an apartment (for m² calculation)"))
+                if not self.consumption_calc:
+                    raise ValidationError(
+                        _("HEATING_MIXED requires consumption calculation (for meter reading)"))
+
     def get_display_name(self):
         """Returns the display name for this contribution"""
         if self.apartment:

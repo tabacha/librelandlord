@@ -841,8 +841,23 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                                 'total_amount': float(total_amount),
                                 'percentage': sum_percentage,
                             })
+                    elif distribution_type == 'DIRECT':
+                        # Bei DIRECT: Einzelne Bills aufführen
+                        renter_contribs = [
+                            c for c in contribs
+                            if (c.get('renter_id') if isinstance(c, dict) else c.renter_id) == renter_id
+                        ]
+                        if renter_contribs:
+                            # Bills aus der Summary holen
+                            bills = summary.get('bills', []) if isinstance(summary, dict) else getattr(summary, 'bills', [])
+                            for bill in bills:
+                                vertical_table.append({
+                                    'cost_center_name': bill.text,
+                                    'amount': float(bill.value),
+                                    'show_calculation': False,
+                                })
                     else:
-                        # Bei HEATING_MIXED und DIRECT: Nur Summe ohne Berechnung
+                        # Bei HEATING_MIXED: Nur Summe ohne Berechnung
                         sum_euro = sum(
                             (c.get('euro_anteil', 0) if isinstance(c, dict) else getattr(c, 'euro_anteil', 0))
                             for c in contribs

@@ -678,7 +678,7 @@
                     {% if period_data.has_consumption %}
                     {% include 'bill/includes/percentage_distribution_table.html' with cost_center_summaries=period_data.cost_center_summaries renter_filter_id=renter_filter_id %}
                     {% endif %}
-                    {% if period_data.has_non_heating_mixed %}
+                    {% if period_data.has_non_heating_mixed and not renter_filter_id %}
                     {% include 'bill/includes/amount_share_table.html' with cost_center_summaries=period_data.cost_center_summaries renter_filter_id=renter_filter_id %}
                     {% endif %}
                 </div>
@@ -703,20 +703,35 @@
                 <thead>
                     <tr>
                         <th style="text-align: left;">Kostenstelle</th>
-                        <th style="text-align: right;">Betrag</th>
+                        <th style="text-align: right;">Gesamtbetrag</th>
+                        <th style="text-align: center;"></th>
+                        <th style="text-align: right;">Anteil</th>
+                        <th style="text-align: center;"></th>
+                        <th style="text-align: right;">Ihr Betrag</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in vertical_table %}
                     <tr>
                         <td style="text-align: left; font-weight: normal;">{{ item.cost_center_name }}</td>
+                        {% if item.show_calculation %}
+                        <td style="text-align: right;">{{ item.total_amount|floatformat:2 }} €</td>
+                        <td style="text-align: center;">×</td>
+                        <td style="text-align: right;">{{ item.percentage|floatformat:2 }} %</td>
+                        <td style="text-align: center;">=</td>
+                        {% else %}
+                        <td style="text-align: right;"></td>
+                        <td style="text-align: center;"></td>
+                        <td style="text-align: right;"></td>
+                        <td style="text-align: center;"></td>
+                        {% endif %}
                         <td style="text-align: right;">{{ item.amount|floatformat:2 }} €</td>
                     </tr>
                     {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td style="text-align: left;"><strong>Gesamt</strong></td>
+                        <td colspan="5" style="text-align: left;"><strong>Gesamt</strong></td>
                         <td class="grand-total">{{ renter_total|floatformat:2 }} €</td>
                     </tr>
                 </tfoot>

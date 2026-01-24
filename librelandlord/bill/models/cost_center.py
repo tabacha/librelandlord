@@ -505,18 +505,18 @@ class CostCenter(models.Model):
 
     def _calculate_direct(self, contributions, start_date: date, end_date: date, bills=None) -> CostCenterCalculation:
         """
-        Direkte Zuordnung - Jede Bill geht 1:1 an den Mieter im Bill-Zeitraum.
+        Direkte Zuordnung - Alle Kosten gehen 1:1 an den Mieter der Wohnung.
 
-        Bei DIRECT wird pro Bill geprüft:
-        - Der Bill-Zeitraum (from_date bis to_date) bestimmt den relevanten Zeitraum
-        - Genau ein Mieter muss diesen Zeitraum abdecken
-        - Fehler bei: Kein Mieter, Leerstand, oder Mieterwechsel im Bill-Zeitraum
+        Bei DIRECT:
+        - Pro Wohnung wird geprüft, dass ein Mieter ALLE Bill-Zeiträume abdeckt
+        - Es wird NUR EIN Eintrag pro Wohnung erstellt (100% wenn nur eine Wohnung)
+        - Fehler bei: Kein Mieter, Leerstand, oder verschiedene Mieter für verschiedene Bills
 
         Args:
             contributions: CostCenterContributions (Wohnungen) für dieses CostCenter
             start_date: Fallback-Startdatum wenn keine Bills übergeben
             end_date: Fallback-Enddatum wenn keine Bills übergeben
-            bills: Liste von Bills - jede Bill wird einzeln geprüft
+            bills: Liste von Bills - zur Validierung der Mieter-Zeiträume
         """
         from .consumption_calc import ConsumptionCalc
 
@@ -525,7 +525,7 @@ class CostCenter(models.Model):
         apartment_names = set()
         temp_results = []
 
-        # Pro Contribution (Wohnung) und pro Bill prüfen
+        # Pro Contribution (Wohnung) prüfen
         for contribution in contributions:
             if not contribution.apartment:
                 raise ValueError(
@@ -534,8 +534,12 @@ class CostCenter(models.Model):
                 )
 
             apartment_name = contribution.get_display_name()
+            validated_renter = None
+            validated_renter_id = None
+            overall_start = None
+            overall_end = None
 
-            # Wenn Bills übergeben wurden, pro Bill prüfen
+            # Wenn Bills übergeben wurden, validiere dass der gleiche Mieter alle Bills abdeckt
             if bills:
                 for bill in bills:
                     bill_start = bill.from_date
@@ -582,48 +586,68 @@ class CostCenter(models.Model):
                             f"  Gefundene Mieter: {renter_info}"
                         )
 
-                    # Genau ein Mieter - 100% Zuordnung für diese Bill
+                    # Mieter für diese Bill
                     period = renter_periods[0]
-                    renter = period['renter']
-                    renter_id = period['renter_id']
+                    current_renter = period['renter']
+                    current_renter_id = period['renter_id']
 
-                    consumption_value = Decimal('1')
-                    apartment_names.add(apartment_name)
+                    # Prüfe ob der gleiche Mieter wie bei vorherigen Bills
+                    if validated_renter_id is None:
+                        validated_renter = current_renter
+                        validated_renter_id = current_renter_id
+                        overall_start = bill_start
+                        overall_end = bill_end
+                    elif validated_renter_id != current_renter_id:
+                        raise ValueError(
+                            f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
+                            f"  Bill: {bill_info}\n"
+                            f"  Fehler: Verschiedene Mieter für verschiedene Bills\n"
+                            f"  Erwartet: {validated_renter.first_name} {validated_renter.last_name}\n"
+                            f"  Gefunden: {current_renter.first_name} {current_renter.last_name}"
+                        )
+                    else:
+                        # Erweitere den Gesamtzeitraum
+                        overall_start = min(overall_start, bill_start)
+                        overall_end = max(overall_end, bill_end)
 
-                    dummy_result = ConsumptionCalc.ConsumptionResult(
-                        consumption_calc=None,
-                        calculation_period_start=bill_start,
-                        calculation_period_end=bill_end,
-                        argument_results=[],
-                        final_result=consumption_value,
-                        calculation_steps=[
-                            ConsumptionCalc.CalculationStep(
-                                step_type="result",
-                                description=f"Direkte Zuordnung: {bill.text}",
-                                operand1=None,
-                                operator=None,
-                                operand2=None,
-                                result=consumption_value,
-                                argument_name=None,
-                                source_details=None,
-                                unit="Anteil"
-                            )
-                        ]
-                    )
+                # Nach Validierung aller Bills: EIN Eintrag pro Wohnung
+                consumption_value = Decimal('1')
+                apartment_names.add(apartment_name)
 
-                    temp_results.append({
-                        'contribution': contribution,
-                        'apartment_name': apartment_name,
-                        'consumption_result': dummy_result,
-                        'final_consumption': consumption_value,
-                        'renter_id': renter_id,
-                        'renter_first_name': renter.first_name,
-                        'renter_last_name': renter.last_name,
-                        'period_start': bill_start,
-                        'period_end': bill_end
-                    })
+                dummy_result = ConsumptionCalc.ConsumptionResult(
+                    consumption_calc=None,
+                    calculation_period_start=overall_start,
+                    calculation_period_end=overall_end,
+                    argument_results=[],
+                    final_result=consumption_value,
+                    calculation_steps=[
+                        ConsumptionCalc.CalculationStep(
+                            step_type="result",
+                            description="Direkte Zuordnung",
+                            operand1=None,
+                            operator=None,
+                            operand2=None,
+                            result=consumption_value,
+                            argument_name=None,
+                            source_details=None,
+                            unit="Anteil"
+                        )
+                    ]
+                )
 
-                    total_consumption += consumption_value
+                temp_results.append({
+                    'contribution': contribution,
+                    'apartment_name': apartment_name,
+                    'consumption_result': dummy_result,
+                    'final_consumption': consumption_value,
+                    'renter_id': validated_renter_id,
+                    'renter_first_name': validated_renter.first_name,
+                    'renter_last_name': validated_renter.last_name,
+                    'period_start': overall_start,
+                    'period_end': overall_end
+                })
+
+                total_consumption += consumption_value
             else:
                 # Fallback: Verwende start_date/end_date wenn keine Bills übergeben
                 periods = contribution.apartment.get_renters_for_period(

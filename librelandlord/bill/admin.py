@@ -329,16 +329,10 @@ class CostCenterContributionInline(admin.TabularInline):
         """
         formset = super().get_formset(request, obj, **kwargs)
 
-        # Wenn ein CostCenter existiert und der Typ nicht CONSUMPTION ist,
-        # mache consumption_calc nicht erforderlich
-        if obj and obj.distribution_type != models.CostCenter.DistributionType.CONSUMPTION:
-            if 'consumption_calc' in formset.form.base_fields:
-                formset.form.base_fields['consumption_calc'].required = False
-        else:
-            # Bei neuen Objekten oder CONSUMPTION: auch nicht required
-            # (wird per clean() validiert)
-            if 'consumption_calc' in formset.form.base_fields:
-                formset.form.base_fields['consumption_calc'].required = False
+        # CONSUMPTION und HEATING_MIXED benötigen consumption_calc
+        # Aber wir setzen required=False da es per clean() validiert wird
+        if 'consumption_calc' in formset.form.base_fields:
+            formset.form.base_fields['consumption_calc'].required = False
 
         return formset
 
@@ -351,6 +345,16 @@ class CostCenterAdmin(admin.ModelAdmin):
     ordering = ['text']
     autocomplete_fields = ['main_meter_place']
     inlines = [CostCenterContributionInline]
+    fieldsets = (
+        (None, {
+            'fields': ('text', 'is_oiltank', 'distribution_type', 'main_meter_place')
+        }),
+        ('Heizkosten-Einstellungen (HEATING_MIXED)', {
+            'fields': ('area_percentage', 'consumption_percentage'),
+            'classes': ('collapse',),
+            'description': 'Nur relevant für distribution_type HEATING_MIXED. Summe muss 100% ergeben.'
+        }),
+    )
 
     class Media:
         js = ('bill/js/admin/costcentercontribution.js',)
@@ -402,17 +406,9 @@ class CostCenterContributionAdmin(admin.ModelAdmin):
         """
         form = super().get_form(request, obj, **kwargs)
 
-        # Wenn ein Objekt existiert und der Typ nicht CONSUMPTION ist,
-        # mache consumption_calc nicht erforderlich
-        if obj and obj.cost_center:
-            if obj.cost_center.distribution_type != models.CostCenter.DistributionType.CONSUMPTION:
-                if 'consumption_calc' in form.base_fields:
-                    form.base_fields['consumption_calc'].required = False
-        else:
-            # Bei neuen Objekten: nicht erforderlich machen
-            # (wird per JS und clean() validiert)
-            if 'consumption_calc' in form.base_fields:
-                form.base_fields['consumption_calc'].required = False
+        # consumption_calc wird per clean() validiert, nicht per required
+        if 'consumption_calc' in form.base_fields:
+            form.base_fields['consumption_calc'].required = False
 
         return form
 

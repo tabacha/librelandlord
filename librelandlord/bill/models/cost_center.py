@@ -21,6 +21,7 @@ class CostCenter(models.Model):
         TIME = 'TIME', _('By time (days)')
         AREA = 'AREA', _('By area (m²)')
         DIRECT = 'DIRECT', _('Direct assignment (bill period = renter)')
+        HEATING_MIXED = 'HEATING_MIXED', _('Heating (30% area + 70% consumption)')
 
     text = models.CharField(max_length=27, verbose_name=_("Cost Center Text"))
     is_oiltank = models.BooleanField(
@@ -42,6 +43,20 @@ class CostCenter(models.Model):
         verbose_name=_("Main Meter"),
         help_text=_("Main meter for consumption-based distribution (used for mid-year tenant changes)")
     )
+    area_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('30.00'),
+        verbose_name=_("Area Percentage"),
+        help_text=_("Percentage distributed by area (default 30%)")
+    )
+    consumption_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('70.00'),
+        verbose_name=_("Consumption Percentage"),
+        help_text=_("Percentage distributed by consumption (default 70%)")
+    )
 
     def __str__(self):
         return f"{self.text}"
@@ -60,6 +75,11 @@ class CostCenter(models.Model):
         renter_last_name: str  # None bei Leerstand
         period_start: date  # Tatsächliches Startdatum für diesen Renter/Leerstand
         period_end: date  # Tatsächliches Enddatum für diesen Renter/Leerstand
+        # HEATING_MIXED specific fields (optional, with defaults)
+        area_share: Decimal = Decimal('0')
+        area_percentage_value: float = 0.0
+        consumption_share: Decimal = Decimal('0')
+        consumption_percentage_value: float = 0.0
 
     class CostCenterCalculation(NamedTuple):
         """Gesamtberechnung eines CostCenters"""
@@ -127,6 +147,8 @@ class CostCenter(models.Model):
             return self._calculate_area_based(contributions, start_date, end_date)
         elif self.distribution_type == self.DistributionType.DIRECT:
             return self._calculate_direct(contributions, start_date, end_date)
+        elif self.distribution_type == self.DistributionType.HEATING_MIXED:
+            return self._calculate_heating_mixed(contributions, start_date, end_date)
         else:
             raise ValueError(
                 f"Unknown distribution_type: {self.distribution_type}")
@@ -581,3 +603,217 @@ class CostCenter(models.Model):
             apartment_count=len(apartment_names),
             total_consumption_unit="Anteil"
         )
+
+    def _calculate_heating_mixed(self, contributions, start_date: date, end_date: date) -> CostCenterCalculation:
+        """
+        Berechnung nach Heizkostenverordnung:
+        - area_percentage (default 30%) nach Wohnfläche
+        - consumption_percentage (default 70%) nach Verbrauch (Wärmemengenzähler)
+        """
+        from .consumption_calc import ConsumptionCalc
+
+        contribution_results = []
+        apartment_names = set()
+        apartment_areas = {}
+        temp_results = []
+
+        total_days = (end_date - start_date).days
+        total_consumption_value = Decimal('0.00')
+        total_area_days = Decimal('0.00')
+        total_consumption_unit = ""
+
+        # Sammle alle Daten für beide Berechnungen (AREA + CONSUMPTION)
+        for contribution in contributions:
+            try:
+                if not contribution.apartment:
+                    raise ValueError(
+                        "HEATING_MIXED requires an apartment with size_in_m2")
+                if not contribution.consumption_calc:
+                    raise ValueError(
+                        "HEATING_MIXED requires consumption_calc for meter reading")
+
+                apartment_area = contribution.apartment.size_in_m2 or Decimal('0')
+                apartment_areas[contribution.apartment.id] = apartment_area
+
+                # Hole Renter-Perioden
+                periods = contribution.apartment.get_renters_for_period(
+                    start_date=start_date,
+                    end_date=end_date
+                )
+
+                for period in periods:
+                    period_start = period['start_date']
+                    period_end = period['end_date']
+                    period_days = (period_end - period_start).days
+
+                    # ConsumptionCalc-Zeitraumprüfung
+                    calc_start = contribution.consumption_calc.start_date
+                    calc_end = contribution.consumption_calc.end_date
+
+                    if period_end <= calc_start:
+                        continue
+                    if calc_end is not None and period_start >= calc_end:
+                        continue
+
+                    adjusted_start = max(period_start, calc_start)
+                    adjusted_end = min(period_end, calc_end) if calc_end else period_end
+
+                    if adjusted_start >= adjusted_end:
+                        continue
+
+                    # Berechne Verbrauch
+                    consumption_result = contribution.consumption_calc.calculate(
+                        start_date=adjusted_start,
+                        end_date=adjusted_end
+                    )
+                    consumption_value = consumption_result.final_result
+
+                    # Berechne Flächen-Anteil (m² × Tage)
+                    adjusted_period_days = (adjusted_end - adjusted_start).days
+                    area_days = apartment_area * Decimal(str(adjusted_period_days))
+
+                    apartment_name = contribution.get_display_name()
+                    apartment_names.add(apartment_name)
+
+                    renter = period.get('renter')
+                    renter_id = period.get('renter_id')
+
+                    if not total_consumption_unit and consumption_result.calculation_steps:
+                        final_step = consumption_result.calculation_steps[-1]
+                        total_consumption_unit = final_step.unit or ""
+
+                    temp_results.append({
+                        'contribution': contribution,
+                        'apartment_name': apartment_name,
+                        'consumption_result': consumption_result,
+                        'consumption_value': consumption_value,
+                        'area_days': area_days,
+                        'apartment_area': apartment_area,
+                        'period_days': adjusted_period_days,
+                        'renter_id': renter_id,
+                        'renter_first_name': renter.first_name if renter else None,
+                        'renter_last_name': renter.last_name if renter else None,
+                        'period_start': adjusted_start,
+                        'period_end': adjusted_end
+                    })
+
+                    total_consumption_value += consumption_value
+                    total_area_days += area_days
+
+            except Exception as e:
+                consumption_calc_name = contribution.consumption_calc.name if contribution.consumption_calc else 'N/A'
+                consumption_calc_id = contribution.consumption_calc.id if contribution.consumption_calc else 'N/A'
+                raise ValueError(
+                    f"Fehler bei HEATING_MIXED-Berechnung für Apartment {contribution.apartment} "
+                    f"(CostCenterContribution ID: {contribution.id}, "
+                    f"ConsumptionCalc: '{consumption_calc_name}' [ID: {consumption_calc_id}]): "
+                    f"{str(e)}"
+                ) from e
+
+        # Berechne kombinierte Prozentsätze
+        area_weight = self.area_percentage / Decimal('100')
+        consumption_weight = self.consumption_percentage / Decimal('100')
+
+        for temp_result in temp_results:
+            # Flächenanteil berechnen
+            if total_area_days > 0:
+                area_pct = float((temp_result['area_days'] / total_area_days) * 100)
+            else:
+                area_pct = 0.0
+
+            # Verbrauchsanteil berechnen
+            if total_consumption_value > 0:
+                consumption_pct = float(
+                    (temp_result['consumption_value'] / total_consumption_value) * 100)
+            else:
+                consumption_pct = 0.0
+
+            # Gewichtete Kombination: (area_pct × 0.30) + (consumption_pct × 0.70)
+            combined_percentage = (
+                area_pct * float(area_weight) +
+                consumption_pct * float(consumption_weight)
+            )
+
+            # Dummy ConsumptionResult mit Berechnungsschritten erstellen
+            dummy_result = ConsumptionCalc.ConsumptionResult(
+                consumption_calc=temp_result['contribution'].consumption_calc,
+                calculation_period_start=temp_result['period_start'],
+                calculation_period_end=temp_result['period_end'],
+                argument_results=[],
+                final_result=temp_result['consumption_value'],
+                calculation_steps=[
+                    ConsumptionCalc.CalculationStep(
+                        step_type="result",
+                        description=f"Flächenanteil: {temp_result['apartment_area']} m² × {temp_result['period_days']} Tage = {area_pct:.2f}% × {self.area_percentage}%",
+                        operand1=temp_result['apartment_area'],
+                        operator="×",
+                        operand2=Decimal(str(temp_result['period_days'])),
+                        result=temp_result['area_days'],
+                        argument_name=None,
+                        source_details=None,
+                        unit="m²×Tage",
+                        operand1_label="Fläche",
+                        operand2_label="Tage",
+                        operand1_unit="m²",
+                        operand2_unit="Tage"
+                    ),
+                    ConsumptionCalc.CalculationStep(
+                        step_type="result",
+                        description=f"Verbrauchsanteil: {temp_result['consumption_value']} {total_consumption_unit} = {consumption_pct:.2f}% × {self.consumption_percentage}%",
+                        operand1=None,
+                        operator=None,
+                        operand2=None,
+                        result=temp_result['consumption_value'],
+                        argument_name=None,
+                        source_details=None,
+                        unit=total_consumption_unit
+                    )
+                ]
+            )
+
+            contribution_results.append(self.ContributionResult(
+                contribution=temp_result['contribution'],
+                apartment_name=temp_result['apartment_name'],
+                consumption_calc_name=temp_result['contribution'].consumption_calc.name,
+                consumption_result=dummy_result,
+                final_consumption=temp_result['consumption_value'],
+                percentage=combined_percentage,
+                renter_id=temp_result['renter_id'],
+                renter_first_name=temp_result['renter_first_name'],
+                renter_last_name=temp_result['renter_last_name'],
+                period_start=temp_result['period_start'],
+                period_end=temp_result['period_end'],
+                # HEATING_MIXED specific fields
+                area_share=temp_result['area_days'],
+                area_percentage_value=area_pct,
+                consumption_share=temp_result['consumption_value'],
+                consumption_percentage_value=consumption_pct
+            ))
+
+        # Berechne Gesamt-m² aller beteiligten Wohnungen
+        total_area = sum(apartment_areas.values())
+
+        return self.CostCenterCalculation(
+            cost_center=self,
+            calculation_period_start=start_date,
+            calculation_period_end=end_date,
+            contribution_results=contribution_results,
+            total_consumption=total_consumption_value,
+            apartment_count=len(apartment_names),
+            total_consumption_unit=total_consumption_unit,
+            total_days=total_days,
+            total_area=total_area
+        )
+
+    def clean(self):
+        """Validierung für HEATING_MIXED"""
+        from django.core.exceptions import ValidationError
+        super().clean() if hasattr(super(), 'clean') else None
+
+        if self.distribution_type == self.DistributionType.HEATING_MIXED:
+            total = self.area_percentage + self.consumption_percentage
+            if total != Decimal('100.00'):
+                raise ValidationError(
+                    _("Area percentage + Consumption percentage must equal 100%% (currently: %(total)s%%)"),
+                    params={'total': total}
+                )

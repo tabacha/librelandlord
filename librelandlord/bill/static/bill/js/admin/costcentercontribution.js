@@ -151,17 +151,47 @@
         }
     }
 
+    function updateHeatingMixedFieldsVisibility(show) {
+        // Zeige/Verstecke die Heizkosten-Einstellungen Fieldset
+        var heatingFieldset = document.querySelector('.module:has(#id_area_percentage)');
+        if (!heatingFieldset) {
+            // Fallback: Suche nach dem Fieldset mit dem Text
+            var fieldsets = document.querySelectorAll('fieldset');
+            for (var i = 0; i < fieldsets.length; i++) {
+                var legend = fieldsets[i].querySelector('h2');
+                if (legend && legend.textContent.indexOf('HEATING_MIXED') !== -1) {
+                    heatingFieldset = fieldsets[i];
+                    break;
+                }
+            }
+        }
+
+        if (heatingFieldset) {
+            if (show) {
+                heatingFieldset.classList.remove('collapsed');
+                heatingFieldset.style.display = '';
+            } else {
+                heatingFieldset.classList.add('collapsed');
+            }
+        }
+    }
+
     function setupCostCenterAdmin() {
         var distributionTypeSelect = document.getElementById('id_distribution_type');
-        
+
         if (!distributionTypeSelect) {
             return;
         }
 
         function updateVisibility() {
             var value = distributionTypeSelect.value;
-            var showConsumptionCalc = (value === 'CONSUMPTION');
+            // CONSUMPTION and HEATING_MIXED both require consumption_calc
+            var showConsumptionCalc = (value === 'CONSUMPTION' || value === 'HEATING_MIXED');
             updateInlineConsumptionCalcVisibility(showConsumptionCalc);
+
+            // Show/hide HEATING_MIXED specific fields
+            var showHeatingMixedFields = (value === 'HEATING_MIXED');
+            updateHeatingMixedFieldsVisibility(showHeatingMixedFields);
         }
 
         // Initial ausführen

@@ -645,6 +645,8 @@
                         </div>
                         {% endif %}
                         {% endfor %}
+                    {% elif summary.cost_center.distribution_type == 'HEATING_MIXED' %}
+                        {% include 'bill/includes/heating_mixed_table.html' with calculation=summary.cost_center_calculation cost_center=summary.cost_center renter_filter_id=renter_filter_id %}
                     {% else %}
                         {% include 'bill/includes/distribution_table.html' with calculation=summary.cost_center_calculation distribution_type=summary.cost_center.distribution_type renter_filter_id=renter_filter_id %}
                     {% endif %}

@@ -814,13 +814,8 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             for rent in rent_periods:
                 # Bestimme den effektiven Zeitraum innerhalb des Jahres
                 period_start = max(rent.start_date, year_start)
-                period_end = min(rent.end_date, year_end) if rent.end_date else year_end
-
-                # Berücksichtige auch Einzug/Auszug des Mieters
-                if renter.move_in_date:
-                    period_start = max(period_start, renter.move_in_date)
-                if renter.move_out_date:
-                    period_end = min(period_end, renter.move_out_date)
+                period_end = min(
+                    rent.end_date, year_end) if rent.end_date else year_end
 
                 if period_start <= period_end:
                     # Anzahl der Monate berechnen (anteilig)
@@ -831,17 +826,20 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                         if current.month == 12:
                             next_month = date(current.year + 1, 1, 1)
                         else:
-                            next_month = date(current.year, current.month + 1, 1)
+                            next_month = date(
+                                current.year, current.month + 1, 1)
                         month_end = next_month - timedelta(days=1)
 
                         # Effektiver Zeitraum in diesem Monat
                         eff_start = max(current, period_start)
                         eff_end = min(month_end, period_end)
 
-                        days_in_month = (month_end - date(current.year, current.month, 1)).days + 1
+                        days_in_month = (
+                            month_end - date(current.year, current.month, 1)).days + 1
                         days_counted = (eff_end - eff_start).days + 1
 
-                        months += decimal.Decimal(days_counted) / decimal.Decimal(days_in_month)
+                        months += decimal.Decimal(days_counted) / \
+                            decimal.Decimal(days_in_month)
                         current = next_month
 
                     amount = months * rent.cold_rent
@@ -866,8 +864,10 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                         'period_start': detail['period_start'],
                         'period_end': detail['period_end']
                     }
-                grouped_details[rent_key]['months'] += decimal.Decimal(str(detail['months']))
-                grouped_details[rent_key]['amount'] += decimal.Decimal(str(detail['amount']))
+                grouped_details[rent_key]['months'] += decimal.Decimal(
+                    str(detail['months']))
+                grouped_details[rent_key]['amount'] += decimal.Decimal(
+                    str(detail['amount']))
                 # Erweitere den Zeitraum
                 if detail['period_start'] < grouped_details[rent_key]['period_start']:
                     grouped_details[rent_key]['period_start'] = detail['period_start']
@@ -925,7 +925,8 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             # Einzelner Mieter
             try:
                 renter = Renter.objects.get(id=renter_id)
-                rent_payments_data = calculate_rent_payments_for_renter(renter, billing_year)
+                rent_payments_data = calculate_rent_payments_for_renter(
+                    renter, billing_year)
                 # Tatsächliche Nebenkosten hinzufügen (aus renter_total)
                 rent_payments_data['actual_costs'] = renter_total
                 # Ergebnis berechnen: Vorauszahlung - tatsächliche Kosten + Anpassungen
@@ -945,18 +946,21 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             active_renters = Renter.objects.filter(
                 move_in_date__lte=year_end
             ).filter(
-                Q(move_out_date__isnull=True) | Q(move_out_date__gte=year_start)
+                Q(move_out_date__isnull=True) | Q(
+                    move_out_date__gte=year_start)
             ).exclude(
                 is_owner_occupied=True
             ).select_related('apartment').order_by('apartment__number', 'last_name')
 
             for renter in active_renters:
-                renter_data = calculate_rent_payments_for_renter(renter, billing_year)
+                renter_data = calculate_rent_payments_for_renter(
+                    renter, billing_year)
                 # Nur hinzufügen wenn es Zahlungen oder Kaltmiete gibt
                 if renter_data['transactions'] or renter_data['cold_rent_details']:
                     # Tatsächliche Nebenkosten aus overall_summary holen
                     actual_costs = overall_summary.get(renter.id, {})
-                    total_costs = sum(actual_costs.values()) if actual_costs else decimal.Decimal('0.00')
+                    total_costs = sum(actual_costs.values(
+                    )) if actual_costs else decimal.Decimal('0.00')
                     renter_data['actual_costs'] = total_costs
                     # Ergebnis berechnen inkl. Anpassungen
                     renter_data['balance'] = (
@@ -1155,10 +1159,15 @@ def costcenter_distribution_type(request, cost_center_id):
 
     try:
         cost_center = CostCenter.objects.get(id=cost_center_id)
+        # CONSUMPTION and HEATING_MIXED both require consumption_calc
+        show_consumption = cost_center.distribution_type in [
+            CostCenter.DistributionType.CONSUMPTION,
+            CostCenter.DistributionType.HEATING_MIXED
+        ]
         return JsonResponse({
             'success': True,
             'distribution_type': cost_center.distribution_type,
-            'show_consumption_calc': cost_center.distribution_type == CostCenter.DistributionType.CONSUMPTION
+            'show_consumption_calc': show_consumption
         })
     except CostCenter.DoesNotExist:
         return JsonResponse({

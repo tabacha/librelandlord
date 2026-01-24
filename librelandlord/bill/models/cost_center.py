@@ -21,7 +21,8 @@ class CostCenter(models.Model):
         TIME = 'TIME', _('By time (days)')
         AREA = 'AREA', _('By area (m²)')
         DIRECT = 'DIRECT', _('Direct assignment (bill period = renter)')
-        HEATING_MIXED = 'HEATING_MIXED', _('Heating (30% area + 70% consumption)')
+        HEATING_MIXED = 'HEATING_MIXED', _(
+            'Heating mixed (area + consumption)')
 
     text = models.CharField(max_length=27, verbose_name=_("Cost Center Text"))
     is_oiltank = models.BooleanField(
@@ -41,7 +42,8 @@ class CostCenter(models.Model):
         null=True,
         blank=True,
         verbose_name=_("Main Meter"),
-        help_text=_("Main meter for consumption-based distribution (used for mid-year tenant changes)")
+        help_text=_(
+            "Main meter for consumption-based distribution (used for mid-year tenant changes)")
     )
     area_percentage = models.DecimalField(
         max_digits=5,
@@ -632,7 +634,8 @@ class CostCenter(models.Model):
                     raise ValueError(
                         "HEATING_MIXED requires consumption_calc for meter reading")
 
-                apartment_area = contribution.apartment.size_in_m2 or Decimal('0')
+                apartment_area = contribution.apartment.size_in_m2 or Decimal(
+                    '0')
                 apartment_areas[contribution.apartment.id] = apartment_area
 
                 # Hole Renter-Perioden
@@ -656,7 +659,8 @@ class CostCenter(models.Model):
                         continue
 
                     adjusted_start = max(period_start, calc_start)
-                    adjusted_end = min(period_end, calc_end) if calc_end else period_end
+                    adjusted_end = min(
+                        period_end, calc_end) if calc_end else period_end
 
                     if adjusted_start >= adjusted_end:
                         continue
@@ -670,7 +674,8 @@ class CostCenter(models.Model):
 
                     # Berechne Flächen-Anteil (m² × Tage)
                     adjusted_period_days = (adjusted_end - adjusted_start).days
-                    area_days = apartment_area * Decimal(str(adjusted_period_days))
+                    area_days = apartment_area * \
+                        Decimal(str(adjusted_period_days))
 
                     apartment_name = contribution.get_display_name()
                     apartment_names.add(apartment_name)
@@ -717,7 +722,8 @@ class CostCenter(models.Model):
         for temp_result in temp_results:
             # Flächenanteil berechnen
             if total_area_days > 0:
-                area_pct = float((temp_result['area_days'] / total_area_days) * 100)
+                area_pct = float(
+                    (temp_result['area_days'] / total_area_days) * 100)
             else:
                 area_pct = 0.0
 

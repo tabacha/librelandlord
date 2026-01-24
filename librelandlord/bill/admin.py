@@ -344,10 +344,11 @@ class CostCenterContributionInline(admin.TabularInline):
 
 
 class CostCenterAdmin(admin.ModelAdmin):
-    list_display = ('text', 'distribution_type', 'is_oiltank')
+    list_display = ('text', 'distribution_type', 'is_oiltank', 'main_meter_place')
     list_filter = ['is_oiltank', 'distribution_type']
     search_fields = ['text']
     ordering = ['text']
+    autocomplete_fields = ['main_meter_place']
     inlines = [CostCenterContributionInline]
 
     class Media:

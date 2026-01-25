@@ -99,9 +99,11 @@ class AccountPeriod(models.Model):
             }
 
             # CostCenterCalculation berechnen
+            # Bei DIRECT werden die Bills übergeben, damit pro Bill der richtige Zeitraum verwendet wird
             cost_center_calculation = cost_center.calculate_total_consumption(
                 start_date=self.start_date,
-                end_date=self.end_date
+                end_date=self.end_date,
+                bills=cost_center_bills
             )
 
             # Summary erstellen

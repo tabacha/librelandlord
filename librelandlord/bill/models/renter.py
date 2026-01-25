@@ -22,11 +22,25 @@ class Renter(models.Model):
     move_in_date = models.DateField(verbose_name=_("Move in on date"))
     move_out_date = models.DateField(
         null=True, blank=True, verbose_name=_("Move out date"))
+    contract_start_date = models.DateField(
+        null=True, blank=True, verbose_name=_("Contract start date"),
+        help_text=_("Start date of the rental contract. Defaults to move-in date if not set."))
+    contract_end_date = models.DateField(
+        null=True, blank=True, verbose_name=_("Contract end date"),
+        help_text=_("End date of the rental contract. Defaults to move-out date if not set."))
     is_owner_occupied = models.BooleanField(
         default=False,
         verbose_name=_("Owner occupied"),
         help_text=_("Check if this unit is occupied by the owner or family members. "
                     "These are not considered rental income for tax purposes."))
+
+    def save(self, *args, **kwargs):
+        # Setze Vertragsdaten auf Einzugs-/Auszugsdatum wenn nicht explizit gesetzt
+        if self.contract_start_date is None:
+            self.contract_start_date = self.move_in_date
+        if self.contract_end_date is None:
+            self.contract_end_date = self.move_out_date
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} {self.apartment}"

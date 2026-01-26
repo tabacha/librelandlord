@@ -82,6 +82,8 @@ class CostCenter(models.Model):
         area_percentage_value: float = 0.0
         consumption_share: Decimal = Decimal('0')
         consumption_percentage_value: float = 0.0
+        # DIRECT: Zugeordnete Bills für diesen Mieter/Leerstand
+        assigned_bills: list = None
 
     class CostCenterCalculation(NamedTuple):
         """Gesamtberechnung eines CostCenters"""
@@ -536,122 +538,116 @@ class CostCenter(models.Model):
                 )
 
             apartment_name = contribution.get_display_name()
-            validated_renter = None
-            validated_renter_id = None
-            overall_start = None
-            overall_end = None
 
-            # Wenn Bills übergeben wurden, validiere dass der gleiche Mieter alle Bills abdeckt
+            # Wenn Bills übergeben wurden, gruppiere nach Mieter/Leerstand basierend auf Bill-Zeitraum
             if bills:
+                # Hole alle Perioden für den gesamten Abrechnungszeitraum
+                all_periods = contribution.apartment.get_renters_for_period(
+                    start_date=start_date,
+                    end_date=end_date,
+                    use_contract_dates=True
+                )
+
+                # Gruppiere Bills nach Mieter-ID (None für Leerstand)
+                # Speichere den tatsächlichen Periodenzeitraum, nicht den Bill-Zeitraum
+                renter_bills = {}  # renter_id -> {'renter': renter, 'bills': [...], 'period_start': date, 'period_end': date}
+
                 for bill in bills:
                     bill_start = bill.from_date
                     bill_end = bill.to_date
                     bill_info = f"'{bill.text}' ({bill.bill_date}, {bill.value}€, Zeitraum: {bill_start} - {bill_end})"
 
-                    # Verwende Vertragsdaten für DIRECT-Berechnung
-                    periods = contribution.apartment.get_renters_for_period(
-                        start_date=bill_start,
-                        end_date=bill_end,
-                        use_contract_dates=True
+                    # Finde die Periode(n), in die diese Bill fällt
+                    matching_periods = [
+                        p for p in all_periods
+                        if p['start_date'] <= bill_start and p['end_date'] >= bill_end
+                    ]
+
+                    if len(matching_periods) == 0:
+                        # Bill-Zeitraum liegt außerhalb oder überlappt mehrere Perioden
+                        # Fallback: Prüfe mit dem Bill-Zeitraum direkt
+                        periods = contribution.apartment.get_renters_for_period(
+                            start_date=bill_start,
+                            end_date=bill_end,
+                            use_contract_dates=True
+                        )
+                        if len(periods) > 1:
+                            period_info = ", ".join([
+                                f"{p['renter'].first_name} {p['renter'].last_name} ({p['start_date']} - {p['end_date']})"
+                                if p.get('renter') else f"Leerstand ({p['start_date']} - {p['end_date']})"
+                                for p in periods
+                            ])
+                            raise ValueError(
+                                f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
+                                f"  Bill: {bill_info}\n"
+                                f"  Fehler: Mehrere Perioden im Rechnungszeitraum (Aufteilung nicht möglich)\n"
+                                f"  Gefundene Perioden: {period_info}"
+                            )
+                        matching_periods = periods
+
+                    if len(matching_periods) != 1:
+                        raise ValueError(
+                            f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
+                            f"  Bill: {bill_info}\n"
+                            f"  Fehler: Keine eindeutige Periode gefunden"
+                        )
+
+                    # Es gibt genau eine passende Periode
+                    period = matching_periods[0]
+                    current_renter = period.get('renter')
+                    current_renter_id = period.get('renter_id')
+
+                    # Gruppiere Bill nach Mieter-ID mit dem tatsächlichen Periodenzeitraum
+                    if current_renter_id not in renter_bills:
+                        renter_bills[current_renter_id] = {
+                            'renter': current_renter,
+                            'bills': [],
+                            'period_start': period['start_date'],
+                            'period_end': period['end_date']
+                        }
+                    renter_bills[current_renter_id]['bills'].append(bill)
+
+                # Erstelle einen Eintrag pro Mieter/Leerstand
+                for renter_id, data in renter_bills.items():
+                    consumption_value = Decimal('1')
+                    apartment_names.add(apartment_name)
+                    renter = data['renter']
+
+                    dummy_result = ConsumptionCalc.ConsumptionResult(
+                        consumption_calc=None,
+                        calculation_period_start=data['period_start'],
+                        calculation_period_end=data['period_end'],
+                        argument_results=[],
+                        final_result=consumption_value,
+                        calculation_steps=[
+                            ConsumptionCalc.CalculationStep(
+                                step_type="result",
+                                description="Direkte Zuordnung",
+                                operand1=None,
+                                operator=None,
+                                operand2=None,
+                                result=consumption_value,
+                                argument_name=None,
+                                source_details=None,
+                                unit="Anteil"
+                            )
+                        ]
                     )
 
-                    # Prüfe auf Leerstand
-                    vacancy_periods = [p for p in periods if p.get('renter_id') is None]
-                    if vacancy_periods:
-                        vacancy_info = ", ".join([
-                            f"{p['start_date']} - {p['end_date']}"
-                            for p in vacancy_periods
-                        ])
-                        raise ValueError(
-                            f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
-                            f"  Bill: {bill_info}\n"
-                            f"  Fehler: Leerstand im Rechnungszeitraum ({vacancy_info})"
-                        )
+                    temp_results.append({
+                        'contribution': contribution,
+                        'apartment_name': apartment_name,
+                        'consumption_result': dummy_result,
+                        'final_consumption': consumption_value,
+                        'renter_id': renter_id,
+                        'renter_first_name': renter.first_name if renter else None,
+                        'renter_last_name': renter.last_name if renter else None,
+                        'period_start': data['period_start'],
+                        'period_end': data['period_end'],
+                        'assigned_bills': data['bills']  # Bills für diesen Mieter/Leerstand
+                    })
 
-                    # Filtere nur Mieter-Perioden
-                    renter_periods = [p for p in periods if p.get('renter_id') is not None]
-
-                    if not renter_periods:
-                        raise ValueError(
-                            f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
-                            f"  Bill: {bill_info}\n"
-                            f"  Fehler: Kein Mieter im Rechnungszeitraum"
-                        )
-
-                    if len(renter_periods) > 1:
-                        renter_info = ", ".join([
-                            f"{p['renter'].first_name} {p['renter'].last_name} ({p['start_date']} - {p['end_date']})"
-                            for p in renter_periods
-                        ])
-                        raise ValueError(
-                            f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
-                            f"  Bill: {bill_info}\n"
-                            f"  Fehler: Mieterwechsel im Rechnungszeitraum\n"
-                            f"  Gefundene Mieter: {renter_info}"
-                        )
-
-                    # Mieter für diese Bill
-                    period = renter_periods[0]
-                    current_renter = period['renter']
-                    current_renter_id = period['renter_id']
-
-                    # Prüfe ob der gleiche Mieter wie bei vorherigen Bills
-                    if validated_renter_id is None:
-                        validated_renter = current_renter
-                        validated_renter_id = current_renter_id
-                        overall_start = bill_start
-                        overall_end = bill_end
-                    elif validated_renter_id != current_renter_id:
-                        raise ValueError(
-                            f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
-                            f"  Bill: {bill_info}\n"
-                            f"  Fehler: Verschiedene Mieter für verschiedene Bills\n"
-                            f"  Erwartet: {validated_renter.first_name} {validated_renter.last_name}\n"
-                            f"  Gefunden: {current_renter.first_name} {current_renter.last_name}"
-                        )
-                    else:
-                        # Erweitere den Gesamtzeitraum
-                        overall_start = min(overall_start, bill_start)
-                        overall_end = max(overall_end, bill_end)
-
-                # Nach Validierung aller Bills: EIN Eintrag pro Wohnung
-                consumption_value = Decimal('1')
-                apartment_names.add(apartment_name)
-
-                dummy_result = ConsumptionCalc.ConsumptionResult(
-                    consumption_calc=None,
-                    calculation_period_start=overall_start,
-                    calculation_period_end=overall_end,
-                    argument_results=[],
-                    final_result=consumption_value,
-                    calculation_steps=[
-                        ConsumptionCalc.CalculationStep(
-                            step_type="result",
-                            description="Direkte Zuordnung",
-                            operand1=None,
-                            operator=None,
-                            operand2=None,
-                            result=consumption_value,
-                            argument_name=None,
-                            source_details=None,
-                            unit="Anteil"
-                        )
-                    ]
-                )
-
-                temp_results.append({
-                    'contribution': contribution,
-                    'apartment_name': apartment_name,
-                    'consumption_result': dummy_result,
-                    'final_consumption': consumption_value,
-                    'renter_id': validated_renter_id,
-                    'renter_first_name': validated_renter.first_name,
-                    'renter_last_name': validated_renter.last_name,
-                    'period_start': overall_start,
-                    'period_end': overall_end
-                })
-
-                total_consumption += consumption_value
+                    total_consumption += consumption_value
             else:
                 # Fallback: Verwende start_date/end_date wenn keine Bills übergeben
                 # Verwende Vertragsdaten für DIRECT-Berechnung
@@ -661,45 +657,25 @@ class CostCenter(models.Model):
                     use_contract_dates=True
                 )
 
-                # Prüfe auf Leerstand
-                vacancy_periods = [p for p in periods if p.get('renter_id') is None]
-                if vacancy_periods:
-                    vacancy_info = ", ".join([
-                        f"{p['start_date']} - {p['end_date']}"
-                        for p in vacancy_periods
-                    ])
-                    raise ValueError(
-                        f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
-                        f"  Zeitraum: {start_date} - {end_date}\n"
-                        f"  Fehler: Leerstand im Zeitraum ({vacancy_info})"
-                    )
-
-                # Filtere nur Mieter-Perioden
-                renter_periods = [p for p in periods if p.get('renter_id') is not None]
-
-                if not renter_periods:
-                    raise ValueError(
-                        f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
-                        f"  Zeitraum: {start_date} - {end_date}\n"
-                        f"  Fehler: Kein Mieter im Zeitraum"
-                    )
-
-                if len(renter_periods) > 1:
-                    renter_info = ", ".join([
+                # Prüfe ob es mehrere Perioden gibt (Mieterwechsel oder Leerstand-Wechsel)
+                # Nur dann ist eine Aufteilung nötig, die bei DIRECT nicht möglich ist
+                if len(periods) > 1:
+                    period_info = ", ".join([
                         f"{p['renter'].first_name} {p['renter'].last_name} ({p['start_date']} - {p['end_date']})"
-                        for p in renter_periods
+                        if p.get('renter') else f"Leerstand ({p['start_date']} - {p['end_date']})"
+                        for p in periods
                     ])
                     raise ValueError(
                         f"DIRECT-Zuordnung fehlgeschlagen für '{apartment_name}':\n"
                         f"  Zeitraum: {start_date} - {end_date}\n"
-                        f"  Fehler: Mieterwechsel im Zeitraum\n"
-                        f"  Gefundene Mieter: {renter_info}"
+                        f"  Fehler: Mehrere Perioden im Zeitraum (Aufteilung nicht möglich)\n"
+                        f"  Gefundene Perioden: {period_info}"
                     )
 
-                # Genau ein Mieter - 100% Zuordnung
-                period = renter_periods[0]
-                renter = period['renter']
-                renter_id = period['renter_id']
+                # Genau eine Periode (Mieter oder Leerstand) - 100% Zuordnung
+                period = periods[0] if periods else None
+                renter = period.get('renter') if period else None
+                renter_id = period.get('renter_id') if period else None
 
                 consumption_value = Decimal('1')
                 apartment_names.add(apartment_name)
@@ -731,10 +707,10 @@ class CostCenter(models.Model):
                     'consumption_result': dummy_result,
                     'final_consumption': consumption_value,
                     'renter_id': renter_id,
-                    'renter_first_name': renter.first_name,
-                    'renter_last_name': renter.last_name,
-                    'period_start': period['start_date'],
-                    'period_end': period['end_date']
+                    'renter_first_name': renter.first_name if renter else None,
+                    'renter_last_name': renter.last_name if renter else None,
+                    'period_start': period['start_date'] if period else start_date,
+                    'period_end': period['end_date'] if period else end_date
                 })
 
                 total_consumption += consumption_value
@@ -755,7 +731,8 @@ class CostCenter(models.Model):
                 renter_first_name=temp_result['renter_first_name'],
                 renter_last_name=temp_result['renter_last_name'],
                 period_start=temp_result['period_start'],
-                period_end=temp_result['period_end']
+                period_end=temp_result['period_end'],
+                assigned_bills=temp_result.get('assigned_bills')
             ))
 
         return self.CostCenterCalculation(

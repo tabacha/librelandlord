@@ -1,0 +1,56 @@
+/**
+ * LibreLandlord - Gemeinsame Print-Styles
+ *
+ * Basis-Styles für den Druck, die von mehreren Templates verwendet werden.
+ */
+
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Elemente ausblenden */
+    .no-print {
+        display: none !important;
+    }
+
+    /* Tabellen */
+    .data-table,
+    .meter-readings-table,
+    .overall-table,
+    .bills-table {
+        page-break-inside: auto;
+    }
+
+    .data-table tr,
+    .meter-readings-table tr,
+    .overall-table tr,
+    .bills-table tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .data-table thead,
+    .meter-readings-table thead,
+    .overall-table thead,
+    .bills-table thead {
+        display: table-header-group;
+    }
+
+    /* Links nicht als URLs drucken */
+    a[href]:after {
+        content: none !important;
+    }
+
+    /* Schatten entfernen */
+    .summary-card,
+    .house-section,
+    .cost-center,
+    .apartment-item {
+        box-shadow: none !important;
+    }
+}

@@ -1,0 +1,178 @@
+/**
+ * LibreLandlord - Gemeinsame Basis-Styles
+ *
+ * Diese Datei enthält grundlegende Styles, die von mehreren Templates verwendet werden.
+ */
+
+/* ===========================================
+   Grundlegende Typografie und Layout
+   =========================================== */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    line-height: 1.6;
+    background-color: #f5f5f5;
+}
+
+/* ===========================================
+   Header
+   =========================================== */
+
+.header {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    margin: 0 0 10px 0;
+}
+
+.header p {
+    margin: 0;
+}
+
+/* ===========================================
+   Summary Cards (Grid-Layout)
+   =========================================== */
+
+.summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.summary-card {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.summary-card h3 {
+    margin: 0 0 10px 0;
+    color: #1976d2;
+}
+
+/* ===========================================
+   Tabellen - Basis-Styles
+   =========================================== */
+
+.data-table,
+.meter-readings-table,
+.overall-table,
+.bills-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.data-table th,
+.data-table td,
+.meter-readings-table th,
+.meter-readings-table td,
+.overall-table th,
+.overall-table td,
+.bills-table th,
+.bills-table td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.data-table th,
+.meter-readings-table th,
+.overall-table th,
+.bills-table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    color: #333;
+}
+
+.data-table tr:nth-child(even),
+.meter-readings-table tr:nth-child(even),
+.overall-table tr:nth-child(even),
+.bills-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.data-table tr:hover,
+.meter-readings-table tr:hover,
+.overall-table tr:hover,
+.bills-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* ===========================================
+   Tabellen - Zellen-Typen
+   =========================================== */
+
+.number-cell {
+    text-align: right !important;
+    font-family: 'Courier New', monospace;
+}
+
+.consumption-cell {
+    text-align: right !important;
+    font-weight: bold;
+    color: #2e7d32;
+    font-family: monospace;
+}
+
+.calc-cell {
+    font-family: monospace;
+}
+
+.total-cell {
+    font-weight: bold;
+    background-color: #e8f5e9;
+}
+
+/* ===========================================
+   Beträge und Werte
+   =========================================== */
+
+.amount {
+    font-weight: bold;
+    color: #2e7d32;
+}
+
+.date-range {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.percentage {
+    font-size: 0.85em;
+    color: #666;
+}
+
+/* ===========================================
+   Utility-Klassen
+   =========================================== */
+
+.no-data {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+}
+
+/* ===========================================
+   Links
+   =========================================== */
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #1976d2;
+    text-decoration: none;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}

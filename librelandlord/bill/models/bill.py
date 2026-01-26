@@ -25,5 +25,10 @@ class Bill(models.Model):
         verbose_name=_("Paperless ID"),
         help_text=_("ID des Dokuments in Paperless-NGX"))
 
+    show_in_tax_overview = models.BooleanField(
+        default=True,
+        verbose_name=_("Show in tax overview"),
+        help_text=_("If checked, this bill will appear in the tax overview for the landlord."))
+
     def __str__(self):
         return f"{self.bill_date} {self.text} {self.value}"

@@ -24,6 +24,8 @@ urlpatterns = [
          views.yearly_calculation, name="yearly_calculation"),
     path("yearly-calculation/<int:billing_year>/renter/<int:renter_id>/",
          views.yearly_calculation, name="yearly_calculation_renter"),
+    path("tax-overview/<int:billing_year>/",
+         views.tax_overview, name="tax_overview"),
     path("meter-readings-input/", views.meter_readings_input,
          name="meter_readings_input"),
     path("meter-readings-save-single/", views.meter_readings_save_single,

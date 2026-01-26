@@ -208,6 +208,21 @@ class RenterAdmin(admin.ModelAdmin):
 admin.site.register(models.Renter, RenterAdmin)
 
 
+class RenterNoticeAdmin(admin.ModelAdmin):
+    list_display = ('title', 'billing_year', 'renter_count', 'created_at')
+    list_filter = ['billing_year']
+    search_fields = ['title', 'body']
+    filter_horizontal = ['renters']
+    ordering = ['-billing_year', 'title']
+
+    def renter_count(self, obj):
+        return obj.renters.count()
+    renter_count.short_description = 'Mieter'
+
+
+admin.site.register(models.RenterNotice, RenterNoticeAdmin)
+
+
 class BillTransactionLinkInline(admin.TabularInline):
     """Inline für Transaction-Links bei Bill (zeigt verknüpfte Banktransaktionen)"""
     model = models.TransactionBillLink

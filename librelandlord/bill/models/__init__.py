@@ -16,6 +16,7 @@ from .meter import Meter
 from .meter_place import MeterPlace
 from .meter_reading import MeterReading
 from .renter import Renter
+from .renter_notice import RenterNotice
 from .rent_payment import RentPayment
 from .transaction_bill_link import TransactionBillLink
 from .yearly_adjustment import YearlyAdjustment

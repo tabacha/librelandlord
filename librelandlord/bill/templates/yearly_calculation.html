@@ -1,3 +1,4 @@
+{% load markdown_extras %}
 <!DOCTYPE html>
 <html lang="de">
 
@@ -73,6 +74,24 @@
             .header p {
                 margin: 0;
                 font-size: 8pt;
+            }
+
+            .renter-notice {
+                margin-bottom: 10px;
+            }
+
+            .renter-notice h3 {
+                margin: 10px 0 5px 0;
+                font-size: 9pt;
+            }
+
+            .renter-notice .notice-body {
+                font-size: 8pt;
+                line-height: 1.4;
+            }
+
+            .renter-notice .notice-body p {
+                margin: 0 0 5px 0;
             }
 
             .cost-center-header {
@@ -216,6 +235,31 @@
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 20px;
+        }
+
+        /* Hinweise für Mieter - Brief-Stil */
+        .renter-notice {
+            margin-bottom: 20px;
+            padding: 0;
+        }
+
+        .renter-notice h3 {
+            margin: 20px 0 10px 0;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .renter-notice .notice-body {
+            line-height: 1.6;
+        }
+
+        .renter-notice .notice-body p {
+            margin: 0 0 10px 0;
+            text-align: justify;
+        }
+
+        .renter-notice .notice-body p:last-child {
+            margin-bottom: 0;
         }
 
         .summary {
@@ -748,6 +792,18 @@
         <p>{{ period_count }} Abrechnungsperiode{% if period_count != 1 %}n{% endif %}</p>
         {% endif %}
     </div>
+
+    {% if renter_notices %}
+    <!-- Hinweise für Mieter -->
+    {% for notice in renter_notices %}
+    <div class="renter-notice">
+        <h3>{{ notice.title }}</h3>
+        <div class="notice-body">
+            {{ notice.body|markdown }}
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
 
     {% if not renter_filter_id %}
     <!-- Übersicht - nur für Vermieter sichtbar -->

@@ -1,0 +1,591 @@
+/**
+ * LibreLandlord - Yearly Calculation Styles
+ *
+ * Spezifische Styles für die Jahresabrechnung (yearly_calculation.html)
+ */
+
+/* ===========================================
+   DIN 5008 Druck-Layout für Geschäftsbriefe
+   Flow-basiert mit festen Höhen
+   =========================================== */
+
+/* Seitenformat nach DIN 5008 */
+@page {
+    size: A4;
+    margin: 10mm 20mm 20mm 25mm; /* oben rechts unten links */
+}
+
+@media print {
+    body {
+        font-size: 10pt;
+        line-height: 1.5;
+    }
+
+    /* ===== DIN 5008 Briefkopf - Flow-basiert ===== */
+
+    .din5008-header {
+        display: block !important;
+    }
+
+    /* Absenderzeile - 17mm hoch (27mm - 10mm page margin) */
+    .din5008-sender-line {
+        height: 17mm;
+        padding-top: 14mm;
+        font-size: 8pt;
+        color: #333;
+        border-bottom: 0.5pt solid #333;
+        box-sizing: border-box;
+    }
+
+    /* Kopfbereich mit Adresse links und Info rechts */
+    .din5008-head-row {
+        display: flex;
+        height: 45mm;
+        box-sizing: border-box;
+    }
+
+    /* Anschriftsfeld links - 85mm breit, 45mm hoch */
+    .din5008-address-field {
+        width: 85mm;
+        height: 45mm;
+        font-size: 11pt;
+        line-height: 1.4;
+        padding-top: 5mm;
+        box-sizing: border-box;
+    }
+
+    /* Informationsblock rechts */
+    .din5008-info-block {
+        flex: 1;
+        height: 45mm;
+        font-size: 9pt;
+        text-align: right;
+        padding-top: 5mm;
+        box-sizing: border-box;
+    }
+
+    .din5008-info-block table {
+        margin-left: auto;
+        border-collapse: collapse;
+    }
+
+    .din5008-info-block td {
+        padding: 1mm 0;
+        vertical-align: top;
+    }
+
+    .din5008-info-block .info-label {
+        color: #666;
+        font-size: 8pt;
+        padding-right: 5mm;
+        text-align: left;
+    }
+
+    .din5008-info-block .info-value {
+        font-size: 9pt;
+        text-align: right;
+    }
+
+    /* Betreffzeile - Abstand nach Kopfbereich */
+    .din5008-subject {
+        margin-top: 10mm;
+        font-weight: bold;
+        font-size: 12pt;
+        margin-bottom: 8mm;
+    }
+
+    /* Bildschirm-Briefkopf ausblenden */
+    .letter-header {
+        display: none !important;
+    }
+
+    /* ===== Allgemeine Print-Styles ===== */
+
+    .summary {
+        display: none !important;
+    }
+
+    .consumption-summary {
+        display: none !important;
+    }
+
+    /* Header (Titel) im Druck */
+    .header {
+        display: none !important;
+    }
+
+    /* Hinweise */
+    .renter-notice {
+        margin-bottom: 5mm;
+        page-break-inside: avoid;
+    }
+
+    .renter-notice h3 {
+        margin: 5mm 0 2mm 0;
+        font-size: 10pt;
+        font-weight: bold;
+    }
+
+    .renter-notice .notice-body {
+        font-size: 10pt;
+        line-height: 1.5;
+    }
+
+    .renter-notice .notice-body p {
+        margin: 0 0 3mm 0;
+        text-align: justify;
+    }
+
+    /* Kostenstellen */
+    .cost-center {
+        page-break-inside: auto;
+        break-inside: auto;
+        margin-bottom: 5mm;
+        border: 0.5pt solid #ccc;
+        border-radius: 0;
+    }
+
+    .cost-center-header {
+        padding: 2mm 3mm;
+        font-size: 10pt;
+        font-weight: bold;
+        background: #f0f0f0 !important;
+        color: #000 !important;
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    .cost-center-content {
+        padding: 3mm;
+    }
+
+    .section-title {
+        margin-bottom: 2mm;
+        margin-top: 3mm;
+        font-size: 9pt;
+        font-weight: bold;
+        padding-bottom: 1mm;
+        border-bottom: 0.5pt solid #ccc;
+    }
+
+    /* Tabellen */
+    .meter-readings-table {
+        margin: 2mm 0;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .meter-readings-table th,
+    .meter-readings-table td {
+        padding: 1mm 2mm;
+        font-size: 8pt;
+    }
+
+    .apartment-item {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        margin-bottom: 3mm;
+    }
+
+    .apartment-header {
+        padding: 1.5mm 3mm;
+        font-size: 9pt;
+        background: #e0e0e0 !important;
+        color: #000 !important;
+    }
+
+    .apartment-content {
+        padding: 2mm 3mm;
+    }
+
+    .apartment-content h4 {
+        margin: 0 0 2mm 0;
+        font-size: 9pt;
+    }
+
+    .apartment-content h5 {
+        margin: 2mm 0 1mm 0;
+        font-size: 8pt;
+    }
+
+    .calculation-step {
+        padding: 1mm 2mm;
+        margin: 1mm 0;
+        font-size: 8pt;
+    }
+
+    .meter-readings-section {
+        margin-bottom: 2mm;
+    }
+
+    .bills-section {
+        margin-bottom: 3mm;
+    }
+
+    .bills-section .section-title {
+        margin-bottom: 1mm;
+    }
+
+    .consumption-section {
+        margin-bottom: 2mm;
+    }
+
+    .section-group {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        margin-top: 3mm !important;
+    }
+
+    .section-group .section-title {
+        margin-top: 2mm !important;
+    }
+
+    .section-group .meter-readings-table {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .section-title {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    /* Gesamtübersicht */
+    .overall-summary {
+        page-break-before: auto;
+        margin-top: 5mm;
+        border: 1pt solid #4caf50;
+        border-radius: 0;
+    }
+
+    .overall-summary-header {
+        padding: 2mm 3mm;
+        font-size: 10pt;
+        font-weight: bold;
+        background: #4caf50 !important;
+        color: white !important;
+    }
+
+    .overall-summary-content {
+        padding: 3mm;
+    }
+
+    .overall-table th,
+    .overall-table td {
+        padding: 1.5mm 2mm;
+        font-size: 8pt;
+    }
+
+    /* Kompaktere Darstellung für Zählerstand-Erklärungen */
+    .section-group > div[style*="background: #fff3cd"] {
+        font-size: 8pt;
+        padding: 2mm 3mm;
+    }
+
+    .section-group > div[style*="background: #fff3cd"] ul {
+        margin: 1mm 0;
+        padding-left: 5mm;
+    }
+
+    .section-group > div[style*="background: #fff3cd"] li {
+        margin-bottom: 1mm;
+    }
+}
+
+/* ===========================================
+   Bildschirm-Styles
+   =========================================== */
+
+/* DIN 5008 Header nur beim Druck */
+.din5008-header {
+    display: none;
+}
+
+/* Header-Erweiterung für Jahresabrechnung */
+.header {
+    background: linear-gradient(135deg, #1976d2, #1565c0);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.header h1 {
+    color: white;
+}
+
+.header p {
+    opacity: 0.9;
+}
+
+/* Summary Cards - Erweiterung */
+.summary-card {
+    background: #e3f2fd;
+}
+
+.summary-card .amount {
+    font-size: 1.5em;
+}
+
+/* Hinweise für Mieter - Brief-Stil */
+.renter-notice {
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+.renter-notice h3 {
+    margin: 20px 0 10px 0;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.renter-notice .notice-body {
+    line-height: 1.6;
+}
+
+.renter-notice .notice-body p {
+    margin: 0 0 10px 0;
+    text-align: justify;
+}
+
+.renter-notice .notice-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* ===========================================
+   Kostenstellen
+   =========================================== */
+
+.cost-center {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+
+.cost-center-header {
+    background: #2196f3;
+    color: white;
+    padding: 15px 20px;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.cost-center-content {
+    padding: 20px;
+}
+
+/* ===========================================
+   Sections
+   =========================================== */
+
+.bills-section,
+.consumption-section {
+    margin-bottom: 25px;
+}
+
+.section-title {
+    color: #333;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+.bills-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.bill-item {
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 4px solid #4caf50;
+}
+
+.bill-meta {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 5px;
+}
+
+.consumption-summary {
+    background: #fff3e0;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+/* ===========================================
+   Apartment Items
+   =========================================== */
+
+.apartment-item {
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+
+.apartment-header {
+    background: #ff9800;
+    color: white;
+    padding: 10px 15px;
+    font-weight: bold;
+}
+
+.apartment-content {
+    padding: 15px;
+}
+
+/* ===========================================
+   Berechnungsschritte
+   =========================================== */
+
+.calculation-step {
+    background: #fafafa;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin: 5px 0;
+    font-family: monospace;
+    font-size: 0.9em;
+    text-align: right;
+}
+
+.step-result {
+    font-weight: bold;
+}
+
+.calculation-grid {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.calculation-label {
+    font-weight: bold;
+}
+
+.calculation-equation {
+    font-family: monospace;
+}
+
+.calculation-result {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #2e7d32;
+    text-align: right;
+}
+
+/* ===========================================
+   Zählerstände Tabelle - Erweiterungen
+   =========================================== */
+
+.meter-readings-table {
+    margin: 15px 0;
+}
+
+span.consumption-cell {
+    margin-left: 10%;
+    font-size: 12pt;
+}
+
+/* ===========================================
+   Gesamtübersicht
+   =========================================== */
+
+.overall-summary {
+    background: white;
+    border: 3px solid #4caf50;
+    border-radius: 8px;
+    margin-top: 40px;
+    overflow: hidden;
+}
+
+.overall-summary-header {
+    background: #4caf50;
+    color: white;
+    padding: 20px;
+    font-size: 1.4em;
+    font-weight: bold;
+    text-align: center;
+}
+
+.overall-summary-content {
+    padding: 20px;
+    overflow-x: auto;
+}
+
+.overall-table {
+    font-size: 0.9em;
+}
+
+.overall-table th,
+.overall-table td {
+    padding: 10px 8px;
+    text-align: right;
+}
+
+.overall-table th {
+    background-color: #e8f5e9;
+}
+
+.overall-table th:first-child,
+.overall-table td:first-child {
+    text-align: left;
+    font-weight: bold;
+}
+
+.overall-table tfoot tr {
+    background-color: #e8f5e9 !important;
+    font-weight: bold;
+}
+
+.overall-table .total-cell {
+    background-color: #c8e6c9;
+    font-weight: bold;
+}
+
+.overall-table .grand-total {
+    background-color: #4caf50;
+    color: white;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+/* ===========================================
+   Briefkopf und Anschriftsfeld - Bildschirm
+   =========================================== */
+
+.letter-header {
+    margin-bottom: 20px;
+}
+
+.sender-info {
+    font-size: 0.75em;
+    color: #666;
+    border-bottom: 1px solid #666;
+    padding-bottom: 2px;
+    margin-bottom: 5px;
+}
+
+.address-field {
+    min-height: 100px;
+    margin-bottom: 20px;
+}
+
+.address-field .recipient {
+    font-size: 1em;
+    line-height: 1.4;
+}
+
+.letter-date {
+    text-align: right;
+    margin-bottom: 15px;
+}

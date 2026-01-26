@@ -787,6 +787,22 @@
         </div>
     </div>
 
+    {% if renter_notices %}
+    <!-- Hinweise für Mieter -->
+    {% for notice in renter_notices %}
+    <div class="overall-summary" style="margin-top: 30px; border-color: #ff9800;">
+        <div class="overall-summary-header" style="background: #ff9800;">
+            {{ notice.title }}
+        </div>
+        <div class="overall-summary-content">
+            <div class="notice-body">
+                {{ notice.body|linebreaks }}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
     {% if renter_filter_id and rent_payments_data %}
     <!-- Mietzahlungen und Nebenkostenberechnung - Einzelner Mieter -->
     <div class="overall-summary" style="margin-top: 30px; border-color: #2196f3;">

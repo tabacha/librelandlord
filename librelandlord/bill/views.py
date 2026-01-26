@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import os
 
-from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace, Landlord, Apartment, CostCenter, BankTransaction, RentPayment, YearlyAdjustment
+from .models import Renter, HeatingInfo, MeterReading, Meter, HeatingInfoTemplate, ConsumptionCalc, CostCenterContribution, AccountPeriod, MeterPlace, Landlord, Apartment, CostCenter, BankTransaction, RentPayment, YearlyAdjustment, RenterNotice
 from weasyprint import HTML
 from django.conf import settings
 from django.db.models import Q
@@ -1092,6 +1092,14 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
         # Vermieterdaten laden
         landlord = Landlord.get_instance()
 
+        # Hinweise für Mieter laden
+        renter_notices = []
+        if renter_id is not None:
+            renter_notices = RenterNotice.objects.filter(
+                billing_year=billing_year,
+                renters__id=renter_id
+            ).order_by('title')
+
         context = {
             'billing_year': billing_year,
             'all_period_calculations': all_period_calculations,
@@ -1113,6 +1121,8 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             # Mietzahlungen und Kaltmiete
             'rent_payments_data': rent_payments_data,
             'all_renters_payments': all_renters_payments,
+            # Hinweise für Mieter
+            'renter_notices': renter_notices,
         }
 
         return render(request, 'yearly_calculation.html', context)

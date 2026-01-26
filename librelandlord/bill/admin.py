@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.conf import settings
 # Register your models here.
 
 from . import models
@@ -278,7 +279,7 @@ class BillAdmin(admin.ModelAdmin):
             }),
         ]
         # Paperless-Feld nur anzeigen wenn PAPERLESS_BASE_URL gesetzt ist
-        if os.environ.get('PAPERLESS_BASE_URL'):
+        if settings.PAPERLESS_BASE_URL:
             fieldsets.append(('Paperless', {
                 'fields': ('paperless_id', 'paperless_link', 'paperless_preview'),
                 'classes': ('collapse',)
@@ -286,30 +287,25 @@ class BillAdmin(admin.ModelAdmin):
         return fieldsets
 
     def get_readonly_fields(self, request, obj=None):
-        import os
         readonly = list(super().get_readonly_fields(request, obj))
-        if os.environ.get('PAPERLESS_BASE_URL'):
+        if settings.PAPERLESS_BASE_URL:
             readonly.extend(['paperless_link', 'paperless_preview'])
         return readonly
 
     def paperless_link(self, obj):
         """Zeigt Link zu Paperless-NGX Dokument"""
-        import os
         from django.utils.html import format_html
-        base_url = os.environ.get('PAPERLESS_BASE_URL', '').rstrip('/')
-        if obj.paperless_id and base_url:
-            url = f"{base_url}/documents/{obj.paperless_id}/details"
+        if obj.paperless_id and settings.PAPERLESS_BASE_URL:
+            url = f"{settings.PAPERLESS_BASE_URL}/documents/{obj.paperless_id}/details"
             return format_html('<a href="{}" target="_blank">📄 In Paperless öffnen</a>', url)
         return '-'
     paperless_link.short_description = 'Paperless Link'
 
     def paperless_preview(self, obj):
         """Zeigt Link zur Paperless-NGX PDF Vorschau"""
-        import os
         from django.utils.html import format_html
-        base_url = os.environ.get('PAPERLESS_BASE_URL', '').rstrip('/')
-        if obj.paperless_id and base_url:
-            url = f"{base_url}/api/documents/{obj.paperless_id}/preview/"
+        if obj.paperless_id and settings.PAPERLESS_BASE_URL:
+            url = f"{settings.PAPERLESS_BASE_URL}/api/documents/{obj.paperless_id}/preview/"
             return format_html('<a href="{}" target="_blank">👁️ PDF Vorschau</a>', url)
         return '-'
     paperless_preview.short_description = 'Vorschau'

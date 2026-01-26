@@ -1,10 +1,14 @@
 {% extends "admin/base_site.html" %}
-{% load i18n static %}
+{% load i18n static compress %}
 
 {% block extrahead %}
 {{ block.super }}
+{% compress css %}
 <link rel="stylesheet" href="{% static 'bill/css/admin/admin-dashboard.css' %}">
+{% endcompress %}
+{% compress js %}
 <script src="{% static 'bill/js/admin/admin-dashboard.js' %}"></script>
+{% endcompress %}
 {% endblock %}
 
 {% block branding %}

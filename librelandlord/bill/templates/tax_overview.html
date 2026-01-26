@@ -1,4 +1,5 @@
 {% load static %}
+{% load compress %}
 <!DOCTYPE html>
 <html lang="de">
 
@@ -6,10 +7,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Steuerübersicht {{ billing_year }}</title>
-    <!-- CSS Dateien -->
+    {% compress css %}
     <link rel="stylesheet" href="{% static 'bill/css/base.css' %}">
     <link rel="stylesheet" href="{% static 'bill/css/print-base.css' %}">
     <link rel="stylesheet" href="{% static 'bill/css/tax-overview.css' %}">
+    {% endcompress %}
 </head>
 
 <body>

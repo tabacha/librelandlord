@@ -284,9 +284,11 @@ class CostCenter(models.Model):
         for contribution in contributions:
             try:
                 if contribution.apartment:
+                    # Verwende Vertragsdaten für TIME-Berechnung
                     periods = contribution.apartment.get_renters_for_period(
                         start_date=start_date,
-                        end_date=end_date
+                        end_date=end_date,
+                        use_contract_dates=True
                     )
                 else:
                     periods = [{
@@ -546,9 +548,11 @@ class CostCenter(models.Model):
                     bill_end = bill.to_date
                     bill_info = f"'{bill.text}' ({bill.bill_date}, {bill.value}€, Zeitraum: {bill_start} - {bill_end})"
 
+                    # Verwende Vertragsdaten für DIRECT-Berechnung
                     periods = contribution.apartment.get_renters_for_period(
                         start_date=bill_start,
-                        end_date=bill_end
+                        end_date=bill_end,
+                        use_contract_dates=True
                     )
 
                     # Prüfe auf Leerstand
@@ -650,9 +654,11 @@ class CostCenter(models.Model):
                 total_consumption += consumption_value
             else:
                 # Fallback: Verwende start_date/end_date wenn keine Bills übergeben
+                # Verwende Vertragsdaten für DIRECT-Berechnung
                 periods = contribution.apartment.get_renters_for_period(
                     start_date=start_date,
-                    end_date=end_date
+                    end_date=end_date,
+                    use_contract_dates=True
                 )
 
                 # Prüfe auf Leerstand

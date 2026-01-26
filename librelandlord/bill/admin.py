@@ -236,8 +236,9 @@ class BillTransactionLinkInline(admin.TabularInline):
 
 class BillAdmin(admin.ModelAdmin):
     list_display = ('formatted_bill_date', 'text', 'bill_number', 'value',
-                    'cost_center', 'account_period', 'formatted_from_date', 'formatted_to_date')
-    list_filter = ['bill_date', 'cost_center', 'account_period']
+                    'cost_center', 'account_period', 'formatted_from_date', 'formatted_to_date',
+                    'show_in_tax_overview')
+    list_filter = ['bill_date', 'cost_center', 'account_period', 'show_in_tax_overview']
     search_fields = ['text', 'bill_number', 'cost_center__text']
     autocomplete_fields = ['cost_center', 'account_period']
     date_hierarchy = 'bill_date'
@@ -255,6 +256,10 @@ class BillAdmin(admin.ModelAdmin):
             }),
             ('Period', {
                 'fields': ('from_date', 'to_date')
+            }),
+            ('Options', {
+                'fields': ('show_in_tax_overview',),
+                'classes': ('collapse',)
             }),
         ]
         # Paperless-Feld nur anzeigen wenn PAPERLESS_BASE_URL gesetzt ist

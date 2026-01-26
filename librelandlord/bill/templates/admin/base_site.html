@@ -125,6 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <select id="year-select"><option value="">Jahr wählen...</option></select>
             <select id="renter-select"><option value="">Alle Mieter / einzeln wählen...</option></select>
             <button class="quick-nav-go-btn" onclick="goToBill()">→ Berechnen</button>
+            <button class="quick-nav-go-btn" onclick="goToTaxOverview()" style="background: #388e3c;">→ Steuerübersicht</button>
         </div>
     </div>`;
 
@@ -190,6 +191,12 @@ function goToBill() {
     var url = '/bill/yearly-calculation/' + year + '/';
     if (renter) url += 'renter/' + renter + '/';
     window.location.href = url;
+}
+
+function goToTaxOverview() {
+    var year = document.getElementById('year-select').value;
+    if (!year) { alert('Bitte Jahr wählen'); return; }
+    window.location.href = '/bill/tax-overview/' + year + '/';
 }
 </script>
 {% endblock %}

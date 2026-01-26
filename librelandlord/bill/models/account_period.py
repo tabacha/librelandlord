@@ -106,19 +106,64 @@ class AccountPeriod(models.Model):
                 bills=cost_center_bills
             )
 
-            # Summary erstellen
-            summary = self.CostCenterSummary(
-                cost_center=cost_center,
-                bills=cost_center_bills,
-                total_amount=Decimal(str(total_amount)),
-                bill_count=bill_count,
-                date_range=date_range,
-                cost_center_calculation=cost_center_calculation
-            )
+            # Bei DIRECT: Prüfen ob mehrere Mieter/Leerstände vorhanden sind
+            # Wenn ja, separate Summaries erstellen für jeden Mieter/Leerstand mit seinen Bills
+            if (cost_center.distribution_type == 'DIRECT' and
+                    len(cost_center_calculation.contribution_results) > 1):
+                # Separate Summaries für jeden Mieter/Leerstand
+                for contrib_result in cost_center_calculation.contribution_results:
+                    # Bills für diesen Mieter/Leerstand
+                    contrib_bills = contrib_result.assigned_bills or []
+                    if not contrib_bills:
+                        continue
 
-            cost_center_summaries.append(summary)
-            grand_total += Decimal(str(total_amount))
-            total_bill_count += bill_count
+                    contrib_total = sum(bill.value for bill in contrib_bills)
+                    contrib_bill_count = len(contrib_bills)
+                    contrib_bill_dates = [bill.bill_date for bill in contrib_bills]
+                    contrib_date_range = {
+                        'earliest': min(contrib_bill_dates),
+                        'latest': max(contrib_bill_dates)
+                    }
+
+                    # Neue Calculation nur mit diesem einen Contribution Result (100%)
+                    from .cost_center import CostCenter
+                    single_contrib = contrib_result._replace(percentage=100.0)
+                    single_calculation = CostCenter.CostCenterCalculation(
+                        cost_center=cost_center,
+                        calculation_period_start=contrib_result.period_start,
+                        calculation_period_end=contrib_result.period_end,
+                        contribution_results=[single_contrib],
+                        total_consumption=Decimal('1'),
+                        apartment_count=1,
+                        total_consumption_unit="Anteil"
+                    )
+
+                    summary = self.CostCenterSummary(
+                        cost_center=cost_center,
+                        bills=contrib_bills,
+                        total_amount=Decimal(str(contrib_total)),
+                        bill_count=contrib_bill_count,
+                        date_range=contrib_date_range,
+                        cost_center_calculation=single_calculation
+                    )
+
+                    cost_center_summaries.append(summary)
+                    grand_total += Decimal(str(contrib_total))
+                    total_bill_count += contrib_bill_count
+            else:
+                # Standard: Eine Summary pro Kostenstelle
+                summary = self.CostCenterSummary(
+                    cost_center=cost_center,
+                    bills=cost_center_bills,
+                    total_amount=Decimal(str(total_amount)),
+                    bill_count=bill_count,
+                    date_range=date_range,
+                    cost_center_calculation=cost_center_calculation
+                )
+
+                cost_center_summaries.append(summary)
+                grand_total += Decimal(str(total_amount))
+                total_bill_count += bill_count
 
         # Nach CostCenter-Text sortieren für konsistente Reihenfolge
         cost_center_summaries.sort(key=lambda x: x.cost_center.text)

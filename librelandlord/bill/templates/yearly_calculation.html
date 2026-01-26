@@ -478,7 +478,7 @@
 
     {% if PAPERLESS_BASE_URL %}
     <!-- Paperless Dialog -->
-    <div class="paperless-dialog-overlay no-print" id="paperlessDialogOverlay">
+    <div class="paperless-dialog-overlay no-print" id="paperlessDialogOverlay" data-paperless-url="{{ PAPERLESS_BASE_URL }}">
         <div class="paperless-dialog">
             <h3>Paperless-ID verknüpfen</h3>
             <p id="paperlessDialogBillText"></p>
@@ -495,112 +495,7 @@
             </div>
         </div>
     </div>
-
-    <script>
-        let currentBillId = null;
-        const paperlessBaseUrl = '{{ PAPERLESS_BASE_URL }}';
-
-        function openPaperlessDialog(billId, billText, billDate, billNumber) {
-            currentBillId = billId;
-            document.getElementById('paperlessDialogBillText').textContent = billText;
-
-            // Suchlinks setzen
-            const searchDateLink = document.getElementById('paperlessSearchDate');
-            searchDateLink.href = paperlessBaseUrl + '/documents?title_content=' + encodeURIComponent(billDate);
-            searchDateLink.textContent = billDate;
-
-            const searchNumberLink = document.getElementById('paperlessSearchNumber');
-            searchNumberLink.href = paperlessBaseUrl + '/documents?title_content=' + encodeURIComponent(billNumber);
-            searchNumberLink.textContent = billNumber;
-
-            document.getElementById('paperlessIdInput').value = '';
-            document.getElementById('paperlessErrorMessage').style.display = 'none';
-            document.getElementById('paperlessDialogOverlay').classList.add('active');
-            document.getElementById('paperlessIdInput').focus();
-        }
-
-        function closePaperlessDialog() {
-            document.getElementById('paperlessDialogOverlay').classList.remove('active');
-            currentBillId = null;
-        }
-
-        function savePaperlessId() {
-            const paperlessId = document.getElementById('paperlessIdInput').value.trim();
-            const errorEl = document.getElementById('paperlessErrorMessage');
-
-            if (!paperlessId) {
-                errorEl.textContent = 'Bitte eine Paperless-ID eingeben';
-                errorEl.style.display = 'block';
-                return;
-            }
-
-            if (isNaN(parseInt(paperlessId)) || parseInt(paperlessId) < 1) {
-                errorEl.textContent = 'Bitte eine gültige positive Zahl eingeben';
-                errorEl.style.display = 'block';
-                return;
-            }
-
-            // CSRF Token holen
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                             getCookie('csrftoken');
-
-            fetch(`/bill/api/bill/${currentBillId}/paperless-id/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrfToken
-                },
-                body: `paperless_id=${encodeURIComponent(paperlessId)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Seite neu laden um den aktualisierten Button anzuzeigen
-                    location.reload();
-                } else {
-                    errorEl.textContent = data.error || 'Fehler beim Speichern';
-                    errorEl.style.display = 'block';
-                }
-            })
-            .catch(error => {
-                errorEl.textContent = 'Netzwerkfehler: ' + error.message;
-                errorEl.style.display = 'block';
-            });
-        }
-
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-
-        // Dialog schließen bei Klick außerhalb
-        document.getElementById('paperlessDialogOverlay').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePaperlessDialog();
-            }
-        });
-
-        // Dialog schließen bei Escape-Taste
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closePaperlessDialog();
-            }
-            // Enter-Taste zum Speichern
-            if (e.key === 'Enter' && document.getElementById('paperlessDialogOverlay').classList.contains('active')) {
-                savePaperlessId();
-            }
-        });
-    </script>
+    <script src="{% static 'bill/js/components/paperless-dialog.js' %}"></script>
     {% endif %}
 </body>
 

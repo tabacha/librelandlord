@@ -1795,3 +1795,50 @@ def mbus_readings_import(request):
         'success': True,
         'results': results
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def bill_paperless_id_update(request, bill_id: int):
+    """
+    API-Endpunkt zum Aktualisieren der Paperless-ID einer Rechnung.
+
+    POST-Parameter:
+    - paperless_id: Die neue Paperless-ID (integer oder leer zum Löschen)
+    """
+    from .models import Bill
+
+    # Prüfen ob Paperless konfiguriert ist
+    if not settings.PAPERLESS_BASE_URL:
+        return JsonResponse({
+            'success': False,
+            'error': 'Paperless ist nicht konfiguriert'
+        }, status=400)
+
+    try:
+        bill = Bill.objects.get(pk=bill_id)
+    except Bill.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Rechnung nicht gefunden'
+        }, status=404)
+
+    paperless_id_str = request.POST.get('paperless_id', '').strip()
+
+    if paperless_id_str == '':
+        bill.paperless_id = None
+    else:
+        try:
+            bill.paperless_id = int(paperless_id_str)
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Ungültige Paperless-ID (muss eine Zahl sein)'
+            }, status=400)
+
+    bill.save()
+
+    return JsonResponse({
+        'success': True,
+        'paperless_id': bill.paperless_id
+    })

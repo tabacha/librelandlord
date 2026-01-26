@@ -47,6 +47,10 @@ USE_OIDC_ONLY = os.environ.get('USE_OIDC_ONLY', 'False').lower() == 'true'
 
 HEATING_INFO_FOOTER = "Für Fragen oder wenn Daten nicht plausibel sind, wenden Sie sich bitte an Ihren Vermieter: Sven Anders, Neehusenstaße 11a, 21147 Hamburg, 040-2004297"
 
+# Paperless-NGX Integration
+# URL to Paperless-NGX instance (without trailing slash), e.g. https://paperless.example.com
+PAPERLESS_BASE_URL = os.environ.get('PAPERLESS_BASE_URL', '').rstrip('/')
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -90,6 +94,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'bill.context_processors.paperless_settings',
             ],
         },
     },

@@ -23,13 +23,15 @@ class Apartment(models.Model):
     def __str__(self):
         return f"{self.number} {self.name}"
 
-    def get_renters_for_period(self, start_date: date, end_date: date) -> List[Dict]:
+    def get_renters_for_period(self, start_date: date, end_date: date, use_contract_dates: bool = False) -> List[Dict]:
         """
         Gibt eine lückenlose Liste aller Mieter-Perioden für diese Wohnung zurück.
 
         Args:
             start_date: Startdatum des Zeitraums
             end_date: Enddatum des Zeitraums
+            use_contract_dates: Wenn True, werden contract_start_date/contract_end_date
+                               statt move_in_date/move_out_date verwendet (für TIME und DIRECT)
 
         Returns:
             Liste von Dictionaries mit:
@@ -42,24 +44,46 @@ class Apartment(models.Model):
         """
         from .renter import Renter
 
-        # Alle Mieter dieser Wohnung holen, die den Zeitraum überlappen
-        renters = Renter.objects.filter(
-            apartment=self,
-            move_in_date__lte=end_date
-        ).filter(
-            Q(move_out_date__isnull=True) | Q(move_out_date__gte=start_date)
-        ).order_by('move_in_date')
+        if use_contract_dates:
+            # Verwende Vertragsdaten für TIME und DIRECT
+            # Fallback auf move_in/out wenn contract_start/end nicht gesetzt
+            renters = Renter.objects.filter(
+                apartment=self
+            ).filter(
+                Q(contract_start_date__lte=end_date) | (Q(contract_start_date__isnull=True) & Q(move_in_date__lte=end_date))
+            ).filter(
+                Q(contract_end_date__isnull=True) |
+                Q(contract_end_date__gte=start_date) |
+                (Q(contract_end_date__isnull=True) & Q(move_out_date__isnull=True)) |
+                (Q(contract_end_date__isnull=True) & Q(move_out_date__gte=start_date))
+            ).order_by('contract_start_date', 'move_in_date')
+        else:
+            # Alle Mieter dieser Wohnung holen, die den Zeitraum überlappen
+            renters = Renter.objects.filter(
+                apartment=self,
+                move_in_date__lte=end_date
+            ).filter(
+                Q(move_out_date__isnull=True) | Q(move_out_date__gte=start_date)
+            ).order_by('move_in_date')
 
         periods = []
         current_date = start_date
 
         for renter in renters:
-            # Effektives Einzugsdatum (nicht früher als start_date)
-            renter_start = max(renter.move_in_date, start_date)
+            if use_contract_dates:
+                # Verwende Vertragsdaten mit Fallback auf Einzugs-/Auszugsdatum
+                renter_period_start = renter.contract_start_date or renter.move_in_date
+                renter_period_end = renter.contract_end_date or renter.move_out_date
+            else:
+                renter_period_start = renter.move_in_date
+                renter_period_end = renter.move_out_date
 
-            # Effektives Auszugsdatum (nicht später als end_date)
-            if renter.move_out_date:
-                renter_end = min(renter.move_out_date, end_date)
+            # Effektives Startdatum (nicht früher als start_date)
+            renter_start = max(renter_period_start, start_date)
+
+            # Effektives Enddatum (nicht später als end_date)
+            if renter_period_end:
+                renter_end = min(renter_period_end, end_date)
             else:
                 renter_end = end_date
 

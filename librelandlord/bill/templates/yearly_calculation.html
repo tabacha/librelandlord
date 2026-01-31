@@ -106,7 +106,7 @@
         {% for summary in period_data.cost_center_summaries %}
         <div class="cost-center">
             <div class="cost-center-header">
-                {% if renter_filter_id and summary.cost_center_number %}{{ summary.cost_center_number }}. {% endif %}{{ summary.cost_center.text }}
+                {% if summary.cost_center_number %}{{ summary.cost_center_number }}. {% endif %}{{ summary.cost_center.text }}
                 {% if summary.cost_center.is_oiltank %}
                 <span style="background: #ff5722; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-left: 10px;">Öltank</span>
                 {% endif %}
@@ -244,8 +244,8 @@
                 <thead>
                     <tr>
                         <th>Mieter</th>
-                        {% for cc_name in cost_center_names %}
-                        <th>{{ cc_name }}</th>
+                        {% for cc in cost_center_headers %}
+                        <th>{% if cc.number %}{{ cc.number }}. {% endif %}{{ cc.name }}</th>
                         {% endfor %}
                         <th class="total-cell">Gesamt</th>
                     </tr>

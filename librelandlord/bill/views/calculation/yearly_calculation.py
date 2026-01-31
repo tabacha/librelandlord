@@ -333,9 +333,17 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                     else:
                         summary_dict['rounding_diff'] = None
 
-                    # Nummerierung für Mieter-Ansicht
-                    if renter_id is not None and summary_dict['has_renter_contributions']:
-                        cc_name = cost_center.text
+                    # Nummerierung für Kostenstellen
+                    cc_name = cost_center.text
+                    if renter_id is not None:
+                        # Mieter-Ansicht: nur nummerieren wenn Beiträge vorhanden
+                        if summary_dict['has_renter_contributions']:
+                            if cc_name not in cost_center_numbers:
+                                cost_center_numbers[cc_name] = next_cost_center_number
+                                next_cost_center_number += 1
+                            summary_dict['cost_center_number'] = cost_center_numbers[cc_name]
+                    else:
+                        # Vermieter-Ansicht: alle Kostenstellen nummerieren
                         if cc_name not in cost_center_numbers:
                             cost_center_numbers[cc_name] = next_cost_center_number
                             next_cost_center_number += 1
@@ -382,8 +390,11 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
 
         # Gesamttabelle vorbereiten: Liste von {renter_info, cost_center_amounts, row_total}
         overall_table = []
+        # Sortiere nach Kostenstellen-Nummer (statt alphabetisch)
         sorted_cost_center_ids = sorted(
-            all_cost_centers.keys(), key=lambda x: all_cost_centers[x])
+            all_cost_centers.keys(),
+            key=lambda x: cost_center_numbers.get(all_cost_centers[x], 999)
+        )
 
         for renter_key, cost_centers in overall_summary.items():
             if renter_id is not None and renter_key != renter_id:
@@ -437,6 +448,12 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
         # Cost-Center-Namen als Liste in der richtigen Reihenfolge
         cost_center_names = [all_cost_centers[cc_id]
                              for cc_id in sorted_cost_center_ids]
+
+        # Kombinierte Liste mit Namen und Nummern für die Gesamttabelle
+        cost_center_headers = [
+            {'name': name, 'number': cost_center_numbers.get(name, 0)}
+            for name in cost_center_names
+        ]
 
         # Vertikale Tabelle für Mieter-Ansicht vorbereiten
         # Pro Kostenstelle ein Eintrag mit Gesamtsumme
@@ -618,6 +635,7 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             # Gesamttabelle
             'overall_table': overall_table,
             'cost_center_names': cost_center_names,
+            'cost_center_headers': cost_center_headers,
             'column_totals': column_totals,
             'grand_total_overall': grand_total_overall,
             # Vertikale Tabelle für Mieter-Ansicht

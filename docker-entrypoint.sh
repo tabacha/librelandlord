@@ -64,10 +64,6 @@ else
     echo "OIDC-only Modus: Keine lokalen Benutzer erstellt"
 fi
 
-# Sammle statische Dateien
-echo "Sammle statische Dateien..."
-python manage.py collectstatic --noinput
-
 echo "✅ MariaDB Setup abgeschlossen!"
 echo "🚀 Starte LibreLandlord..."
 

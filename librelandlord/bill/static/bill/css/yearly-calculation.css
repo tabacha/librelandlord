@@ -254,7 +254,7 @@
     .overall-summary {
         page-break-before: auto;
         margin-top: 5mm;
-        border: 1pt solid #4caf50;
+        border: 1pt solid #ccc;
         border-radius: 0;
     }
 
@@ -262,10 +262,27 @@
         padding: 2mm 3mm;
         font-size: 10pt;
         font-weight: bold;
-        background: #4caf50 !important;
-        color: white !important;
+        background: #f0f0f0 !important;
+        color: #000 !important;
         page-break-after: avoid;
         break-after: avoid;
+    }
+
+    /* Endbeträge dezenter im Druck */
+    .overall-table .grand-total {
+        background: #e0e0e0 !important;
+        color: #000 !important;
+        font-weight: bold;
+    }
+
+    .overall-table .total-cell {
+        background: #f5f5f5 !important;
+    }
+
+    .overall-table tfoot tr td[style*="background"],
+    .overall-table tfoot td.grand-total[style] {
+        background: #e0e0e0 !important;
+        color: #000 !important;
     }
 
     .overall-summary-content {

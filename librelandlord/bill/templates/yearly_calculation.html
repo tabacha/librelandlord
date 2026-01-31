@@ -190,7 +190,7 @@
     <div class="overall-summary">
         <div class="overall-summary-header">
             {% if renter_filter_id %}
-            Gesamtübersicht {{ billing_year }} - {{ renter_filter_name }}
+            Ihre Nebenkosten {{ billing_year }}
             {% else %}
             Gesamtübersicht {{ billing_year }} - Anteil am Gesamtrechnungsbetrag
             {% endif %}
@@ -293,7 +293,7 @@
     <!-- Mietzahlungen und Nebenkostenberechnung - Einzelner Mieter -->
     <div class="overall-summary" style="margin-top: 30px; border-color: #2196f3;">
         <div class="overall-summary-header" style="background: #2196f3;">
-            Ihre Zahlungen {{ billing_year }}
+            Ihre Abrechnung {{ billing_year }}
         </div>
         <div class="overall-summary-content">
             {% if rent_payments_data.transactions %}
@@ -325,8 +325,8 @@
             <div class="no-data">Keine Zahlungen für dieses Jahr erfasst.</div>
             {% endif %}
 
-            <!-- Berechnungsübersicht -->
-            <h4 style="margin-top: 20px; margin-bottom: 10px;">Berechnung</h4>
+            <!-- Ergebnis -->
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Ergebnis</h4>
             <table class="overall-table">
                 <tbody>
                     <tr>
@@ -370,6 +370,15 @@
                     </tr>
                 </tfoot>
             </table>
+
+            <!-- Hinweis zur Zahlung -->
+            <p style="margin-top: 20px; font-size: 0.95em;">
+                {% if rent_payments_data.balance >= 0 %}
+                Das Guthaben wird in Kürze überwiesen.
+                {% else %}
+                Bitte den Nachzahlungsbetrag bis zum {{ payment_due_date|date:"d.m.Y" }} auf das bekannte Konto überweisen.
+                {% endif %}
+            </p>
         </div>
     </div>
 
@@ -411,8 +420,8 @@
             <div class="no-data">Keine Zahlungen für dieses Jahr erfasst.</div>
             {% endif %}
 
-            <!-- Berechnungsübersicht -->
-            <h4 style="margin-top: 20px; margin-bottom: 10px;">Berechnung</h4>
+            <!-- Ergebnis -->
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Ergebnis</h4>
             <table class="overall-table">
                 <tbody>
                     <tr>

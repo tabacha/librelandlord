@@ -140,13 +140,13 @@
     .cost-center {
         page-break-inside: auto;
         break-inside: auto;
-        margin-bottom: 5mm;
+        margin-bottom: 3mm;
         border: 0.5pt solid #ccc;
         border-radius: 0;
     }
 
     .cost-center-header {
-        padding: 2mm 3mm;
+        padding: 0.5mm 3mm;
         font-size: 10pt;
         font-weight: bold;
         background: #f0f0f0 !important;
@@ -156,7 +156,7 @@
     }
 
     .cost-center-content {
-        padding: 3mm;
+        padding: 2mm 3mm;
     }
 
     .section-title {
@@ -264,6 +264,8 @@
         font-weight: bold;
         background: #4caf50 !important;
         color: white !important;
+        page-break-after: avoid;
+        break-after: avoid;
     }
 
     .overall-summary-content {
@@ -276,10 +278,29 @@
         font-size: 8pt;
     }
 
+    /* Beträge und Prozente nicht umbrechen */
+    .consumption-cell,
+    .overall-table td[style*="text-align: right"] {
+        white-space: nowrap;
+    }
+
+    /* Zahlungstabelle nicht umbrechen */
+    .overall-summary .overall-table {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .overall-summary .overall-table tfoot td {
+        white-space: nowrap;
+    }
+
     /* Kompaktere Darstellung für Zählerstand-Erklärungen */
-    .section-group > div[style*="background: #fff3cd"] {
+    .section-group > div[style*="background: #fff3cd"],
+    .calculated-readings-hint {
         font-size: 8pt;
         padding: 2mm 3mm;
+        background: #e0e0e0 !important;
+        border-left-color: #999 !important;
     }
 
     .section-group > div[style*="background: #fff3cd"] ul {

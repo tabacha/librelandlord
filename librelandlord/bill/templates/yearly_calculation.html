@@ -217,17 +217,17 @@
                         <td style="text-align: center;">{{ item.number }}</td>
                         <td style="text-align: left; font-weight: normal;">{{ item.cost_center_name }}</td>
                         {% if item.show_calculation %}
-                        <td style="text-align: right;">{{ item.total_amount|floatformat:2 }} €</td>
+                        <td style="text-align: right; white-space: nowrap;">{{ item.total_amount|floatformat:2 }} €</td>
                         <td style="text-align: center;">×</td>
-                        <td style="text-align: right;">{{ item.percentage|floatformat:2 }} %</td>
+                        <td style="text-align: right; white-space: nowrap;">{{ item.percentage|floatformat:2 }} %</td>
                         <td style="text-align: center;">=</td>
                         {% else %}
-                        <td style="text-align: right;">{{ item.amount|floatformat:2 }} €</td>
+                        <td style="text-align: right; white-space: nowrap;">{{ item.amount|floatformat:2 }} €</td>
                         <td style="text-align: center; color: #999;">×</td>
-                        <td style="text-align: right; color: #999;">100 %</td>
+                        <td style="text-align: right; color: #999; white-space: nowrap;">100 %</td>
                         <td style="text-align: center;">=</td>
                         {% endif %}
-                        <td style="text-align: right;">{{ item.amount|floatformat:2 }} €</td>
+                        <td style="text-align: right; white-space: nowrap;">{{ item.amount|floatformat:2 }} €</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -308,16 +308,16 @@
                 <tbody>
                     {% for trans in rent_payments_data.transactions %}
                     <tr>
-                        <td style="text-align: left; font-weight: normal;">{{ trans.date|date:"d.m.Y" }}</td>
+                        <td style="text-align: left; font-weight: normal; white-space: nowrap;">{{ trans.date|date:"d.m.Y" }}</td>
                         <td style="text-align: left; font-weight: normal;">{{ trans.booking_text }}</td>
-                        <td style="text-align: right;">{{ trans.amount|floatformat:2 }} €</td>
+                        <td style="text-align: right; white-space: nowrap;">{{ trans.amount|floatformat:2 }} €</td>
                     </tr>
                     {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="2" style="text-align: left;"><strong>Summe Ihrer Zahlungen</strong></td>
-                        <td style="text-align: right; font-weight: bold;">{{ rent_payments_data.total_payments|floatformat:2 }} €</td>
+                        <td colspan="2" style="text-align: right;"><strong>Summe Ihrer Zahlungen</strong></td>
+                        <td style="text-align: right; font-weight: bold; white-space: nowrap;">{{ rent_payments_data.total_payments|floatformat:2 }} €</td>
                     </tr>
                 </tfoot>
             </table>

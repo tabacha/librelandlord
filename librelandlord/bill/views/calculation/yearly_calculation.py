@@ -622,6 +622,14 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                 renters__id=renter_id
             ).order_by('title')
 
+        # Zahlungszieldatum für Nachzahlung (14 Tage ab heute, nicht am Wochenende)
+        payment_due_date = date.today() + timedelta(days=14)
+        # Samstag (5) -> Montag (+2), Sonntag (6) -> Montag (+1)
+        if payment_due_date.weekday() == 5:
+            payment_due_date += timedelta(days=2)
+        elif payment_due_date.weekday() == 6:
+            payment_due_date += timedelta(days=1)
+
         context = {
             'billing_year': billing_year,
             'all_period_calculations': all_period_calculations,
@@ -632,6 +640,7 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
             'renter_filter_name': renter_filter_name,
             'renter_address': renter_address,
             'landlord': landlord,
+            'payment_due_date': payment_due_date,
             # Gesamttabelle
             'overall_table': overall_table,
             'cost_center_names': cost_center_names,

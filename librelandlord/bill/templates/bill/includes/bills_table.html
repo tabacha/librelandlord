@@ -32,14 +32,16 @@
                 {% endif %}
             {% endif %}</td>
             <td>{{ bill.from_date|date:"d.m.Y" }} - {{ bill.to_date|date:"d.m.Y" }}</td>
-            <td class="consumption-cell">{{ bill.value|floatformat:2 }} €</td>
+            <td class="consumption-cell" style="white-space: nowrap;">{{ bill.value|floatformat:2 }} €</td>
         </tr>
         {% endfor %}
+        {% if bills|length > 1 %}
         <tr style="border-top: 2px solid #333;">
             <td colspan="4" style="text-align: right; font-weight: bold;">Gesamtsumme:</td>
-            <td class="consumption-cell" style="font-size: 1.1em;">
+            <td class="consumption-cell" style="font-size: 1.1em; white-space: nowrap;">
                 <strong>{{ total_amount|floatformat:2 }} €</strong>
             </td>
         </tr>
+        {% endif %}
     </tbody>
 </table>

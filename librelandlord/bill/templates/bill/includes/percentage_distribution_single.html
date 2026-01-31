@@ -1,8 +1,9 @@
 {% comment %}
-Verbrauchsverteilung in Prozent Tabelle (mit optionalem Renter-Filter)
-Zeigt nur Kostenstellen mit distribution_type == 'CONSUMPTION'.
+Verbrauchsverteilung in Prozent für eine einzelne Kostenstelle.
+Verwendet ifchanged um doppelte Zeilen zu vermeiden.
 {% endcomment %}
 
+{% if summary.cost_center_calculation and summary.cost_center.distribution_type == 'CONSUMPTION' %}
 <div class="section-group">
     <h3 class="section-title" style="margin-top: 30px;">Verbrauchsverteilung in Prozent</h3>
     <table class="meter-readings-table">
@@ -19,10 +20,9 @@ Zeigt nur Kostenstellen mit distribution_type == 'CONSUMPTION'.
             </tr>
         </thead>
         <tbody>
-            {% for summary in cost_center_summaries %}
-            {% if summary.cost_center_calculation and summary.cost_center.distribution_type == 'CONSUMPTION' %}
             {% for contrib in summary.cost_center_calculation.contribution_results %}
             {% if not renter_filter_id or contrib.renter_id == renter_filter_id %}
+            {% ifchanged contrib.consumption_calc_name contrib.final_consumption contrib.percentage %}
             <tr>
                 {% if not renter_filter_id %}
                 <td>
@@ -49,10 +49,17 @@ Zeigt nur Kostenstellen mit distribution_type == 'CONSUMPTION'.
                 <td style="text-align: center;">=</td>
                 <td class="consumption-cell"><strong>{{ contrib.percentage|floatformat:2 }} %</strong></td>
             </tr>
+            {% endifchanged %}
             {% endif %}
             {% endfor %}
+            {% if renter_filter_id and summary.cost_center_calculation.renter_consumption_count > 1 %}
+            <tr style="border-top:1px solid #999; background:#f0f0f0;">
+                <td style="text-align:right; font-weight:bold;">Summe</td>
+                <td colspan="3"></td>
+                <td style="text-align: center;">=</td>
+                <td class="consumption-cell"><strong>{{ summary.cost_center_calculation.renter_percentage_sum|floatformat:2 }} %</strong></td>
+            </tr>
             {% endif %}
-            {% endfor %}
             {% if not renter_filter_id %}
             <tr style="border-top:2px solid #333; background:#f8f9fa;">
                 <td colspan="7" style="text-align:right; font-weight:bold;">Summe</td>
@@ -62,3 +69,4 @@ Zeigt nur Kostenstellen mit distribution_type == 'CONSUMPTION'.
         </tbody>
     </table>
 </div>
+{% endif %}

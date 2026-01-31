@@ -100,30 +100,13 @@
     {% endfor %}
     {% endif %}
 
-    {% if not renter_filter_id %}
-    <!-- Übersicht - nur für Vermieter sichtbar -->
-    <div class="summary">
-        <div class="summary-card">
-            <h3>Gesamtrechnungsbetrag</h3>
-            <p class="amount" style="font-size: 1.5em;">{{ grand_total_all_periods|floatformat:2 }} €</p>
-        </div>
-        <div class="summary-card">
-            <h3>Anzahl Rechnungen</h3>
-            <p style="font-size: 1.5em;">{{ total_bill_count_all_periods }}</p>
-        </div>
-        <div class="summary-card">
-            <h3>Abrechnungsperioden</h3>
-            <p style="font-size: 1.5em;">{{ period_count }}</p>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Detaillierte Aufstellung nach Perioden -->
     {% for period_data in all_period_calculations %}
         {% for summary in period_data.cost_center_summaries %}
         <div class="cost-center">
             <div class="cost-center-header">
-                {{ summary.cost_center.text }}
+                {% if renter_filter_id and summary.cost_center_number %}{{ summary.cost_center_number }}. {% endif %}{{ summary.cost_center.text }}
                 {% if summary.cost_center.is_oiltank %}
                 <span style="background: #ff5722; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-left: 10px;">Öltank</span>
                 {% endif %}
@@ -164,6 +147,9 @@
                         </div>
                         {% endif %}
                         {% endfor %}
+
+                        <!-- Verbrauchsverteilung in Prozent für diese Kostenstelle -->
+                        {% include 'bill/includes/percentage_distribution_single.html' with summary=summary renter_filter_id=renter_filter_id %}
                     {% elif summary.cost_center.distribution_type == 'HEATING_MIXED' %}
                         {% include 'bill/includes/heating_mixed_table.html' with calculation=summary.cost_center_calculation cost_center=summary.cost_center renter_filter_id=renter_filter_id total_amount=summary.total_amount %}
                     {% else %}
@@ -182,27 +168,22 @@
         </div>
         {% endfor %}
 
-        <!-- Zusammenfassung pro Periode -->
+        <!-- Zusammenfassung pro Periode - nur für Vermieter -->
+        {% if not renter_filter_id %}
         <div class="cost-center">
-            {% if not renter_filter_id %}
             <div class="cost-center-header" style="background: #4caf50;">
                 Zusammenfassung - {{ period_data.account_period.text }}
             </div>
-            {% endif %}
             <div class="cost-center-content">
                 <div class="consumption-section">
-                    {% if not renter_filter_id %}
                     {% include 'bill/includes/consumption_summary_table.html' with cost_center_summaries=period_data.cost_center_summaries %}
-                    {% endif %}
-                    {% if period_data.has_consumption %}
-                    {% include 'bill/includes/percentage_distribution_table.html' with cost_center_summaries=period_data.cost_center_summaries renter_filter_id=renter_filter_id %}
-                    {% endif %}
-                    {% if period_data.has_non_heating_mixed and not renter_filter_id %}
+                    {% if period_data.has_non_heating_mixed %}
                     {% include 'bill/includes/amount_share_table.html' with cost_center_summaries=period_data.cost_center_summaries renter_filter_id=renter_filter_id %}
                     {% endif %}
                 </div>
             </div>
         </div>
+        {% endif %}
     {% endfor %}
 
     <!-- Gesamttabelle über alle Perioden und Cost-Center -->
@@ -221,6 +202,7 @@
             <table class="overall-table">
                 <thead>
                     <tr>
+                        <th style="text-align: center; width: 2em;">Nr.</th>
                         <th style="text-align: left;">Kostenstelle</th>
                         <th style="text-align: right;">Gesamtbetrag</th>
                         <th style="text-align: center;"></th>
@@ -232,6 +214,7 @@
                 <tbody>
                     {% for item in vertical_table %}
                     <tr>
+                        <td style="text-align: center;">{{ item.number }}</td>
                         <td style="text-align: left; font-weight: normal;">{{ item.cost_center_name }}</td>
                         {% if item.show_calculation %}
                         <td style="text-align: right;">{{ item.total_amount|floatformat:2 }} €</td>
@@ -239,10 +222,10 @@
                         <td style="text-align: right;">{{ item.percentage|floatformat:2 }} %</td>
                         <td style="text-align: center;">=</td>
                         {% else %}
-                        <td style="text-align: right;"></td>
-                        <td style="text-align: center;"></td>
-                        <td style="text-align: right;"></td>
-                        <td style="text-align: center;"></td>
+                        <td style="text-align: right;">{{ item.amount|floatformat:2 }} €</td>
+                        <td style="text-align: center; color: #999;">×</td>
+                        <td style="text-align: right; color: #999;">100 %</td>
+                        <td style="text-align: center;">=</td>
                         {% endif %}
                         <td style="text-align: right;">{{ item.amount|floatformat:2 }} €</td>
                     </tr>
@@ -250,7 +233,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="5" style="text-align: left;"><strong>Gesamt</strong></td>
+                        <td colspan="6" style="text-align: left;"><strong>Gesamt</strong></td>
                         <td class="grand-total">{{ renter_total|floatformat:2 }} €</td>
                     </tr>
                 </tfoot>

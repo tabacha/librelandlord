@@ -198,6 +198,10 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
         all_renters = {}  # {renter_id: {'first_name': ..., 'last_name': ...}}
         all_cost_centers = {}  # {cost_center_id: cost_center_text}
 
+        # Nummerierung für Kostenstellen (Mieter-Ansicht)
+        cost_center_numbers = {}  # {cost_center_name: nummer}
+        next_cost_center_number = 1
+
         for account_period in account_periods:
             # Berechnung durchführen
             calculation = account_period.calculate_bills_by_cost_center()
@@ -303,6 +307,17 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                     calc_dict = summary.cost_center_calculation._asdict()
                     calc_dict['contribution_results'] = new_contribs
 
+                    # Berechne Summe der Prozente für gefilterten Mieter (für Verbrauchsverteilung)
+                    if renter_id is not None and cost_center.distribution_type == 'CONSUMPTION':
+                        renter_contribs_for_sum = [
+                            c for c in new_contribs
+                            if c.get('renter_id') == renter_id
+                        ]
+                        calc_dict['renter_percentage_sum'] = sum(
+                            c.get('percentage', 0) for c in renter_contribs_for_sum
+                        )
+                        calc_dict['renter_consumption_count'] = len(renter_contribs_for_sum)
+
                     summary_dict = summary._asdict() if hasattr(
                         summary, '_asdict') else dict(summary)
                     summary_dict['cost_center_calculation'] = calc_dict
@@ -317,6 +332,15 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
                         summary_dict['rounding_diff'] = rounding_diff
                     else:
                         summary_dict['rounding_diff'] = None
+
+                    # Nummerierung für Mieter-Ansicht
+                    if renter_id is not None and summary_dict['has_renter_contributions']:
+                        cc_name = cost_center.text
+                        if cc_name not in cost_center_numbers:
+                            cost_center_numbers[cc_name] = next_cost_center_number
+                            next_cost_center_number += 1
+                        summary_dict['cost_center_number'] = cost_center_numbers[cc_name]
+
                     # Nur hinzufügen wenn nicht nach Mieter gefiltert wird oder Beiträge vorhanden sind
                     if renter_id is None or summary_dict['has_renter_contributions']:
                         cost_center_summaries.append(summary_dict)
@@ -414,99 +438,83 @@ def yearly_calculation(request, billing_year: int, renter_id: int = None):
         cost_center_names = [all_cost_centers[cc_id]
                              for cc_id in sorted_cost_center_ids]
 
-        # Vertikale Tabelle für Mieter-Ansicht vorbereiten (erweitert für CONSUMPTION)
+        # Vertikale Tabelle für Mieter-Ansicht vorbereiten
+        # Pro Kostenstelle ein Eintrag mit Gesamtsumme
         vertical_table = []
         if renter_id is not None:
-            # Sammle alle Einträge aus den Perioden-Berechnungen
+            # Sammle Euro-Anteile pro Kostenstelle (aggregiert über alle Perioden)
+            cost_center_totals = {}  # {cost_center_name: {'amount': float, 'total_amount': float, 'is_direct': bool, 'number': int}}
+
             for period_data in all_period_calculations:
                 for summary in period_data['cost_center_summaries']:
                     cost_center = summary.get('cost_center') if isinstance(summary, dict) else summary.cost_center
                     calc = summary.get('cost_center_calculation') if isinstance(summary, dict) else getattr(summary, 'cost_center_calculation', None)
                     total_amount = summary.get('total_amount', 0) if isinstance(summary, dict) else getattr(summary, 'total_amount', 0)
+                    cc_number = summary.get('cost_center_number', 0) if isinstance(summary, dict) else getattr(summary, 'cost_center_number', 0)
 
                     if not calc:
                         continue
 
+                    cc_name = cost_center.text if hasattr(cost_center, 'text') else cost_center.get('text', '')
                     distribution_type = cost_center.distribution_type if hasattr(cost_center, 'distribution_type') else cost_center.get('distribution_type')
 
                     # Hole die contribution_results
                     contribs = calc.get('contribution_results', []) if isinstance(calc, dict) else calc.contribution_results
 
-                    if distribution_type == 'CONSUMPTION':
-                        # Bei CONSUMPTION: Jeden Zähler einzeln aufführen
-                        for contrib in contribs:
-                            if isinstance(contrib, dict):
-                                contrib_renter_id = contrib.get('renter_id')
-                                calc_name = contrib.get('consumption_calc_name', '')
-                                percentage = contrib.get('percentage', 0)
-                                euro_anteil = contrib.get('euro_anteil', 0)
-                            else:
-                                contrib_renter_id = contrib.renter_id
-                                calc_name = contrib.consumption_calc_name
-                                percentage = contrib.percentage
-                                euro_anteil = getattr(contrib, 'euro_anteil', 0)
+                    # Prüfe ob dieser Mieter Contributions hat
+                    renter_contribs = [
+                        c for c in contribs
+                        if (c.get('renter_id') if isinstance(c, dict) else c.renter_id) == renter_id
+                    ]
 
-                            if contrib_renter_id == renter_id:
-                                vertical_table.append({
-                                    'cost_center_name': calc_name,
-                                    'amount': euro_anteil,
-                                    'show_calculation': True,
-                                    'total_amount': float(total_amount),
-                                    'percentage': percentage,
-                                })
-                    elif distribution_type in ('TIME', 'AREA'):
-                        # Bei TIME/AREA: Einzelne Bills mit anteiliger Berechnung aufführen
-                        renter_contribs = [
-                            c for c in contribs
-                            if (c.get('renter_id') if isinstance(c, dict) else c.renter_id) == renter_id
-                        ]
-                        if renter_contribs:
-                            # Prozentsatz des Mieters berechnen
-                            sum_percentage = sum(
-                                (c.get('percentage', 0) if isinstance(c, dict) else getattr(c, 'percentage', 0))
-                                for c in renter_contribs
-                            )
-                            # Bills aus der Summary holen und anteilig berechnen
-                            bills = summary.get('bills', []) if isinstance(summary, dict) else getattr(summary, 'bills', [])
-                            for bill in bills:
-                                bill_anteil = float(bill.value) * sum_percentage / 100
-                                if bill_anteil > 0:
-                                    vertical_table.append({
-                                        'cost_center_name': bill.text,
-                                        'amount': bill_anteil,
-                                        'show_calculation': True,
-                                        'total_amount': float(bill.value),
-                                        'percentage': sum_percentage,
-                                    })
-                    elif distribution_type == 'DIRECT':
-                        # Bei DIRECT: Einzelne Bills aufführen
-                        renter_contribs = [
-                            c for c in contribs
-                            if (c.get('renter_id') if isinstance(c, dict) else c.renter_id) == renter_id
-                        ]
-                        if renter_contribs:
-                            # Bills aus der Summary holen
-                            bills = summary.get('bills', []) if isinstance(summary, dict) else getattr(summary, 'bills', [])
-                            for bill in bills:
-                                vertical_table.append({
-                                    'cost_center_name': bill.text,
-                                    'amount': float(bill.value),
-                                    'show_calculation': False,
-                                })
+                    if not renter_contribs:
+                        continue
+
+                    if distribution_type == 'DIRECT':
+                        # Bei DIRECT: Bills direkt dem Mieter zuordnen
+                        bills = summary.get('bills', []) if isinstance(summary, dict) else getattr(summary, 'bills', [])
+                        for bill in bills:
+                            bill_name = bill.text
+                            if bill_name not in cost_center_totals:
+                                cost_center_totals[bill_name] = {'amount': 0, 'total_amount': 0, 'is_direct': True, 'number': cc_number}
+                            cost_center_totals[bill_name]['amount'] += float(bill.value)
+                            cost_center_totals[bill_name]['total_amount'] += float(bill.value)
                     else:
-                        # Bei HEATING_MIXED: Nur Summe ohne Berechnung
+                        # Berechne Euro-Anteil für diesen Mieter
                         sum_euro = sum(
                             (c.get('euro_anteil', 0) if isinstance(c, dict) else getattr(c, 'euro_anteil', 0))
-                            for c in contribs
-                            if (c.get('renter_id') if isinstance(c, dict) else c.renter_id) == renter_id
+                            for c in renter_contribs
                         )
+
                         if sum_euro > 0:
-                            cc_name = cost_center.text if hasattr(cost_center, 'text') else cost_center.get('text', '')
-                            vertical_table.append({
-                                'cost_center_name': cc_name,
-                                'amount': sum_euro,
-                                'show_calculation': False,
-                            })
+                            if cc_name not in cost_center_totals:
+                                cost_center_totals[cc_name] = {'amount': 0, 'total_amount': 0, 'is_direct': False, 'number': cc_number}
+                            cost_center_totals[cc_name]['amount'] += sum_euro
+                            cost_center_totals[cc_name]['total_amount'] += float(total_amount)
+
+            # Erstelle vertical_table aus aggregierten Daten, sortiert nach Nummer
+            for cc_name, data in sorted(cost_center_totals.items(), key=lambda x: (x[1]['number'], x[0])):
+                if data['is_direct']:
+                    # DIRECT: Keine Berechnung anzeigen
+                    vertical_table.append({
+                        'cost_center_name': cc_name,
+                        'amount': data['amount'],
+                        'show_calculation': False,
+                        'number': data['number'],
+                    })
+                else:
+                    # Berechne Prozentsatz aus Anteil/Gesamtbetrag
+                    total = data['total_amount']
+                    amount = data['amount']
+                    percentage = (amount / total * 100) if total > 0 else 0
+                    vertical_table.append({
+                        'cost_center_name': cc_name,
+                        'amount': amount,
+                        'show_calculation': True,
+                        'total_amount': total,
+                        'percentage': percentage,
+                        'number': data['number'],
+                    })
 
             renter_total = decimal.Decimal(str(sum(item['amount'] for item in vertical_table)))
         else:

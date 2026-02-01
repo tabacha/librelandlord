@@ -301,6 +301,10 @@ msgstr "Ihre monatliche Verbrauchsstatistik"
 msgid "To: "
 msgstr "An: "
 
+#: bill/templates/heating_info.html
+msgid "Apartment:"
+msgstr "Wohnung:"
+
 #: bill/templates/heating_info.html:103
 msgid "For the apartment:"
 msgstr "Für die Wohnung:"

@@ -10,7 +10,7 @@ import json
 
 from weasyprint import HTML
 
-from ..models import Renter, HeatingInfo, HeatingInfoTemplate
+from ..models import Renter, HeatingInfo, HeatingInfoTemplate, Landlord
 
 import logging
 
@@ -106,18 +106,20 @@ def get_heating_info_context(request, renter_id: int):
                 hot_water.append({
                     'date': date,
                     'actual': entry.hot_water_energy_kwh,
+                    'actual_m3': entry.hot_water_m3,
                     'year_before': water_year_before,
                     'compare': entry.compare_hot_water_energy_kwh,
                     'actual_percent': 100 * (entry.hot_water_energy_kwh/max_water),
                     'compare_percent': 100 * (entry.compare_hot_water_energy_kwh/max_water),
                 })
 
+    landlord = Landlord.get_instance()
     context = {
         'renter': renter,
         'apartment': renter.apartment,
         'heating': heating,
         'hot_water': hot_water,
-        'landlord_info': settings.HEATING_INFO_FOOTER,
+        'landlord': landlord,
         'page_break': (len(hot_water)+len(heating)) > 18,
     }
     return context

@@ -38,6 +38,9 @@ from .api import (
     bill_paperless_id_update,
 )
 
+# Emergency Contacts Views
+from .emergency_contacts import emergency_contacts
+
 __all__ = [
     # Auth
     'custom_login',
@@ -60,4 +63,6 @@ __all__ = [
     'costcenter_distribution_type',
     'mbus_readings_import',
     'bill_paperless_id_update',
+    # Emergency Contacts
+    'emergency_contacts',
 ]

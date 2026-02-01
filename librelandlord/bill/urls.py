@@ -39,6 +39,9 @@ urlpatterns = [
     # API für Dashboard-Statistiken
     path("api/dashboard-stats/", views.dashboard_stats_api,
          name="dashboard_stats_api"),
+    # Notfallkontakte
+    path("emergency-contacts/", views.emergency_contacts,
+         name="emergency_contacts"),
     # API für Paperless-ID Update
     path("api/bill/<int:bill_id>/paperless-id/", views.bill_paperless_id_update,
          name="bill_paperless_id_update"),

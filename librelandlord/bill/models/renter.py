@@ -38,6 +38,10 @@ class Renter(models.Model):
     deposit_amount = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Deposit amount"))
 
+    # Weitere Kontaktinfos
+    additional_contact_info = models.TextField(
+        blank=True, null=True, verbose_name=_("Additional contact info"))
+
     move_in_date = models.DateField(verbose_name=_("Move in on date"))
     move_out_date = models.DateField(
         null=True, blank=True, verbose_name=_("Move out date"))

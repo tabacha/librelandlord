@@ -1,0 +1,178 @@
+{% load static %}
+{% load compress %}
+{% load markdown_extras %}
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notfallkontakte</title>
+    {% compress css %}
+    <link rel="stylesheet" href="{% static 'bill/css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'bill/css/print-base.css' %}">
+    {% endcompress %}
+    <style>
+        .contacts-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            font-size: 0.9em;
+        }
+
+        .contacts-table th,
+        .contacts-table td {
+            border: 1px solid #ddd;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .contacts-table th {
+            background-color: #1976d2;
+            color: white;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .contacts-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .contacts-table tr:hover {
+            background-color: #e3f2fd;
+        }
+
+        .contacts-table a {
+            color: #1976d2;
+            text-decoration: none;
+        }
+
+        .contacts-table a:hover {
+            text-decoration: underline;
+        }
+
+        .no-data {
+            color: #999;
+            font-style: italic;
+        }
+
+        .emergency-contact {
+            background: #fff3e0;
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+
+        .additional-info {
+            font-size: 0.9em;
+            max-width: 250px;
+        }
+
+        .additional-info p {
+            margin: 0 0 0.5em 0;
+        }
+
+        .additional-info p:last-child {
+            margin-bottom: 0;
+        }
+
+        .additional-info a {
+            color: #1976d2;
+        }
+
+        @page {
+            size: A4 landscape;
+            margin: 1cm;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+            }
+
+            .contacts-table {
+                font-size: 0.8em;
+            }
+
+            .contacts-table th {
+                background-color: #333 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <a href="/admin/" class="back-link no-print">&larr; Zur Admin-Seite</a>
+
+    <div class="header">
+        <h1>Notfallkontakte</h1>
+        <p>Alle aktiven Mieter mit Kontaktdaten (Stand: {{ today|date:"d.m.Y" }})</p>
+    </div>
+
+    <table class="contacts-table">
+        <thead>
+            <tr>
+                <th>Wohnung</th>
+                <th>Mieter</th>
+                <th>Telefon</th>
+                <th>E-Mail</th>
+                <th>Notfallkontakt</th>
+                <th>Weitere Infos</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for renter in renters %}
+            <tr>
+                <td>{{ renter.apartment.name }}</td>
+                <td>
+                    <strong>{{ renter.first_name }} {{ renter.last_name }}</strong><br>
+                    <span style="color: #666; font-size: 0.9em;">
+                        Einzug: {{ renter.move_in_date|date:"d.m.Y" }}
+                        {% if renter.move_out_date %}<br>Auszug: {{ renter.move_out_date|date:"d.m.Y" }}{% endif %}
+                    </span>
+                </td>
+                <td>
+                    {% if renter.phone %}
+                    <a href="tel:{{ renter.phone }}">{{ renter.phone }}</a>
+                    {% else %}<span class="no-data">-</span>{% endif %}
+                </td>
+                <td>
+                    {% if renter.email %}
+                    <a href="mailto:{{ renter.email }}">{{ renter.email }}</a>
+                    {% else %}<span class="no-data">-</span>{% endif %}
+                </td>
+                <td>
+                    {% if renter.emergency_contact_name %}
+                    <div class="emergency-contact">
+                        <strong>{{ renter.emergency_contact_name }}</strong>
+                        {% if renter.emergency_contact_relationship %}({{ renter.emergency_contact_relationship }}){% endif %}<br>
+                        {% if renter.emergency_contact_phone %}
+                        <a href="tel:{{ renter.emergency_contact_phone }}">{{ renter.emergency_contact_phone }}</a><br>
+                        {% endif %}
+                        {% if renter.emergency_contact_address %}
+                        <span style="font-size: 0.9em;">{{ renter.emergency_contact_address }}</span>
+                        {% endif %}
+                    </div>
+                    {% else %}<span class="no-data">-</span>{% endif %}
+                </td>
+                <td>
+                    {% if renter.additional_contact_info %}
+                    <div class="additional-info">{{ renter.additional_contact_info|markdown }}</div>
+                    {% else %}<span class="no-data">-</span>{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="no-data" style="text-align: center; padding: 20px;">
+                    Keine aktiven Mieter gefunden.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+
+</html>

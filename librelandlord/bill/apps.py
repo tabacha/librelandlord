@@ -34,8 +34,11 @@ class BillConfig(AppConfig):
 
     def _start_scheduler(self, run_heating_info_task):
         """Startet den APScheduler für periodische Tasks."""
-        # Scheduler nur starten wenn nicht in Tests oder Migrations
-        if any(arg in sys.argv for arg in ['test', 'migrate', 'makemigrations', 'collectstatic']):
+        # Scheduler nur starten wenn Server läuft (runserver oder gunicorn)
+        # Nicht bei Management-Commands wie check, migrate, makemigrations, etc.
+        is_runserver = 'runserver' in sys.argv
+        is_gunicorn = 'gunicorn' in sys.argv[0] if sys.argv else False
+        if not is_runserver and not is_gunicorn:
             return
 
         def scheduled_heating_info_task():

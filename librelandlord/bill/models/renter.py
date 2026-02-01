@@ -19,6 +19,25 @@ class Renter(models.Model):
         max_length=10, blank=True, null=True, verbose_name=_("Postal Code"))
     city = models.CharField(max_length=30, blank=True,
                             null=True, verbose_name=_("City"))
+    email = models.EmailField(blank=True, null=True, verbose_name=_("Email"))
+    phone = models.CharField(max_length=30, blank=True, null=True, verbose_name=_("Phone"))
+
+    # Notfallkontakt
+    emergency_contact_name = models.CharField(
+        max_length=60, blank=True, null=True, verbose_name=_("Emergency contact name"))
+    emergency_contact_relationship = models.CharField(
+        max_length=30, blank=True, null=True, verbose_name=_("Relationship to renter"))
+    emergency_contact_phone = models.CharField(
+        max_length=30, blank=True, null=True, verbose_name=_("Emergency contact phone"))
+    emergency_contact_address = models.CharField(
+        max_length=100, blank=True, null=True, verbose_name=_("Emergency contact address"))
+
+    # Kaution
+    deposit_account = models.CharField(
+        max_length=34, blank=True, null=True, verbose_name=_("Deposit account number"))
+    deposit_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True, verbose_name=_("Deposit amount"))
+
     move_in_date = models.DateField(verbose_name=_("Move in on date"))
     move_out_date = models.DateField(
         null=True, blank=True, verbose_name=_("Move out date"))

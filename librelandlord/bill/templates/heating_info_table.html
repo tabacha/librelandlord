@@ -22,7 +22,7 @@
         <td style="text-align: left">
             {{ row.date |date:"F y" }}
         </td>
-        <td style="text-align: right; white-space: nowrap">{{ row.actual }}&nbsp;kWh{% if row.actual_m3 %} ({{ row.actual_m3 }}&nbsp;m³){% endif %}</td>
+        <td style="text-align: right; white-space: nowrap">{{ row.actual }}&nbsp;kWh{% if row.actual_m3 %} ({{ row.actual_m3|floatformat:2 }}&nbsp;m³){% endif %}</td>
         <td style="text-align: right">{% if row.year_before is not None %}{{ row.year_before }} kWh{% endif %}</td>
         <td style="text-align: right">{{ row.compare }} kWh</td>
         <td  class="percentage">

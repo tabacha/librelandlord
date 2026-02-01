@@ -56,7 +56,7 @@ def get_heating_info_context(request, renter_id: int):
             else:
                 start_date_month = 1
                 start_date_year = start_date_year+1
-    if renter.move_out_date is not None and renter.move_out_date < last_day_of_last_month:
+    if renter.move_out_date is not None and renter.move_out_date < last_day_of_last_month.date():
         # Keinen Context zurückgeben, Mieter braucht für diesen Monat keine Heating Info
         return None
 

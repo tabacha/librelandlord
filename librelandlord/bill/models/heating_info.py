@@ -21,8 +21,9 @@ class HeatingInfo(models.Model):
                                                verbose_name=_("Hot water energy"), blank=True, null=True)
     compare_hot_water_energy_kwh = models.DecimalField(max_digits=8, decimal_places=0,
                                                        verbose_name=_("Compare hot water energy"), blank=True, null=True)
-    hot_water_m3 = models.DecimalField(max_digits=8, decimal_places=0,
+    hot_water_m3 = models.DecimalField(max_digits=8, decimal_places=2,
                                        verbose_name=_("Hot water m3"), blank=True, null=True)
+    sent = models.BooleanField(default=False, verbose_name=_("Sent"))
 
     class Meta:
         constraints = [

@@ -22,7 +22,7 @@
             '    <div class="quick-nav-row">',
             '        <span class="quick-nav-label">⚡ Aktionen:</span>',
             '        <a href="/bill/meter-readings-input/" class="quick-nav-btn green">🔢 Zählerstände erfassen</a>',
-            '        <a href="/bill/heating-info-task/" class="quick-nav-btn red">🔥 Heizinfo anfordern</a>',
+            '        <a href="/bill/emergency-contacts/" class="quick-nav-btn red">📞 Notfallkontakte</a>',
             '        <a href="/admin/bill/bill/" class="quick-nav-btn blue">🧾 Rechnungen</a>',
             '        <a href="/admin/bill/meterreading/" class="quick-nav-btn purple">📈 Zählerstandsliste</a>',
             '    </div>',

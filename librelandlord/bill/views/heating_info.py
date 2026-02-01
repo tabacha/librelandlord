@@ -148,10 +148,9 @@ def heating_info_pdf(request, id: int):
     return response
 
 
-@login_required
-def heating_info_task(request):
+def run_heating_info_task():
     """
-    Hintergrund-Task zur Berechnung der monatlichen Heizungsinfos.
+    Kernlogik zur Berechnung der monatlichen Heizungsinfos.
 
     Berechnet für alle HeatingInfoTemplates die noch ausstehenden Monate
     und erstellt entsprechende HeatingInfo-Einträge. Läuft so lange,
@@ -159,6 +158,9 @@ def heating_info_task(request):
 
     Heizung und Warmwasser werden unabhängig voneinander berechnet.
     Fehlende Werte werden beim nächsten Aufruf nachgeholt.
+
+    Returns:
+        dict: Ergebnis mit 'processed' und 'pending' Listen
     """
     today = date.today()
     target_year = today.year
@@ -349,5 +351,13 @@ def heating_info_task(request):
                 template.next_month = next_month
                 template.save()
 
-    response = HttpResponse(json.dumps(data, indent=2), content_type='application/json')
-    return response
+    return data
+
+
+@login_required
+def heating_info_task(request):
+    """
+    HTTP-Endpunkt für den Heizungsinfo-Task.
+    """
+    data = run_heating_info_task()
+    return HttpResponse(json.dumps(data, indent=2), content_type='application/json')

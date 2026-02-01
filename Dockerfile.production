@@ -99,4 +99,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Entrypoint und Standard-Kommando
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "30", "librelandlord.wsgi:application"]
+CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "30", "--preload", "librelandlord.wsgi:application"]

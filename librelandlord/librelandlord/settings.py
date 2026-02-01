@@ -321,5 +321,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'bill': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
     },
 }

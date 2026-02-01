@@ -15,6 +15,7 @@ from .heating_info import (
     heating_info,
     heating_info_pdf,
     heating_info_task,
+    run_heating_info_task,
 )
 
 # Meter Views
@@ -47,6 +48,7 @@ __all__ = [
     'heating_info',
     'heating_info_pdf',
     'heating_info_task',
+    'run_heating_info_task',
     # Meter
     'meter_place_consumption',
     'meter_readings_input',

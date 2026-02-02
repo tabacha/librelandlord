@@ -9,6 +9,7 @@ import decimal
 import json
 
 from weasyprint import HTML
+from django_weasyprint.utils import django_url_fetcher
 
 from ..models import Renter, HeatingInfo, HeatingInfoTemplate, Landlord
 
@@ -194,7 +195,9 @@ def heating_info_pdf(request, id: int):
     html = template.render(context, request)
 
     # Generiere das PDF mit WeasyPrint
-    pdf = HTML(string=html).write_pdf()
+    # base_url und url_fetcher ermöglichen das Laden von statischen Dateien
+    base_url = request.build_absolute_uri('/')
+    pdf = HTML(string=html, base_url=base_url, url_fetcher=django_url_fetcher).write_pdf()
 
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = 'inline; filename="heating_info.pdf"'
@@ -512,7 +515,9 @@ def heating_info_pdf_by_token(request, token: str):
     html = template.render(context, request)
 
     # Generiere das PDF mit WeasyPrint
-    pdf = HTML(string=html).write_pdf()
+    # base_url und url_fetcher ermöglichen das Laden von statischen Dateien
+    base_url = request.build_absolute_uri('/')
+    pdf = HTML(string=html, base_url=base_url, url_fetcher=django_url_fetcher).write_pdf()
 
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = 'inline; filename="heating_info.pdf"'

@@ -76,6 +76,12 @@ Distribution types (in CostCenter):
 - Language: German for domain terms and user-facing content, English for code structure
 - All text uses LF line endings with final newline
 
+## Git Branch Naming
+
+Branch names follow the pattern: `YYYY-MM-DD_short_description`
+
+Example: `2026-02-02_fix_emoji_pdf_font`
+
 ## Environment Configuration
 
 Key environment variables (see `.env.example` and `.env.production`):

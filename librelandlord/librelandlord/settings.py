@@ -69,6 +69,9 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@example.com')
 # If set, all emails will be sent to this address regardless of the actual recipient
 EMAIL_DEBUG_RECIPIENT = os.environ.get('EMAIL_DEBUG_RECIPIENT', '')
 
+# Always BCC: send a copy of all emails to this address (for archiving/proof)
+EMAIL_ALWAYS_BCC = os.environ.get('EMAIL_ALWAYS_BCC', '')
+
 # Application definition
 
 INSTALLED_APPS = [

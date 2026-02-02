@@ -5,7 +5,7 @@ Provides functions for sending emails with support for a debug mode
 that redirects all emails to a test address.
 """
 
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage
 from django.conf import settings
 from django.template.loader import render_to_string
 from datetime import date
@@ -85,14 +85,36 @@ def send_heating_info_email(renter: Renter, heating_infos: list) -> bool:
         'debug_info': debug_info,
     })
 
+    # Build BCC list
+    bcc = []
+    always_bcc = getattr(settings, 'EMAIL_ALWAYS_BCC', '')
+    if always_bcc:
+        bcc.append(always_bcc)
+
+    # Build email with custom headers
+    email = EmailMessage(
+        subject=subject,
+        body=message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[recipient],
+        bcc=bcc,
+        headers={
+            # Custom header for filtering
+            'X-LibreLandlord': 'heating-info',
+            'X-LibreLandlord-Apartment': renter.apartment.name,
+            # List-Unsubscribe headers (RFC 2369 / RFC 8058)
+            'List-Unsubscribe': f'<{unsubscribe_url}>',
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            # Prevent auto-replies (vacation messages, etc.)
+            'X-Auto-Response-Suppress': 'All',
+            'Auto-Submitted': 'auto-generated',
+            # Indicate bulk/automated mail
+            'Precedence': 'bulk',
+        }
+    )
+
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[recipient],
-            fail_silently=False,
-        )
+        email.send(fail_silently=False)
         logger.info(f"Heating info email sent to {recipient} (renter: {renter}).")
 
         # On success: mark all HeatingInfo entries as sent

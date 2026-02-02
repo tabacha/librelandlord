@@ -125,6 +125,58 @@ def get_heating_info_context(request, renter_id: int):
     return context
 
 
+def _convert_to_json_serializable(context):
+    """
+    Konvertiert den Heating Info Kontext in ein JSON-serialisierbares Format.
+    """
+    def decimal_to_float(val):
+        if isinstance(val, decimal.Decimal):
+            return float(val)
+        return val
+
+    def convert_entry(entry):
+        return {
+            'date': entry['date'].strftime('%Y-%m'),
+            'actual_kwh': decimal_to_float(entry['actual']),
+            'year_before_kwh': decimal_to_float(entry.get('year_before')),
+            'compare_kwh': decimal_to_float(entry.get('compare')),
+            'actual_m3': decimal_to_float(entry.get('actual_m3')),
+        }
+
+    renter = context['renter']
+    apartment = context['apartment']
+    landlord = context.get('landlord')
+
+    data = {
+        'renter': {
+            'first_name': renter.first_name,
+            'last_name': renter.last_name,
+        },
+        'apartment': {
+            'number': apartment.number,
+            'name': apartment.name,
+            'street': apartment.street,
+            'postal_code': apartment.postal_code,
+            'city': apartment.city,
+            'size_m2': float(apartment.size_in_m2) if apartment.size_in_m2 else None,
+        },
+        'heating': [convert_entry(e) for e in context.get('heating', [])],
+        'hot_water': [convert_entry(e) for e in context.get('hot_water', [])],
+    }
+
+    if landlord:
+        data['landlord'] = {
+            'name': landlord.name,
+            'street': landlord.street,
+            'postal_code': landlord.postal_code,
+            'city': landlord.city,
+            'phone': landlord.phone,
+            'email': landlord.email,
+        }
+
+    return data
+
+
 @login_required
 def heating_info(request, id: int):
     """Zeigt die Heizungsinfo-Seite für einen Mieter."""
@@ -148,6 +200,18 @@ def heating_info_pdf(request, id: int):
     response['Content-Disposition'] = 'inline; filename="heating_info.pdf"'
 
     return response
+
+
+@login_required
+def heating_info_json(request, id: int):
+    """Liefert die Heizungsinfo als JSON für einen Mieter."""
+    context = get_heating_info_context(request=request, renter_id=id)
+
+    if context is None:
+        return JsonResponse({'error': 'Keine Heizungsinfo verfügbar'}, status=404)
+
+    data = _convert_to_json_serializable(context)
+    return JsonResponse(data, json_dumps_params={'ensure_ascii': False, 'indent': 2})
 
 
 def run_heating_info_task():
@@ -454,6 +518,25 @@ def heating_info_pdf_by_token(request, token: str):
     response['Content-Disposition'] = 'inline; filename="heating_info.pdf"'
 
     return response
+
+
+def heating_info_json_by_token(request, token: str):
+    """
+    Liefert die Heizungsinfo als JSON für einen Mieter basierend auf seinem Token.
+    Kein Login erforderlich - Authentifizierung über Token.
+    """
+    try:
+        renter = Renter.objects.get(token=token)
+    except Renter.DoesNotExist:
+        return JsonResponse({'error': 'Ungültiger Token'}, status=404)
+
+    context = get_heating_info_context(request=request, renter_id=renter.id)
+
+    if context is None:
+        return JsonResponse({'error': 'Keine Heizungsinfo verfügbar'}, status=404)
+
+    data = _convert_to_json_serializable(context)
+    return JsonResponse(data, json_dumps_params={'ensure_ascii': False, 'indent': 2})
 
 
 def heating_info_unsubscribe(request, token: str):

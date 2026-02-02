@@ -12,6 +12,7 @@ from weasyprint import HTML
 from django_weasyprint.utils import django_url_fetcher
 
 from ..models import Renter, HeatingInfo, HeatingInfoTemplate, Landlord
+from ..services.email import send_heating_info_emails
 
 import logging
 
@@ -564,3 +565,12 @@ def heating_info_unsubscribe(request, token: str):
     return render(request, 'heating_info_unsubscribe.html', {
         'renter': renter,
     })
+
+
+@login_required
+def heating_info_email_task(request):
+    """
+    HTTP-Endpunkt zum Versenden der Heizungsinfo-E-Mails an alle aktiven Mieter.
+    """
+    result = send_heating_info_emails()
+    return HttpResponse(json.dumps(result, indent=2, ensure_ascii=False), content_type='application/json')

@@ -189,20 +189,58 @@ class RentPaymentInline(admin.TabularInline):
 
 class RenterAdmin(admin.ModelAdmin):
     list_display = ('first_name', 'last_name', 'apartment',
-                    'move_in_date', 'move_out_date', 'is_active')
-    list_filter = ['apartment', 'move_in_date', 'move_out_date']
+                    'move_in_date', 'move_out_date', 'is_active', 'wants_heating_info')
+    list_filter = ['apartment', 'move_in_date', 'move_out_date', 'wants_heating_info']
     search_fields = ['first_name', 'last_name',
                      'apartment__number', 'apartment__name']
     autocomplete_fields = ['apartment']
     date_hierarchy = 'move_in_date'
     ordering = ['-move_in_date']
     inlines = [RentPaymentInline]
+    actions = ['regenerate_token_action']
+    readonly_fields = ['token', 'token_updated_at', 'heating_info_url', 'heating_info_unsubscribe_url']
 
     def is_active(self, obj):
         """Zeigt an, ob der Mieter aktuell aktiv ist"""
         return obj.move_out_date is None
     is_active.boolean = True
     is_active.short_description = "Active"
+
+    def regenerate_token_action(self, request, queryset):
+        """Admin Action: Token für ausgewählte Mieter regenerieren"""
+        for renter in queryset:
+            renter.regenerate_token()
+        self.message_user(
+            request,
+            f"Token für {queryset.count()} Mieter erfolgreich regeneriert."
+        )
+    regenerate_token_action.short_description = "Token regenerieren"
+
+    def heating_info_url(self, obj):
+        """Zeigt die URL für die Heating Info PDF mit Token"""
+        from django.utils.html import format_html
+        if obj.token:
+            path = f"/bill/heating_info/token/{obj.token}.pdf"
+            full_url = f"{settings.SITE_URL}{path}" if settings.SITE_URL else path
+            return format_html(
+                '<a href="{}" target="_blank">{}</a>',
+                path, full_url
+            )
+        return '-'
+    heating_info_url.short_description = "Heating Info URL"
+
+    def heating_info_unsubscribe_url(self, obj):
+        """Zeigt die URL zum Abbestellen der Heating Info"""
+        from django.utils.html import format_html
+        if obj.token:
+            path = f"/bill/heating_info/unsubscribe/{obj.token}"
+            full_url = f"{settings.SITE_URL}{path}" if settings.SITE_URL else path
+            return format_html(
+                '<a href="{}" target="_blank">{}</a>',
+                path, full_url
+            )
+        return '-'
+    heating_info_unsubscribe_url.short_description = "Abbestellen URL"
 
 
 admin.site.register(models.Renter, RenterAdmin)

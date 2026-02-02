@@ -7,9 +7,10 @@ that redirects all emails to a test address.
 
 from django.core.mail import send_mail
 from django.conf import settings
+from django.template.loader import render_to_string
 from datetime import date
 
-from ..models import Renter, HeatingInfo
+from ..models import Renter, HeatingInfo, Landlord
 
 import logging
 
@@ -54,6 +55,7 @@ def send_heating_info_email(renter: Renter, heating_infos: list) -> bool:
         return False
 
     pdf_url = f"{site_url}/bill/heating_info/token/{renter.token}.pdf"
+    json_url = f"{site_url}/bill/heating_info/token/{renter.token}.json"
     unsubscribe_url = f"{site_url}/bill/heating_info/token/{renter.token}/unsubscribe"
 
     recipient = get_recipient_email(renter.email)
@@ -66,19 +68,22 @@ def send_heating_info_email(renter: Renter, heating_infos: list) -> bool:
     if debug_mode:
         debug_info = f"\n\n[DEBUG: Original recipient would be: {renter.email}]"
 
-    message = f"""Guten Tag {renter.first_name} {renter.last_name},
+    landlord = Landlord.get_instance()
 
-anbei erhalten Sie Ihre monatliche Heizungsinformation für die Wohnung {renter.apartment.name}.
-
-Sie können das PDF hier abrufen:
-{pdf_url}
-
-Falls Sie diese E-Mails nicht mehr erhalten möchten, können Sie sich hier abmelden:
-{unsubscribe_url}
-
-Mit freundlichen Grüßen
-Ihr Vermieter{debug_info}
-"""
+    message = render_to_string('heating_info_email.txt', {
+        'first_name': renter.first_name,
+        'last_name': renter.last_name,
+        'pdf_url': pdf_url,
+        'json_url': json_url,
+        'unsubscribe_url': unsubscribe_url,
+        'landlord_name': landlord.name if landlord else "Ihr Vermieter",
+        'landlord_street': landlord.street if landlord else "",
+        'landlord_postal_code': landlord.postal_code if landlord else "",
+        'landlord_city': landlord.city if landlord else "",
+        'landlord_phone': landlord.phone if landlord else "",
+        'landlord_email': landlord.email if landlord else "",
+        'debug_info': debug_info,
+    })
 
     try:
         send_mail(

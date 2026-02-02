@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heizungsinfo abbestellen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .warning-box {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .button:hover {
+            background-color: #b71c1c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Heizungsinfo abbestellen</h1>
+
+        <div class="info-box">
+            <strong>Mieter:</strong> {{ renter.first_name }} {{ renter.last_name }}<br>
+            <strong>Wohnung:</strong> {{ renter.apartment }}
+        </div>
+
+        <div class="warning-box">
+            <p>Wenn Sie die monatliche Heizungsinfo abbestellen, erhalten Sie keine weiteren E-Mails mit Ihrem Energieverbrauch.</p>
+            <p>Sie können sich jederzeit an Ihren Vermieter wenden, um die Heizungsinfo wieder zu aktivieren.</p>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="button">Heizungsinfo abbestellen</button>
+        </form>
+    </div>
+</body>
+</html>

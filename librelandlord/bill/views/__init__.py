@@ -14,7 +14,9 @@ from .dashboard import dashboard_stats_api
 from .heating_info import (
     heating_info,
     heating_info_pdf,
+    heating_info_pdf_by_token,
     heating_info_task,
+    heating_info_unsubscribe,
     run_heating_info_task,
 )
 
@@ -50,7 +52,9 @@ __all__ = [
     # Heating Info
     'heating_info',
     'heating_info_pdf',
+    'heating_info_pdf_by_token',
     'heating_info_task',
+    'heating_info_unsubscribe',
     'run_heating_info_task',
     # Meter
     'meter_place_consumption',

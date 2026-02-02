@@ -154,12 +154,9 @@ def run_heating_info_task():
     """
     Kernlogik zur Berechnung der monatlichen Heizungsinfos.
 
-    Berechnet für alle HeatingInfoTemplates die noch ausstehenden Monate
-    und erstellt entsprechende HeatingInfo-Einträge. Läuft so lange,
-    bis alle ausstehenden Monate abgearbeitet sind.
-
-    Heizung und Warmwasser werden unabhängig voneinander berechnet.
-    Fehlende Werte werden beim nächsten Aufruf nachgeholt.
+    Berechnet für jedes HeatingInfoTemplate einzeln die noch ausstehenden Monate
+    und erstellt entsprechende HeatingInfo-Einträge. Templates werden unabhängig
+    voneinander verarbeitet, sodass ein blockiertes Template andere nicht aufhält.
 
     Returns:
         dict: Ergebnis mit 'processed' und 'pending' Listen
@@ -173,43 +170,37 @@ def run_heating_info_task():
     else:
         target_month = target_month - 1
 
+    logger.info(f"run_heating_info_task gestartet: today={today}, target_year={target_year}, target_month={target_month}")
+
     data = {'processed': [], 'pending': []}
-    processed_months = set()  # Verhindert Endlosschleife
 
-    while True:
-        templates = HeatingInfoTemplate.objects.filter(
-            Q(next_year__lt=target_year) |
-            (Q(next_year=target_year) & Q(next_month__lte=target_month))
-        ).order_by('next_year', 'next_month')
+    # Alle Templates holen die noch Monate zu verarbeiten haben
+    all_templates = HeatingInfoTemplate.objects.filter(
+        Q(next_year__lt=target_year) |
+        (Q(next_year=target_year) & Q(next_month__lte=target_month))
+    ).order_by('apartment__name')
 
-        if not templates:
-            break
+    logger.info(f"Gefundene Templates mit ausstehenden Monaten: {all_templates.count()}")
 
-        calc_year = templates[0].next_year
-        calc_month = templates[0].next_month
+    # Jedes Template einzeln verarbeiten
+    for template in all_templates:
+        logger.info(f"=== Verarbeite Template: {template.apartment} (aktuell bei {template.next_year}-{template.next_month:02d}) ===")
 
-        # Endlosschleife verhindern: Monat nur einmal pro Aufruf verarbeiten
-        month_key = (calc_year, calc_month)
-        if month_key in processed_months:
-            break
-        processed_months.add(month_key)
-        next_year = calc_year
-        next_month = calc_month + 1
-        if next_month > 12:
-            next_month = 1
-            next_year = next_year + 1
-        start_date = date(calc_year, calc_month, 1)
-        end_date = date(next_year, next_month, 1)
+        # Alle ausstehenden Monate für dieses Template verarbeiten
+        while (template.next_year < target_year or
+               (template.next_year == target_year and template.next_month <= target_month)):
 
-        # Erste Runde: Werte berechnen und sammeln
-        compare_group_heating = {}
-        compare_group_water = {}
-        template_results = []
-        any_progress = False
+            calc_year = template.next_year
+            calc_month = template.next_month
+            next_year = calc_year
+            next_month = calc_month + 1
+            if next_month > 12:
+                next_month = 1
+                next_year = next_year + 1
+            start_date = date(calc_year, calc_month, 1)
+            end_date = date(next_year, next_month, 1)
 
-        for template in templates:
-            if template.next_year != calc_year or template.next_month != calc_month:
-                continue
+            logger.info(f"  Berechne Monat {calc_year}-{calc_month:02d} für {template.apartment}")
 
             heat_val = None
             heat_error = None
@@ -218,88 +209,59 @@ def run_heating_info_task():
 
             # Heizung berechnen
             if template.calc_heating is not None:
+                logger.info(f"    Berechne Heizung mit ConsumptionCalc '{template.calc_heating.name}' (ID: {template.calc_heating.id}) für Zeitraum {start_date} bis {end_date}")
                 try:
                     result = template.calc_heating.calculate(start_date, end_date)
                     heat_val = result.value if result.success else None
+                    logger.info(f"    Heizung Ergebnis: success={result.success}, value={heat_val}")
                     if heat_val is None:
                         heat_error = getattr(result, 'error', 'no value')
+                        logger.warning(f"    Heizung ohne Wert: {heat_error}")
                 except Exception as e:
                     heat_error = str(e)
+                    logger.error(f"    Heizung Fehler: {heat_error}")
+            else:
+                logger.info(f"    Keine calc_heating konfiguriert")
 
             # Warmwasser berechnen
             if template.calc_hot_water is not None:
+                logger.info(f"    Berechne Warmwasser mit ConsumptionCalc '{template.calc_hot_water.name}' (ID: {template.calc_hot_water.id}) für Zeitraum {start_date} bis {end_date}")
                 try:
                     result = template.calc_hot_water.calculate(start_date, end_date)
                     water_val = result.value if result.success else None
+                    logger.info(f"    Warmwasser Ergebnis: success={result.success}, value={water_val}")
                     if water_val is None:
                         water_error = getattr(result, 'error', 'no value')
+                        logger.warning(f"    Warmwasser ohne Wert: {water_error}")
                 except Exception as e:
                     water_error = str(e)
+                    logger.error(f"    Warmwasser Fehler: {water_error}")
+            else:
+                logger.info(f"    Keine calc_hot_water konfiguriert")
 
-            # Für Vergleichsgruppen sammeln (nur erfolgreiche Werte)
-            if heat_val is not None:
-                groupname = template.compare_heating_group
-                if groupname not in compare_group_heating:
-                    compare_group_heating[groupname] = {'m2': 0, 'sum': 0}
-                compare_group_heating[groupname]['sum'] += heat_val
-                compare_group_heating[groupname]['m2'] += template.apartment.size_in_m2
-
-            if water_val is not None:
-                groupname = template.compare_hot_water_group
-                if groupname not in compare_group_water:
-                    compare_group_water[groupname] = {'sum': 0, 'num': 0}
-                compare_group_water[groupname]['sum'] += water_val
-                compare_group_water[groupname]['num'] += 1
-
-            # Prüfen ob mindestens ein Wert berechnet werden konnte
+            # Prüfen ob Werte berechnet werden konnten
             has_heating = heat_val is not None or template.calc_heating is None
             has_water = water_val is not None or template.calc_hot_water is None
+            is_complete = has_heating and has_water
+            has_any_value = heat_val is not None or water_val is not None
 
-            template_results.append({
-                'template': template,
-                'heat_val': heat_val,
-                'heat_error': heat_error,
-                'water_val': water_val,
-                'water_error': water_error,
-                'complete': has_heating and has_water,
-                'has_any_value': heat_val is not None or water_val is not None
-            })
+            logger.info(f"    has_heating={has_heating}, has_water={has_water}, complete={is_complete}, has_any_value={has_any_value}")
 
-            if heat_val is not None or water_val is not None:
-                any_progress = True
-
-        # Wenn kein Fortschritt, abbrechen
-        if not any_progress:
-            for tr in template_results:
-                pending_info = {
-                    'apartment': str(tr['template'].apartment),
-                    'month': f"{calc_year}-{calc_month:02d}"
-                }
-                if tr['heat_error']:
-                    pending_info['heating_error'] = tr['heat_error']
-                if tr['water_error']:
-                    pending_info['water_error'] = tr['water_error']
-                data['pending'].append(pending_info)
-            break
-
-        # Zweite Runde: HeatingInfo erstellen/aktualisieren
-        for tr in template_results:
-            template = tr['template']
-
-            # Nur verarbeiten wenn mindestens ein Wert vorhanden
-            if not tr['has_any_value']:
+            # Wenn gar kein Wert berechnet werden konnte, zu pending und zum nächsten Template
+            if not has_any_value:
                 pending_info = {
                     'apartment': str(template.apartment),
                     'month': f"{calc_year}-{calc_month:02d}"
                 }
-                if tr['heat_error']:
-                    pending_info['heating_error'] = tr['heat_error']
-                if tr['water_error']:
-                    pending_info['water_error'] = tr['water_error']
+                if heat_error:
+                    pending_info['heating_error'] = heat_error
+                if water_error:
+                    pending_info['water_error'] = water_error
                 data['pending'].append(pending_info)
-                continue
+                logger.warning(f"    Keine Werte berechenbar - Template übersprungen, weiter zum nächsten Template")
+                break  # Zum nächsten Template
 
-            # HeatingInfo holen oder erstellen
+            # HeatingInfo erstellen/aktualisieren (ohne Vergleichswerte - die fehlen bei Einzel-Verarbeitung)
             hi, created = HeatingInfo.objects.get_or_create(
                 apartment=template.apartment,
                 year=calc_year,
@@ -319,41 +281,143 @@ def run_heating_info_task():
                 'updated': []
             }
 
-            # Heizung aktualisieren wenn Wert vorhanden
-            if tr['heat_val'] is not None:
-                hi.heating_energy_kwh = tr['heat_val']
-                groupname = template.compare_heating_group
-                if compare_group_heating.get(groupname, {}).get('m2', 0) > 0:
-                    hi.compare_heating_energy_kwh = template.apartment.size_in_m2 * (
-                        compare_group_heating[groupname]['sum'] / compare_group_heating[groupname]['m2']
-                    )
+            # Heizung aktualisieren
+            if heat_val is not None:
+                hi.heating_energy_kwh = heat_val
                 processed_info['updated'].append('heating')
-            elif tr['heat_error']:
-                processed_info['heating_pending'] = tr['heat_error']
+            elif heat_error:
+                processed_info['heating_pending'] = heat_error
 
-            # Warmwasser aktualisieren wenn Wert vorhanden
-            if tr['water_val'] is not None:
-                hi.hot_water_m3 = tr['water_val']
+            # Warmwasser aktualisieren
+            if water_val is not None:
+                hi.hot_water_m3 = water_val
                 kwh_factor = decimal.Decimal(template.kwh_per_m3_hot_water)
-                hi.hot_water_energy_kwh = tr['water_val'] * kwh_factor
-                groupname = template.compare_hot_water_group
-                if compare_group_water.get(groupname, {}).get('num', 0) > 0:
-                    compare_water_m3 = compare_group_water[groupname]['sum'] / compare_group_water[groupname]['num']
-                    hi.compare_hot_water_energy_kwh = compare_water_m3 * kwh_factor
+                hi.hot_water_energy_kwh = water_val * kwh_factor
                 processed_info['updated'].append('hot_water')
-            elif tr['water_error']:
-                processed_info['water_pending'] = tr['water_error']
+            elif water_error:
+                processed_info['water_pending'] = water_error
 
             hi.save()
             data['processed'].append(processed_info)
+            logger.info(f"    HeatingInfo gespeichert für {template.apartment}, {calc_year}-{calc_month:02d}")
 
-            # Template nur weitersetzen wenn komplett
-            if tr['complete']:
+            # Template weitersetzen wenn komplett, sonst bei diesem Template stoppen
+            if is_complete:
                 template.next_year = next_year
                 template.next_month = next_month
                 template.save()
+                logger.info(f"    Template weitergesetzt auf {next_year}-{next_month:02d}")
+            else:
+                pending_info = {
+                    'apartment': str(template.apartment),
+                    'month': f"{calc_year}-{calc_month:02d}",
+                    'partial': True
+                }
+                if heat_error:
+                    pending_info['heating_error'] = heat_error
+                if water_error:
+                    pending_info['water_error'] = water_error
+                data['pending'].append(pending_info)
+                logger.warning(f"    Template NICHT weitergesetzt (incomplete) - weiter zum nächsten Template")
+                break  # Zum nächsten Template
 
+    # Zweiter Durchlauf: Vergleichswerte berechnen für alle Monate die jetzt HeatingInfo haben
+    logger.info("=== Berechne Vergleichswerte ===")
+    _update_compare_values(target_year, target_month)
+
+    logger.info(f"run_heating_info_task beendet: {len(data['processed'])} verarbeitet, {len(data['pending'])} pending")
     return data
+
+
+def _update_compare_values(target_year: int, target_month: int):
+    """
+    Aktualisiert die Vergleichswerte für alle HeatingInfo-Einträge.
+    Wird nach der Hauptverarbeitung aufgerufen, um Vergleichswerte basierend
+    auf allen verfügbaren Daten zu berechnen.
+    """
+    # Alle Templates für Vergleichsgruppen-Mapping holen
+    templates = HeatingInfoTemplate.objects.all()
+
+    # Für jeden Monat im relevanten Zeitraum die Vergleichswerte berechnen
+    # Wir gehen 24 Monate zurück
+    current_year = target_year
+    current_month = target_month
+
+    for _ in range(24):
+        # Vergleichsgruppen für diesen Monat sammeln
+        compare_group_heating = {}
+        compare_group_water = {}
+
+        for template in templates:
+            try:
+                hi = HeatingInfo.objects.get(
+                    apartment=template.apartment,
+                    year=current_year,
+                    month=current_month
+                )
+
+                if hi.heating_energy_kwh is not None:
+                    groupname = template.compare_heating_group
+                    if groupname not in compare_group_heating:
+                        compare_group_heating[groupname] = {'m2': 0, 'sum': 0}
+                    compare_group_heating[groupname]['sum'] += hi.heating_energy_kwh
+                    compare_group_heating[groupname]['m2'] += template.apartment.size_in_m2
+
+                if hi.hot_water_m3 is not None:
+                    groupname = template.compare_hot_water_group
+                    if groupname not in compare_group_water:
+                        compare_group_water[groupname] = {'sum': 0, 'num': 0}
+                    compare_group_water[groupname]['sum'] += hi.hot_water_m3
+                    compare_group_water[groupname]['num'] += 1
+
+            except HeatingInfo.DoesNotExist:
+                continue
+
+        # Vergleichswerte aktualisieren
+        for template in templates:
+            try:
+                hi = HeatingInfo.objects.get(
+                    apartment=template.apartment,
+                    year=current_year,
+                    month=current_month
+                )
+
+                updated = False
+
+                # Heizung Vergleichswert
+                if hi.heating_energy_kwh is not None:
+                    groupname = template.compare_heating_group
+                    if compare_group_heating.get(groupname, {}).get('m2', 0) > 0:
+                        new_compare = template.apartment.size_in_m2 * (
+                            compare_group_heating[groupname]['sum'] / compare_group_heating[groupname]['m2']
+                        )
+                        if hi.compare_heating_energy_kwh != new_compare:
+                            hi.compare_heating_energy_kwh = new_compare
+                            updated = True
+
+                # Warmwasser Vergleichswert
+                if hi.hot_water_m3 is not None:
+                    groupname = template.compare_hot_water_group
+                    if compare_group_water.get(groupname, {}).get('num', 0) > 0:
+                        kwh_factor = decimal.Decimal(template.kwh_per_m3_hot_water)
+                        compare_water_m3 = compare_group_water[groupname]['sum'] / compare_group_water[groupname]['num']
+                        new_compare = compare_water_m3 * kwh_factor
+                        if hi.compare_hot_water_energy_kwh != new_compare:
+                            hi.compare_hot_water_energy_kwh = new_compare
+                            updated = True
+
+                if updated:
+                    hi.save()
+                    logger.debug(f"  Vergleichswerte aktualisiert für {template.apartment}, {current_year}-{current_month:02d}")
+
+            except HeatingInfo.DoesNotExist:
+                continue
+
+        # Einen Monat zurück
+        current_month -= 1
+        if current_month < 1:
+            current_month = 12
+            current_year -= 1
 
 
 @login_required
@@ -363,3 +427,52 @@ def heating_info_task(request):
     """
     data = run_heating_info_task()
     return HttpResponse(json.dumps(data, indent=2), content_type='application/json')
+
+
+def heating_info_pdf_by_token(request, token: str):
+    """
+    Generiert ein PDF der Heizungsinfo für einen Mieter basierend auf seinem Token.
+    Kein Login erforderlich - Authentifizierung über Token.
+    """
+    try:
+        renter = Renter.objects.get(token=token)
+    except Renter.DoesNotExist:
+        return HttpResponse("Ungültiger Token", status=404)
+
+    template = loader.get_template('heating_info.html')
+    context = get_heating_info_context(request=request, renter_id=renter.id)
+
+    if context is None:
+        return HttpResponse("Keine Heizungsinfo verfügbar", status=404)
+
+    html = template.render(context, request)
+
+    # Generiere das PDF mit WeasyPrint
+    pdf = HTML(string=html).write_pdf()
+
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = 'inline; filename="heating_info.pdf"'
+
+    return response
+
+
+def heating_info_unsubscribe(request, token: str):
+    """
+    Ermöglicht einem Mieter, die monatliche Heizungsinfo abzubestellen.
+    Kein Login erforderlich - Authentifizierung über Token.
+    """
+    try:
+        renter = Renter.objects.get(token=token)
+    except Renter.DoesNotExist:
+        return HttpResponse("Ungültiger Token", status=404)
+
+    if request.method == 'POST':
+        renter.wants_heating_info = False
+        renter.save(update_fields=['wants_heating_info'])
+        return render(request, 'heating_info_unsubscribe_success.html', {
+            'renter': renter,
+        })
+
+    return render(request, 'heating_info_unsubscribe.html', {
+        'renter': renter,
+    })

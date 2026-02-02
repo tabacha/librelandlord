@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heizungsinfo abbestellt</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2e7d32;
+            border-bottom: 2px solid #2e7d32;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .success-box {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Erfolgreich abbestellt</h1>
+
+        <div class="success-box">
+            <p>Sie haben die monatliche Heizungsinfo erfolgreich abbestellt.</p>
+        </div>
+
+        <div class="info-box">
+            <strong>Mieter:</strong> {{ renter.first_name }} {{ renter.last_name }}<br>
+            <strong>Wohnung:</strong> {{ renter.apartment }}
+        </div>
+
+        <p>Falls Sie die Heizungsinfo wieder erhalten möchten, wenden Sie sich bitte an Ihren Vermieter.</p>
+    </div>
+</body>
+</html>

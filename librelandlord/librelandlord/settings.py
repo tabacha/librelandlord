@@ -51,6 +51,9 @@ HEATING_INFO_FOOTER = "Für Fragen oder wenn Daten nicht plausibel sind, wenden 
 # URL to Paperless-NGX instance (without trailing slash), e.g. https://paperless.example.com
 PAPERLESS_BASE_URL = os.environ.get('PAPERLESS_BASE_URL', '').rstrip('/')
 
+# Site URL for external links (e.g. in emails), e.g. https://nebenkosten.anders.hamburg
+SITE_URL = os.environ.get('SITE_URL', '').rstrip('/')
+
 # Application definition
 
 INSTALLED_APPS = [

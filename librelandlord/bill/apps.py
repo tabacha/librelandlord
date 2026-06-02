@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from django.apps import AppConfig
+from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +45,17 @@ class BillConfig(AppConfig):
         def scheduled_heating_info_task():
             """Wrapper für den Heating Info Task mit Logging."""
             logger.info("Scheduled heating_info_task started")
-            result = run_heating_info_task()
-            processed_count = len(result.get('processed', []))
-            pending_count = len(result.get('pending', []))
-            logger.info(f"Scheduled heating_info_task completed: {processed_count} processed, {pending_count} pending")
+            close_old_connections()
+            try:
+                result = run_heating_info_task()
+                processed_count = len(result.get('processed', []))
+                pending_count = len(result.get('pending', []))
+                logger.info(f"Scheduled heating_info_task completed: {processed_count} processed, {pending_count} pending")
+            except Exception:
+                logger.exception("Scheduled heating_info_task failed")
+                raise
+            finally:
+                close_old_connections()
 
         scheduler = BackgroundScheduler()
 

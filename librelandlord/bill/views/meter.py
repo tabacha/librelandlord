@@ -350,6 +350,32 @@ def meter_readings_save_single(request):
                 'success': False,
                 'error': f'Zähler war am {target_date} bereits außer Betrieb (Ausbaudatum: {meter.out_of_order_date})'
             })
+
+        # Monotonie-Prüfung (außer Ölzähler: Tankinhalt fällt ab)
+        if meter.place.type != MeterPlace.MeterType.OIL:
+            prev = MeterReading.objects.filter(
+                meter=meter, date__lt=target_date
+            ).order_by('-date').first()
+            if prev and reading_decimal < prev.meter_reading:
+                return JsonResponse({
+                    'success': False,
+                    'error': (
+                        f'Zählerstand {reading_decimal} ist kleiner als der vorherige Wert '
+                        f'{prev.meter_reading} vom {prev.date}'
+                    )
+                })
+            next_r = MeterReading.objects.filter(
+                meter=meter, date__gt=target_date
+            ).order_by('date').first()
+            if next_r and reading_decimal > next_r.meter_reading:
+                return JsonResponse({
+                    'success': False,
+                    'error': (
+                        f'Zählerstand {reading_decimal} ist größer als der folgende Wert '
+                        f'{next_r.meter_reading} vom {next_r.date}'
+                    )
+                })
+
         # Speichern oder aktualisieren
         reading, created = MeterReading.objects.update_or_create(
             meter=meter,

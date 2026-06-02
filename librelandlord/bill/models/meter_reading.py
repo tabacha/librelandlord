@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from datetime import date, time
 from typing import Optional, NamedTuple
 from .meter import Meter
+from .meter_place import MeterPlace
 import logging
 
 logger = logging.getLogger(__name__)
@@ -187,15 +188,16 @@ class MeterReading(models.Model):
         ]
 
     def clean(self):
-        # Verhindern von rückläufigen Messwerten
-        previous_reading = MeterReading.objects.filter(
-            meter=self.meter, date__lt=self.date
-        ).order_by('-date').first()
-        if previous_reading and self.meter_reading < previous_reading.meter_reading:
-            raise ValidationError(
-                _("Meter reading cannot be less than the previous reading on %(date)s"),
-                params={'date': previous_reading.date},
-            )
+        # Ölzähler misst den verbleibenden Tank-Inhalt (fällt ab) → keine Monotonie-Prüfung
+        if self.meter.place.type != MeterPlace.MeterType.OIL:
+            previous_reading = MeterReading.objects.filter(
+                meter=self.meter, date__lt=self.date
+            ).order_by('-date').first()
+            if previous_reading and self.meter_reading < previous_reading.meter_reading:
+                raise ValidationError(
+                    _("Meter reading cannot be less than the previous reading on %(date)s"),
+                    params={'date': previous_reading.date},
+                )
 
         # Datum der Messung prüfen: Nicht vor `build_in_date` und nicht nach `out_of_order_date`
         if self.date < self.meter.build_in_date:

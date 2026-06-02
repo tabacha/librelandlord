@@ -49,7 +49,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     default-mysql-client \
     mariadb-client-compat \
     pkg-config \
-    gettext
+    gettext \
+    fonts-noto-color-emoji
 
 # Requirements kopieren und installieren (vor App-Code für besseres Caching)
 COPY requirements.txt .

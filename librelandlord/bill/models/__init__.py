@@ -1,3 +1,4 @@
+from .blocked_network import BlockedNetwork
 from .account_entry import AccountEntry
 from .account_period import AccountPeriod
 from .apartment import Apartment

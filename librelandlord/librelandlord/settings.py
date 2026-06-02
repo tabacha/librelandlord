@@ -72,6 +72,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     # Add this for static files in production
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'bill.middleware.AttackBlocklistMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',  # Must be after SessionMiddleware
     'django.middleware.common.CommonMiddleware',

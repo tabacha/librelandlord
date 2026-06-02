@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 
-from ..models import CostCenter, Meter, MeterReading, Bill
+from ..models import CostCenter, Meter, MeterPlace, MeterReading, Bill
 
 import logging
 
@@ -80,13 +80,13 @@ def mbus_readings_import(request):
     """
     API-Endpunkt für den Import von M-Bus Zählerwerten.
 
-    Erwartet JSON oder YAML im Body mit einer Liste von Messwerten:
+    Erwartet JSON im Body mit einer Liste von Messwerten:
     [
         {
-            "meter_id": 11367181,
-            "timestamp": "2026-01-04T00:37:00",
-            "type": "heat",
-            "value": 2843
+            "mbus_id": "11367181",
+            "timestamp": "2026-01-04 00:37:00",
+            "value": 2843,
+            "type": "HE"  (optional, muss MeterPlace.type entsprechen)
         },
         ...
     ]
@@ -116,6 +116,12 @@ def mbus_readings_import(request):
             'error': 'Input must be a list of readings'
         }, status=400)
 
+    logger.info(
+        "M-Bus Import: %d Einträge empfangen, mbus_ids=%s",
+        len(readings_data),
+        [str(r.get('mbus_id', '?')) for r in readings_data]
+    )
+
     results = {
         'imported': 0,
         'skipped_existing': 0,
@@ -133,6 +139,7 @@ def mbus_readings_import(request):
             reading_type = reading.get('type', '')
 
             if not all([mbus_id, timestamp_str, value is not None]):
+                logger.warning("M-Bus Import: Pflichtfelder fehlen in: %s", reading)
                 results['errors'].append(
                     f"Missing required fields in: {reading}")
                 continue
@@ -204,36 +211,35 @@ def mbus_readings_import(request):
                 )
                 continue
 
-            # Validate reading value is monotonically increasing
             reading_value = decimal.Decimal(str(value))
 
-            # Get previous reading (before this date)
-            previous_reading = MeterReading.objects.filter(
-                meter=meter,
-                date__lt=reading_date
-            ).order_by('-date').first()
+            # Monotonie-Prüfung (außer Ölzähler: Tankinhalt fällt ab)
+            if meter.place.type != MeterPlace.MeterType.OIL:
+                previous_reading = MeterReading.objects.filter(
+                    meter=meter,
+                    date__lt=reading_date
+                ).order_by('-date').first()
 
-            if previous_reading and reading_value < previous_reading.meter_reading:
-                logger.warning(
-                    f"Reading {reading_value} for meter {meter.id} (mbus_id={mbus_id}) on {reading_date} "
-                    f"is less than previous reading {previous_reading.meter_reading} on {previous_reading.date}"
-                )
-                results['skipped_invalid_value'] += 1
-                continue
+                if previous_reading and reading_value < previous_reading.meter_reading:
+                    logger.warning(
+                        f"Reading {reading_value} for meter {meter.id} (mbus_id={mbus_id}) on {reading_date} "
+                        f"is less than previous reading {previous_reading.meter_reading} on {previous_reading.date}"
+                    )
+                    results['skipped_invalid_value'] += 1
+                    continue
 
-            # Get next reading (after this date)
-            next_reading = MeterReading.objects.filter(
-                meter=meter,
-                date__gt=reading_date
-            ).order_by('date').first()
+                next_reading = MeterReading.objects.filter(
+                    meter=meter,
+                    date__gt=reading_date
+                ).order_by('date').first()
 
-            if next_reading and reading_value > next_reading.meter_reading:
-                logger.warning(
-                    f"Reading {reading_value} for meter {meter.id} (mbus_id={mbus_id}) on {reading_date} "
-                    f"is greater than next reading {next_reading.meter_reading} on {next_reading.date}"
-                )
-                results['skipped_invalid_value'] += 1
-                continue
+                if next_reading and reading_value > next_reading.meter_reading:
+                    logger.warning(
+                        f"Reading {reading_value} for meter {meter.id} (mbus_id={mbus_id}) on {reading_date} "
+                        f"is greater than next reading {next_reading.meter_reading} on {next_reading.date}"
+                    )
+                    results['skipped_invalid_value'] += 1
+                    continue
 
             # Create the reading
             MeterReading.objects.create(
@@ -253,10 +259,23 @@ def mbus_readings_import(request):
             results['errors'].append(
                 f"Error processing mbus_id {reading.get('mbus_id', 'unknown')}: {str(e)}")
 
+    logger.info(
+        "M-Bus Import abgeschlossen: importiert=%d, existing=%d, kein_zähler=%d, "
+        "typ_fehler=%d, ungültiger_wert=%d, fehler=%d",
+        results['imported'], results['skipped_existing'], results['skipped_no_meter'],
+        results['skipped_type_mismatch'], results['skipped_invalid_value'], len(results['errors'])
+    )
+
+    has_errors = (
+        results['errors']
+        or results['skipped_invalid_value'] > 0
+        or results['skipped_type_mismatch'] > 0
+    )
+    status_code = 422 if has_errors else 200
     return JsonResponse({
-        'success': True,
+        'success': not has_errors,
         'results': results
-    })
+    }, status=status_code)
 
 
 @login_required

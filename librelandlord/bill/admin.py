@@ -858,3 +858,11 @@ class YearlyAdjustmentAdmin(admin.ModelAdmin):
 
 
 admin.site.register(models.YearlyAdjustment, YearlyAdjustmentAdmin)
+
+
+@admin.register(models.BlockedNetwork)
+class BlockedNetworkAdmin(admin.ModelAdmin):
+    list_display = ('network', 'last_seen', 'reason')
+    search_fields = ('network', 'reason')
+    ordering = ['-last_seen']
+    readonly_fields = ('network', 'last_seen', 'reason')

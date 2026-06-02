@@ -15,13 +15,22 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import include, path, reverse
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.shortcuts import redirect
 from django.views.generic import View
+
+
+def robots_txt(request):
+    return HttpResponse("User-agent: *\nDisallow: /\n", content_type="text/plain")
+
+
+def sitemap_xml(request):
+    content = '<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>\n'
+    return HttpResponse(content, content_type="application/xml")
 
 
 class CustomLogin(View):
@@ -35,6 +44,8 @@ class CustomLogin(View):
 
 
 urlpatterns = [
+    path('robots.txt', robots_txt),
+    path('sitemap.xml', sitemap_xml),
     path('', lambda request: redirect('/admin/')),  # Root redirect to admin
     path('bill/', include('bill.urls')),
     path('oidc/', include('mozilla_django_oidc.urls')),  # OIDC URLs

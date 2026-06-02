@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from django.apps import AppConfig
+from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +45,38 @@ class BillConfig(AppConfig):
         def scheduled_heating_info_task():
             """Wrapper für den Heating Info Task mit Logging."""
             logger.info("Scheduled heating_info_task started")
-            result = run_heating_info_task()
-            processed_count = len(result.get('processed', []))
-            pending_count = len(result.get('pending', []))
-            logger.info(f"Scheduled heating_info_task completed: {processed_count} processed, {pending_count} pending")
+            close_old_connections()
+            try:
+                result = run_heating_info_task()
+                processed_count = len(result.get('processed', []))
+                pending_count = len(result.get('pending', []))
+                logger.info(f"Scheduled heating_info_task completed: {processed_count} processed, {pending_count} pending")
+            except Exception:
+                logger.exception("Scheduled heating_info_task failed")
+                raise
+            finally:
+                close_old_connections()
+
+        def scheduled_blocklist_cleanup():
+            """Entfernt abgelaufene Einträge aus DB und In-Memory-Blocklist."""
+            close_old_connections()
+            try:
+                from django.utils import timezone
+                from bill.models import BlockedNetwork
+                from bill.middleware import BLOCK_EXPIRY, _blocklist, _lock
+                expiry_cutoff = timezone.now() - BLOCK_EXPIRY
+                deleted, _ = BlockedNetwork.objects.filter(last_seen__lt=expiry_cutoff).delete()
+                # Auch aus In-Memory-Dict entfernen (für Einträge die nie wieder anfragen)
+                with _lock:
+                    expired_keys = [k for k, ts in _blocklist.items() if timezone.now() - ts > BLOCK_EXPIRY]
+                    for k in expired_keys:
+                        del _blocklist[k]
+                if deleted or expired_keys:
+                    logger.info("Blocklist-Cleanup: %d DB-Einträge, %d RAM-Einträge entfernt", deleted, len(expired_keys))
+            except Exception:
+                logger.exception("Blocklist-Cleanup fehlgeschlagen")
+            finally:
+                close_old_connections()
 
         scheduler = BackgroundScheduler()
 
@@ -66,6 +95,14 @@ class BillConfig(AppConfig):
             trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=30)),
             id='heating_info_task_initial',
             name='Initial heating info calculation',
+            replace_existing=True,
+        )
+
+        scheduler.add_job(
+            scheduled_blocklist_cleanup,
+            trigger=IntervalTrigger(hours=24),
+            id='blocklist_cleanup',
+            name='Cleanup expired blocked networks',
             replace_existing=True,
         )
 

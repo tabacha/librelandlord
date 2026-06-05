@@ -28,6 +28,7 @@ urlpatterns = [
     #     name="calc_consumption_calc"),
 
     path("heating_info_task", views.heating_info_task, name="heating_info_task"),
+    path("heating_info_email_task", views.heating_info_email_task, name="heating_info_email_task"),
     path("yearly-calculation/<int:billing_year>/",
          views.yearly_calculation, name="yearly_calculation"),
     path("yearly-calculation/<int:billing_year>/renter/<int:renter_id>/",

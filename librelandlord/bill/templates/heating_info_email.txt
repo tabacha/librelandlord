@@ -1,0 +1,22 @@
+Moin {{ first_name }} {{ last_name }},
+
+anbei erhalten Sie Ihre monatliche Heizungsinformation.
+
+Sie können das PDF hier abrufen:
+{{ pdf_url }}
+
+Für technisch Interessierte: Die Daten sind auch als JSON verfügbar:
+{{ json_url }}
+
+Falls Sie diese E-Mails nicht mehr erhalten möchten, können Sie sich hier abmelden:
+{{ unsubscribe_url }}
+
+Mit freundlichen Grüßen
+{{ landlord_name }}
+
+--
+{{ landlord_name }}
+{{ landlord_street }}
+{{ landlord_postal_code }} {{ landlord_city }}{% if landlord_phone %}
+Tel: {{ landlord_phone }}{% endif %}{% if landlord_email %}
+E-Mail: {{ landlord_email }}{% endif %}{{ debug_info }}

@@ -19,6 +19,7 @@ class BillConfig(AppConfig):
     def ready(self):
         from django.contrib import admin
         from .views import run_heating_info_task
+        from .services.email import send_heating_info_emails
 
         # Admin Site Konfiguration
         admin.site.site_header = 'LibreLandlord'
@@ -31,9 +32,9 @@ class BillConfig(AppConfig):
         is_runserver = 'runserver' in sys.argv
         run_main = os.environ.get('RUN_MAIN')
         if (is_runserver and run_main == 'true') or (not is_runserver):
-            self._start_scheduler(run_heating_info_task)
+            self._start_scheduler(run_heating_info_task, send_heating_info_emails)
 
-    def _start_scheduler(self, run_heating_info_task):
+    def _start_scheduler(self, run_heating_info_task, send_heating_info_emails):
         """Startet den APScheduler für periodische Tasks."""
         # Scheduler nur starten wenn Server läuft (runserver oder gunicorn)
         # Nicht bei Management-Commands wie check, migrate, makemigrations, etc.
@@ -77,6 +78,14 @@ class BillConfig(AppConfig):
                 logger.exception("Blocklist-Cleanup fehlgeschlagen")
             finally:
                 close_old_connections()
+
+            # E-Mails versenden
+            logger.info("Scheduled send_heating_info_emails started")
+            email_result = send_heating_info_emails()
+            sent_count = len(email_result.get('sent', []))
+            skipped_count = len(email_result.get('skipped', []))
+            errors_count = len(email_result.get('errors', []))
+            logger.info(f"Scheduled send_heating_info_emails completed: {sent_count} sent, {skipped_count} skipped, {errors_count} errors")
 
         scheduler = BackgroundScheduler()
 
